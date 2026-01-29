@@ -39,8 +39,9 @@ struct GridView: View {
                 }
             }
 
-            // Grid lines
+            // Grid lines (allow touches to pass through)
             GridLines(size: size, cellSize: cellSize)
+                .allowsHitTesting(false)
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 4))

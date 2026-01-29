@@ -74,13 +74,13 @@ class GameViewModel: ObservableObject {
 
         // Create view model on main thread
         return await MainActor.run {
-            GameViewModel(game: game, difficulty: difficulty)
+            GameViewModel(cachedGame: game, difficulty: difficulty)
         }
     }
 
-    /// Internal init with pre-created game
-    private init(game: SudokuGame, difficulty: Difficulty) {
-        self.game = game
+    /// Init with pre-created game from cache
+    init(cachedGame: SudokuGame, difficulty: Difficulty) {
+        self.game = cachedGame
         self.difficulty = difficulty
         self.startTime = Date()
         self.pausedTime = 0

@@ -45,14 +45,34 @@ class GameManager: ObservableObject {
     func newGame(difficulty: Difficulty) {
         gameState = .loading
 
-        // Generate puzzle on background thread
         Task {
-            // Create the game asynchronously (engine generation happens off main thread)
-            let game = await GameViewModel.createAsync(difficulty: difficulty)
+            // Get puzzle from cache (instant if prefetched)
+            let puzzle = await PuzzleCache.shared.getPuzzle(difficulty: difficulty)
+            let game = GameViewModel(cachedGame: puzzle, difficulty: difficulty)
 
             currentGame = game
             gameState = .playing
             saveCurrentGame()
+
+            // Prefetch puzzles for nearby difficulties during gameplay
+            prefetchNearbyDifficulties(current: difficulty)
+        }
+    }
+
+    /// Prefetch puzzles for difficulties the user might choose next
+    private func prefetchNearbyDifficulties(current: Difficulty) {
+        let allCases = Difficulty.allCases
+        guard let currentIndex = allCases.firstIndex(of: current) else { return }
+
+        // Prefetch same difficulty (for "play again")
+        PuzzleCache.shared.prefetch(difficulty: current)
+
+        // Prefetch adjacent difficulties
+        if currentIndex > 0 {
+            PuzzleCache.shared.prefetch(difficulty: allCases[currentIndex - 1])
+        }
+        if currentIndex < allCases.count - 1 {
+            PuzzleCache.shared.prefetch(difficulty: allCases[currentIndex + 1])
         }
     }
 
