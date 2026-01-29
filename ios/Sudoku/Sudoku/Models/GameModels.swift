@@ -115,6 +115,7 @@ enum GameState {
     case won
     case lost
     case menu
+    case loading
 }
 
 // MARK: - Settings

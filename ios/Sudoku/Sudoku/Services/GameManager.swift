@@ -43,9 +43,17 @@ class GameManager: ObservableObject {
     // MARK: - Game Management
 
     func newGame(difficulty: Difficulty) {
-        currentGame = GameViewModel(difficulty: difficulty)
-        gameState = .playing
-        saveCurrentGame()
+        gameState = .loading
+
+        // Generate puzzle on background thread
+        Task {
+            // Create the game asynchronously (engine generation happens off main thread)
+            let game = await GameViewModel.createAsync(difficulty: difficulty)
+
+            currentGame = game
+            gameState = .playing
+            saveCurrentGame()
+        }
     }
 
     func resumeGame() {
@@ -76,6 +84,12 @@ class GameManager: ObservableObject {
 
     func returnToMenu() {
         saveCurrentGame()
+        gameState = .menu
+    }
+
+    func quitGame() {
+        clearSavedGame()
+        currentGame = nil
         gameState = .menu
     }
 
