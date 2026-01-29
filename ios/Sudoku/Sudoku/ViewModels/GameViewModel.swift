@@ -65,7 +65,30 @@ class GameViewModel: ObservableObject {
         syncFromEngine()
     }
 
-    private init(game: SudokuGame, difficulty: Difficulty, elapsedTime: TimeInterval) {
+    /// Create a game asynchronously (puzzle generation happens off main thread)
+    static func createAsync(difficulty: Difficulty) async -> GameViewModel {
+        // Generate puzzle on background thread
+        let game = await Task.detached(priority: .userInitiated) {
+            SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
+        }.value
+
+        // Create view model on main thread
+        return await MainActor.run {
+            GameViewModel(game: game, difficulty: difficulty)
+        }
+    }
+
+    /// Internal init with pre-created game
+    private init(game: SudokuGame, difficulty: Difficulty) {
+        self.game = game
+        self.difficulty = difficulty
+        self.startTime = Date()
+        self.pausedTime = 0
+        syncFromEngine()
+    }
+
+    /// Internal init for deserialization with elapsed time
+    private init(deserializedGame game: SudokuGame, difficulty: Difficulty, elapsedTime: TimeInterval) {
         self.game = game
         self.difficulty = difficulty
         self.pausedTime = elapsedTime
@@ -317,7 +340,7 @@ class GameViewModel: ObservableObject {
             return nil
         }
 
-        return GameViewModel(game: game, difficulty: difficulty, elapsedTime: elapsedTime)
+        return GameViewModel(deserializedGame: game, difficulty: difficulty, elapsedTime: elapsedTime)
     }
 }
 

@@ -8,6 +8,8 @@ struct ContentView: View {
             switch gameManager.gameState {
             case .menu:
                 MenuView()
+            case .loading:
+                LoadingView()
             case .playing:
                 if let game = gameManager.currentGame {
                     GameView(game: game)
@@ -199,10 +201,26 @@ struct DifficultyPickerView: View {
     }
 }
 
+// MARK: - Loading View
+
+struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            ProgressView()
+                .scaleEffect(1.5)
+
+            Text("Generating puzzle...")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
 // MARK: - Pause Overlay
 
 struct PauseOverlay: View {
     @EnvironmentObject var gameManager: GameManager
+    @State private var showingQuitConfirmation = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -221,12 +239,27 @@ struct PauseOverlay: View {
             Button {
                 gameManager.returnToMenu()
             } label: {
-                Text("Main Menu")
+                Text("Save & Exit")
             }
             .foregroundStyle(.secondary)
+
+            Button(role: .destructive) {
+                showingQuitConfirmation = true
+            } label: {
+                Text("Quit Game")
+            }
+            .foregroundStyle(.red)
         }
         .padding(40)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .confirmationDialog("Quit Game?", isPresented: $showingQuitConfirmation) {
+            Button("Quit", role: .destructive) {
+                gameManager.quitGame()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your progress will be lost.")
+        }
     }
 }
 
