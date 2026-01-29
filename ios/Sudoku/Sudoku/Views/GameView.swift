@@ -3,6 +3,9 @@ import SwiftUI
 struct GameView: View {
     @EnvironmentObject var gameManager: GameManager
     @ObservedObject var game: GameViewModel
+    @StateObject private var konamiDetector = KonamiCodeDetector()
+    @State private var showingKonamiAlert = false
+    @State private var konamiMessage = ""
 
     var body: some View {
         GeometryReader { geometry in
@@ -25,6 +28,72 @@ struct GameView: View {
                 .padding()
             }
         }
+        .gesture(konamiGesture)
+        .onChange(of: konamiDetector.isActivated) { activated in
+            if activated {
+                triggerKonamiEasterEgg()
+            }
+        }
+        .alert("🎮 KONAMI CODE!", isPresented: $showingKonamiAlert) {
+            Button("Awesome!") {
+                konamiDetector.reset()
+            }
+        } message: {
+            Text(konamiMessage)
+        }
+    }
+
+    // MARK: - Konami Code
+
+    private var konamiGesture: some Gesture {
+        // Detect swipe directions
+        DragGesture(minimumDistance: 30)
+            .onEnded { gesture in
+                let horizontal = gesture.translation.width
+                let vertical = gesture.translation.height
+
+                if abs(horizontal) > abs(vertical) {
+                    // Horizontal swipe
+                    if horizontal > 0 {
+                        konamiDetector.input(.right)
+                    } else {
+                        konamiDetector.input(.left)
+                    }
+                } else {
+                    // Vertical swipe
+                    if vertical > 0 {
+                        konamiDetector.input(.down)
+                    } else {
+                        konamiDetector.input(.up)
+                    }
+                }
+                hapticFeedback(.light)
+            }
+    }
+
+    /// Called when Konami code is entered on the number pad (2=B, 1=A after swipes)
+    func handleKonamiNumberPad(_ number: Int) {
+        if number == 2 {
+            konamiDetector.input(.b)
+        } else if number == 1 {
+            konamiDetector.input(.a)
+        }
+    }
+
+    private func triggerKonamiEasterEgg() {
+        let easterEggs = [
+            "🚀 +30 extra lives! (Just kidding, you only had 3)",
+            "🎯 God mode activated! (Your mistakes still count though)",
+            "🧠 IQ temporarily boosted to 9000!",
+            "🎮 You found the secret! Here's a virtual high-five: 🖐️",
+            "🔮 The puzzle whispers its secrets to you...",
+            "⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️ - A true gamer!",
+            "🏆 Achievement Unlocked: Nostalgia Master",
+            "🎪 Circus mode engaged! 🤹‍♂️ (Nothing changed, but imagine it did)"
+        ]
+        konamiMessage = easterEggs.randomElement() ?? "You did it!"
+        showingKonamiAlert = true
+        hapticFeedback(.heavy)
     }
 
     // MARK: - Header
@@ -66,7 +135,7 @@ struct GameView: View {
     // MARK: - Number Pad
 
     private var numberPadSection: some View {
-        NumberPadView(game: game)
+        NumberPadView(game: game, onNumberTap: handleKonamiNumberPad)
     }
 
     // MARK: - Controls

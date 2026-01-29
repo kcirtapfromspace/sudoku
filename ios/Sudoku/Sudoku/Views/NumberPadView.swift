@@ -3,6 +3,7 @@ import SwiftUI
 struct NumberPadView: View {
     @EnvironmentObject var gameManager: GameManager
     @ObservedObject var game: GameViewModel
+    var onNumberTap: ((Int) -> Void)? = nil  // Optional callback for Konami code
 
     var body: some View {
         VStack(spacing: 8) {
@@ -35,6 +36,7 @@ struct NumberPadView: View {
 
         Button {
             game.enterNumber(number)
+            onNumberTap?(number)  // Notify for Konami code detection
             hapticFeedback(isCompleted ? .light : .medium)
         } label: {
             Text("\(number)")

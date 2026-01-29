@@ -130,11 +130,59 @@ struct GameSettings: Codable {
     var highlightValidCells: Bool = false
     var highlightRelatedCells: Bool = true
     var highlightSameNumbers: Bool = true
+    var autoFillCandidates: Bool = false  // Start games with notes pre-filled
 
     enum ThemeSetting: String, Codable, CaseIterable {
         case system = "System"
         case light = "Light"
         case dark = "Dark"
         case highContrast = "High Contrast"
+    }
+}
+
+// MARK: - Konami Code
+
+enum KonamiInput: Equatable {
+    case up, down, left, right, a, b
+}
+
+class KonamiCodeDetector: ObservableObject {
+    static let sequence: [KonamiInput] = [.up, .up, .down, .down, .left, .right, .left, .right, .b, .a]
+
+    @Published var isActivated = false
+    @Published var progress: Int = 0
+
+    private var inputBuffer: [KonamiInput] = []
+
+    func input(_ input: KonamiInput) {
+        inputBuffer.append(input)
+
+        // Keep buffer at sequence length
+        if inputBuffer.count > Self.sequence.count {
+            inputBuffer.removeFirst()
+        }
+
+        // Check for match
+        if inputBuffer == Self.sequence {
+            isActivated = true
+            inputBuffer.removeAll()
+            progress = 0
+        } else {
+            // Update progress (how many consecutive correct inputs from start)
+            progress = 0
+            for (index, expected) in Self.sequence.enumerated() {
+                if index < inputBuffer.count && inputBuffer[index] == expected {
+                    progress = index + 1
+                } else {
+                    break
+                }
+            }
+        }
+    }
+
+    func reset() {
+        inputBuffer.removeAll()
+        isActivated = false
+        progress = 0
     }
 }

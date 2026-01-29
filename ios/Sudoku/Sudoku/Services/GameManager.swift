@@ -50,6 +50,11 @@ class GameManager: ObservableObject {
             let puzzle = await PuzzleCache.shared.getPuzzle(difficulty: difficulty)
             let game = GameViewModel(cachedGame: puzzle, difficulty: difficulty)
 
+            // Auto-fill candidates if setting is enabled
+            if settings.autoFillCandidates {
+                game.fillAllCandidates()
+            }
+
             currentGame = game
             gameState = .playing
             saveCurrentGame()

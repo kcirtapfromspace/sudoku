@@ -39,6 +39,8 @@ struct SettingsView: View {
                     Toggle("Ghost Hints", isOn: $gameManager.settings.ghostHintsEnabled)
 
                     Toggle("Highlight Valid Cells", isOn: $gameManager.settings.highlightValidCells)
+
+                    Toggle("Auto-Fill Notes on Start", isOn: $gameManager.settings.autoFillCandidates)
                 }
 
                 // Feedback
