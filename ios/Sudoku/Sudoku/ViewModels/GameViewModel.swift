@@ -16,6 +16,7 @@ class GameViewModel: ObservableObject {
     @Published private(set) var currentHint: HintModel?
     @Published private(set) var canUndo: Bool = false
     @Published private(set) var canRedo: Bool = false
+    @Published private(set) var lastCelebration: CelebrationEvent?
 
     let difficulty: Difficulty
     let maxMistakes = 3
@@ -26,6 +27,11 @@ class GameViewModel: ObservableObject {
     private var startTime: Date
     private var pausedTime: TimeInterval = 0
     private var lastPauseStart: Date?
+
+    // Track which rows/cols/boxes were already complete (to detect new completions)
+    private var completedRows: Set<Int> = []
+    private var completedCols: Set<Int> = []
+    private var completedBoxes: Set<Int> = []
 
     // MARK: - Computed Properties
 
@@ -175,11 +181,77 @@ class GameViewModel: ObservableObject {
         let result = game.makeMove(row: UInt8(row), col: UInt8(col), value: UInt8(value))
 
         switch result {
-        case .success, .complete, .conflict:
+        case .success:
+            syncFromEngine()
+            checkForCompletions(afterPlacingAt: row, col: col)
+        case .complete:
+            syncFromEngine()
+            lastCelebration = .gameComplete
+        case .conflict:
             syncFromEngine()
         case .cannotModifyGiven, .invalidValue:
             break
         }
+    }
+
+    /// Check if placing a value completed any row, column, or box
+    private func checkForCompletions(afterPlacingAt row: Int, col: Int) {
+        // Check row completion
+        if !completedRows.contains(row) && isRowComplete(row) {
+            completedRows.insert(row)
+            lastCelebration = .rowComplete(row: row)
+            return
+        }
+
+        // Check column completion
+        if !completedCols.contains(col) && isColumnComplete(col) {
+            completedCols.insert(col)
+            lastCelebration = .columnComplete(col: col)
+            return
+        }
+
+        // Check box completion
+        let boxIndex = (row / 3) * 3 + (col / 3)
+        if !completedBoxes.contains(boxIndex) && isBoxComplete(boxIndex) {
+            completedBoxes.insert(boxIndex)
+            lastCelebration = .boxComplete(boxIndex: boxIndex)
+            return
+        }
+    }
+
+    private func isRowComplete(_ row: Int) -> Bool {
+        for col in 0..<9 {
+            if cells[row][col].value == 0 || cells[row][col].hasConflict {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func isColumnComplete(_ col: Int) -> Bool {
+        for row in 0..<9 {
+            if cells[row][col].value == 0 || cells[row][col].hasConflict {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func isBoxComplete(_ boxIndex: Int) -> Bool {
+        let startRow = (boxIndex / 3) * 3
+        let startCol = (boxIndex % 3) * 3
+        for row in startRow..<startRow+3 {
+            for col in startCol..<startCol+3 {
+                if cells[row][col].value == 0 || cells[row][col].hasConflict {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    func clearCelebration() {
+        lastCelebration = nil
     }
 
     func clearSelectedCell() {

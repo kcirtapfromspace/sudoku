@@ -6,26 +6,37 @@ struct GameView: View {
     @StateObject private var konamiDetector = KonamiCodeDetector()
     @State private var showingKonamiAlert = false
     @State private var konamiMessage = ""
+    @State private var celebrationText = ""
+    @State private var showCelebration = false
 
     var body: some View {
-        GeometryReader { geometry in
-            if geometry.size.width > geometry.size.height {
-                // Landscape layout
-                HStack(spacing: 20) {
-                    gridSection(size: min(geometry.size.height - 40, geometry.size.width * 0.55))
-                    controlsSection(compact: true)
+        ZStack {
+            GeometryReader { geometry in
+                if geometry.size.width > geometry.size.height {
+                    // Landscape layout
+                    HStack(spacing: 20) {
+                        gridSection(size: min(geometry.size.height - 40, geometry.size.width * 0.55))
+                        controlsSection(compact: true)
+                    }
+                    .padding()
+                } else {
+                    // Portrait layout
+                    VStack(spacing: 16) {
+                        headerSection
+                        gridSection(size: min(geometry.size.width - 32, geometry.size.height * 0.55))
+                        Spacer(minLength: 8)
+                        numberPadSection
+                        controlsSection(compact: false)
+                    }
+                    .padding()
                 }
-                .padding()
-            } else {
-                // Portrait layout
-                VStack(spacing: 16) {
-                    headerSection
-                    gridSection(size: min(geometry.size.width - 32, geometry.size.height * 0.55))
-                    Spacer(minLength: 8)
-                    numberPadSection
-                    controlsSection(compact: false)
-                }
-                .padding()
+            }
+
+            // Celebration overlay
+            if showCelebration {
+                CelebrationOverlay(text: celebrationText)
+                    .transition(.scale.combined(with: .opacity))
+                    .zIndex(100)
             }
         }
         .gesture(konamiGesture)
@@ -34,12 +45,65 @@ struct GameView: View {
                 triggerKonamiEasterEgg()
             }
         }
+        .onChange(of: game.lastCelebration) { celebration in
+            if let celebration = celebration {
+                handleCelebration(celebration)
+            }
+        }
+        .onChange(of: game.isComplete) { complete in
+            if complete {
+                // Delay slightly so celebration shows first
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    gameManager.endGame(won: true)
+                }
+            }
+        }
+        .onChange(of: game.isGameOver) { gameOver in
+            if gameOver {
+                gameManager.endGame(won: false)
+            }
+        }
         .alert("🎮 KONAMI CODE!", isPresented: $showingKonamiAlert) {
             Button("Awesome!") {
                 konamiDetector.reset()
             }
         } message: {
             Text(konamiMessage)
+        }
+    }
+
+    private func handleCelebration(_ event: CelebrationEvent) {
+        guard gameManager.settings.celebrationsEnabled else {
+            game.clearCelebration()
+            return
+        }
+
+        switch event {
+        case .rowComplete(let row):
+            celebrationText = "🎉 Row \(row + 1) Complete!"
+        case .columnComplete(let col):
+            celebrationText = "🎉 Column \(col + 1) Complete!"
+        case .boxComplete(let box):
+            celebrationText = "🎉 Box \(box + 1) Complete!"
+        case .gameComplete:
+            celebrationText = "🏆 PUZZLE SOLVED! 🏆"
+        case .cellComplete:
+            // Don't show celebration for individual cells
+            game.clearCelebration()
+            return
+        }
+
+        hapticFeedback(.medium)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            showCelebration = true
+        }
+
+        // Auto-dismiss after delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.easeOut(duration: 0.3)) {
+                showCelebration = false
+            }
+            game.clearCelebration()
         }
     }
 
@@ -223,7 +287,46 @@ struct GameView: View {
     }
 }
 
+// MARK: - Celebration Overlay
+
+struct CelebrationOverlay: View {
+    let text: String
+    @State private var scale: CGFloat = 0.5
+    @State private var opacity: Double = 0
+
+    var body: some View {
+        Text(text)
+            .font(.title.bold())
+            .foregroundStyle(.white)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .background(
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [.purple, .pink, .orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: .purple.opacity(0.5), radius: 10, x: 0, y: 5)
+            )
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                    scale = 1.0
+                    opacity = 1.0
+                }
+            }
+    }
+}
+
 #Preview {
     GameView(game: GameViewModel(difficulty: .medium))
         .environmentObject(GameManager())
+}
+
+#Preview("Celebration") {
+    CelebrationOverlay(text: "🎉 Row 5 Complete!")
 }

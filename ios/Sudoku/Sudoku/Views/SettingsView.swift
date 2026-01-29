@@ -46,6 +46,7 @@ struct SettingsView: View {
                 // Feedback
                 Section("Feedback") {
                     Toggle("Haptic Feedback", isOn: $gameManager.settings.hapticsEnabled)
+                    Toggle("Celebrations", isOn: $gameManager.settings.celebrationsEnabled)
                 }
 
                 // Data

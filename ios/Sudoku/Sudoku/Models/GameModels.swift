@@ -131,6 +131,7 @@ struct GameSettings: Codable {
     var highlightRelatedCells: Bool = true
     var highlightSameNumbers: Bool = true
     var autoFillCandidates: Bool = false  // Start games with notes pre-filled
+    var celebrationsEnabled: Bool = true  // Show celebrations for completions
 
     enum ThemeSetting: String, Codable, CaseIterable {
         case system = "System"
@@ -138,6 +139,16 @@ struct GameSettings: Codable {
         case dark = "Dark"
         case highContrast = "High Contrast"
     }
+}
+
+// MARK: - Celebration Events
+
+enum CelebrationEvent: Equatable {
+    case cellComplete(row: Int, col: Int)
+    case rowComplete(row: Int)
+    case columnComplete(col: Int)
+    case boxComplete(boxIndex: Int)
+    case gameComplete
 }
 
 // MARK: - Konami Code
