@@ -1,0 +1,6 @@
+[bindings.swift]
+module_name = "SudokuEngine"
+ffi_module_name = "SudokuEngineFFI"
+
+[bindings.kotlin]
+package_name = "com.sudoku.engine"

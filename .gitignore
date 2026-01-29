@@ -1,0 +1,19 @@
+# Build artifacts
+/target/
+**/target/
+
+# WASM build output (can be regenerated)
+crates/sudoku-wasm/www/pkg/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

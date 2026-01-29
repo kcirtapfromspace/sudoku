@@ -1,0 +1,18 @@
+[package]
+name = "sudoku-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Terminal user interface for Sudoku"
+
+[[bin]]
+name = "sudoku"
+path = "src/main.rs"
+
+[dependencies]
+sudoku-core = { path = "../sudoku-core" }
+crossterm = "0.28"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"
+rand = "0.8"
