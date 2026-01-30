@@ -90,6 +90,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Rust artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-ios-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-ios-
+
       - name: Cache DerivedData
         uses: actions/cache@v4
         with:
@@ -107,6 +120,46 @@ jobs:
           key: ${{ runner.os }}-spm-${{ hashFiles('ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Build Rust library for iOS
+        working-directory: .
+        run: |
+          echo "Building Rust library for iOS device..."
+          cargo build -p sudoku-ffi --release --target aarch64-apple-ios
+
+          echo "Building for native (for uniffi-bindgen)..."
+          cargo build -p sudoku-ffi --release
+
+          echo "Copying libraries..."
+          mkdir -p ios/Frameworks
+          cp target/aarch64-apple-ios/release/libsudoku_ffi.a ios/Frameworks/libsudoku_ffi_device.a
+
+          echo "Generating Swift bindings..."
+          mkdir -p ios/Sudoku/Sudoku/Generated
+          ./target/release/uniffi-bindgen generate \
+            --library ./target/release/libsudoku_ffi.dylib \
+            --language swift \
+            --out-dir ios/Sudoku/Sudoku/Generated
+
+          echo "Copying headers..."
+          cp ios/Sudoku/Sudoku/Generated/SudokuEngineFFI.h ios/Frameworks/
+          cp ios/Sudoku/Sudoku/Generated/SudokuEngineFFI.modulemap ios/Frameworks/
+
+          echo "Creating module.modulemap..."
+          cat > ios/Frameworks/module.modulemap << 'EOF'
+          module SudokuEngineFFI {
+              header "SudokuEngineFFI.h"
+              export *
+          }
+          EOF
+
+          echo "Done! Libraries at:"
+          ls -la ios/Frameworks/
 
       - name: Select Xcode
         run: |
