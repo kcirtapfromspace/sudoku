@@ -57,5 +57,7 @@
     <false/>
     <key>UIUserInterfaceStyle</key>
     <string>Automatic</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

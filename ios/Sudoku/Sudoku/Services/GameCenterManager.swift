@@ -216,12 +216,7 @@ class GameCenterManager: NSObject, ObservableObject {
     }
 
     private func showGameCenterViewController(state: GKGameCenterViewControllerState) {
-        guard isAuthenticated else {
-            // Try to authenticate first
-            authenticate()
-            return
-        }
-
+        // Show Game Center UI - iOS will prompt for sign-in if needed
         let gcViewController = GKGameCenterViewController(state: state)
         gcViewController.gameCenterDelegate = self
 
@@ -233,6 +228,8 @@ class GameCenterManager: NSObject, ObservableObject {
                 topController = presented
             }
             topController.present(gcViewController, animated: true)
+        } else {
+            print("Could not find root view controller to present Game Center")
         }
     }
 
