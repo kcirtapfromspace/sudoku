@@ -8,6 +8,9 @@ struct GameView: View {
     @State private var konamiMessage = ""
     @State private var celebrationText = ""
     @State private var showCelebration = false
+    #if DEBUG
+    @State private var showingDebugMenu = false
+    #endif
 
     var body: some View {
         ZStack {
@@ -70,6 +73,37 @@ struct GameView: View {
         } message: {
             Text(konamiMessage)
         }
+        #if DEBUG
+        .onLongPressGesture(minimumDuration: 2.0) {
+            showingDebugMenu = true
+        }
+        .confirmationDialog("🔧 Debug Menu", isPresented: $showingDebugMenu, titleVisibility: .visible) {
+            Button("Fill Row 1 (except 1 cell)") {
+                if let col = game.findEmptyCellInRow(0) {
+                    game.fillRowExcept(row: 0, exceptCol: col)
+                }
+            }
+            Button("Fill Column 1 (except 1 cell)") {
+                if let row = game.findEmptyCellInColumn(0) {
+                    game.fillColumnExcept(col: 0, exceptRow: row)
+                }
+            }
+            Button("Fill Box 1 (except 1 cell)") {
+                if let pos = game.findEmptyCellInBox(0) {
+                    game.fillBoxExcept(boxIndex: 0, exceptRow: pos.row, exceptCol: pos.col)
+                }
+            }
+            Button("Fill All (leave 3 cells)") {
+                game.fillAllExcept(count: 3)
+            }
+            Button("Fill All (leave 1 cell) - Win Test") {
+                game.fillAllExcept(count: 1)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Long-press for 2s to open.\nSelect a test scenario:")
+        }
+        #endif
     }
 
     private func handleCelebration(_ event: CelebrationEvent) {

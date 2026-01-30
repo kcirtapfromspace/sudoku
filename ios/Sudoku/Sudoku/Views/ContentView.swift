@@ -24,17 +24,31 @@ struct ContentView: View {
                 }
             case .won:
                 if let game = gameManager.currentGame {
-                    GameView(game: game)
-                        .overlay {
-                            WinOverlay(game: game)
+                    WinScreenView(
+                        time: game.elapsedTime,
+                        difficulty: game.difficulty,
+                        hintsUsed: game.hintsUsed,
+                        mistakes: game.mistakes,
+                        onDismiss: {
+                            gameManager.quitGame()
                         }
+                    )
+                    .transition(.opacity)
                 }
             case .lost:
                 if let game = gameManager.currentGame {
-                    GameView(game: game)
-                        .overlay {
-                            LoseOverlay(game: game)
+                    LoseScreenView(
+                        time: game.elapsedTime,
+                        difficulty: game.difficulty,
+                        mistakes: game.mistakes,
+                        onDismiss: {
+                            gameManager.quitGame()
+                        },
+                        onRetry: {
+                            gameManager.newGame(difficulty: game.difficulty)
                         }
+                    )
+                    .transition(.opacity)
                 }
             }
         }

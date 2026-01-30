@@ -441,3 +441,124 @@ extension Difficulty {
         }
     }
 }
+
+// MARK: - Test Helpers (DEBUG only)
+
+#if DEBUG
+extension GameViewModel {
+    /// Fill all cells in a row except the specified column (for testing row completion celebration)
+    func fillRowExcept(row: Int, exceptCol: Int) {
+        for col in 0..<9 {
+            if col == exceptCol { continue }
+            let cell = cells[row][col]
+            if !cell.isGiven && cell.value == 0 {
+                let solution = game.getSolutionValue(row: UInt8(row), col: UInt8(col))
+                _ = game.makeMove(row: UInt8(row), col: UInt8(col), value: solution)
+            }
+        }
+        syncFromEngine()
+    }
+
+    /// Fill all cells in a column except the specified row (for testing column completion celebration)
+    func fillColumnExcept(col: Int, exceptRow: Int) {
+        for row in 0..<9 {
+            if row == exceptRow { continue }
+            let cell = cells[row][col]
+            if !cell.isGiven && cell.value == 0 {
+                let solution = game.getSolutionValue(row: UInt8(row), col: UInt8(col))
+                _ = game.makeMove(row: UInt8(row), col: UInt8(col), value: solution)
+            }
+        }
+        syncFromEngine()
+    }
+
+    /// Fill all cells in a box except the specified position (for testing box completion celebration)
+    func fillBoxExcept(boxIndex: Int, exceptRow: Int, exceptCol: Int) {
+        let startRow = (boxIndex / 3) * 3
+        let startCol = (boxIndex % 3) * 3
+        for row in startRow..<startRow+3 {
+            for col in startCol..<startCol+3 {
+                if row == exceptRow && col == exceptCol { continue }
+                let cell = cells[row][col]
+                if !cell.isGiven && cell.value == 0 {
+                    let solution = game.getSolutionValue(row: UInt8(row), col: UInt8(col))
+                    _ = game.makeMove(row: UInt8(row), col: UInt8(col), value: solution)
+                }
+            }
+        }
+        syncFromEngine()
+    }
+
+    /// Fill all cells except the last few (for testing win celebration)
+    func fillAllExcept(count: Int) {
+        var emptyCells: [(row: Int, col: Int)] = []
+
+        // Collect all empty cells
+        for row in 0..<9 {
+            for col in 0..<9 {
+                let cell = cells[row][col]
+                if !cell.isGiven && cell.value == 0 {
+                    emptyCells.append((row, col))
+                }
+            }
+        }
+
+        // Shuffle and keep only 'count' cells empty
+        emptyCells.shuffle()
+        let cellsToKeepEmpty = Set(emptyCells.prefix(count).map { "\($0.row)-\($0.col)" })
+
+        // Fill all except the ones we want to keep empty
+        for row in 0..<9 {
+            for col in 0..<9 {
+                let key = "\(row)-\(col)"
+                if cellsToKeepEmpty.contains(key) { continue }
+                let cell = cells[row][col]
+                if !cell.isGiven && cell.value == 0 {
+                    let solution = game.getSolutionValue(row: UInt8(row), col: UInt8(col))
+                    _ = game.makeMove(row: UInt8(row), col: UInt8(col), value: solution)
+                }
+            }
+        }
+        syncFromEngine()
+    }
+
+    /// Get the solution value for a cell (exposed for testing)
+    func getSolution(row: Int, col: Int) -> Int {
+        return Int(game.getSolutionValue(row: UInt8(row), col: UInt8(col)))
+    }
+
+    /// Find first empty cell in a row
+    func findEmptyCellInRow(_ row: Int) -> Int? {
+        for col in 0..<9 {
+            if cells[row][col].value == 0 && !cells[row][col].isGiven {
+                return col
+            }
+        }
+        return nil
+    }
+
+    /// Find first empty cell in a column
+    func findEmptyCellInColumn(_ col: Int) -> Int? {
+        for row in 0..<9 {
+            if cells[row][col].value == 0 && !cells[row][col].isGiven {
+                return row
+            }
+        }
+        return nil
+    }
+
+    /// Find first empty cell in a box
+    func findEmptyCellInBox(_ boxIndex: Int) -> (row: Int, col: Int)? {
+        let startRow = (boxIndex / 3) * 3
+        let startCol = (boxIndex % 3) * 3
+        for row in startRow..<startRow+3 {
+            for col in startCol..<startCol+3 {
+                if cells[row][col].value == 0 && !cells[row][col].isGiven {
+                    return (row, col)
+                }
+            }
+        }
+        return nil
+    }
+}
+#endif

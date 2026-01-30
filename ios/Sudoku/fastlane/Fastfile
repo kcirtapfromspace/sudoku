@@ -1,0 +1,246 @@
+# Fastfile for Sudoku iOS App
+# https://docs.fastlane.tools
+
+default_platform(:ios)
+
+platform :ios do
+  # ============================================
+  # SETUP & CONFIGURATION
+  # ============================================
+
+  before_all do
+    # Set up App Store Connect API Key
+    if ENV["APP_STORE_CONNECT_API_KEY_ID"] && ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_filepath: ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"] || "./fastlane/AuthKey.p8",
+        in_house: false
+      )
+    end
+  end
+
+  # ============================================
+  # BUILD LANES
+  # ============================================
+
+  desc "Build the app for testing (Debug)"
+  lane :build_debug do
+    build_app(
+      scheme: "Sudoku",
+      configuration: "Debug",
+      skip_archive: true,
+      skip_codesigning: true
+    )
+  end
+
+  # ============================================
+  # TESTFLIGHT LANES
+  # ============================================
+
+  desc "Push a new beta build to TestFlight"
+  lane :beta do |options|
+    # Increment build number
+    increment_build_number(
+      build_number: options[:build_number] || (latest_testflight_build_number + 1)
+    )
+
+    # Build the app
+    build_app(
+      scheme: "Sudoku",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.sudoku.app" => "match AppStore com.sudoku.app"
+        }
+      }
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      distribute_external: false
+    )
+
+    # Clean up
+    clean_build_artifacts
+  end
+
+  desc "Push a new beta build to TestFlight (manual signing for CI)"
+  desc "Options:"
+  desc "  groups: Comma-separated TestFlight group names to distribute to"
+  desc "  build_number: Custom build number (default: timestamp)"
+  desc "  changelog: What's new in this build"
+  lane :beta_manual do |options|
+    # Increment build number
+    increment_build_number(
+      build_number: options[:build_number] || Time.now.strftime("%Y%m%d%H%M")
+    )
+
+    # Build configuration
+    build_options = {
+      scheme: "Sudoku",
+      configuration: "Release",
+      export_method: "app-store",
+      derived_data_path: "./build/DerivedData",
+      xcargs: "-parallelizeTargets -jobs #{`sysctl -n hw.ncpu`.strip}"
+    }
+
+    # If provisioning profile is set in environment, use manual signing for CI
+    if ENV["APPLE_PROVISIONING_PROFILE_NAME"] || ENV["APPLE_PROVISIONING_PROFILE_UUID"]
+      team_id = ENV["APPLE_TEAM_ID"]
+      profile_name = ENV["APPLE_PROVISIONING_PROFILE_NAME"]
+      profile_uuid = ENV["APPLE_PROVISIONING_PROFILE_UUID"]
+
+      # Update project to use manual signing for CI
+      signing_opts = {
+        use_automatic_signing: false,
+        path: "Sudoku.xcodeproj",
+        team_id: team_id,
+        code_sign_identity: "Apple Distribution",
+        targets: ["Sudoku"],
+        build_configurations: ["Release"]
+      }
+
+      if profile_uuid
+        signing_opts[:profile_uuid] = profile_uuid
+      elsif profile_name
+        signing_opts[:profile_name] = profile_name
+      end
+      update_code_signing_settings(signing_opts)
+
+      build_options[:xcargs] = "#{build_options[:xcargs]} DEVELOPMENT_TEAM=#{team_id}"
+      build_options[:export_options] = {
+        teamID: team_id,
+        signingStyle: "manual",
+        signingCertificate: "Apple Distribution",
+        provisioningProfiles: {
+          "com.sudoku.app" => profile_name || profile_uuid
+        }
+      }
+    else
+      # Use automatic signing for local builds
+      build_options[:xcargs] = "#{build_options[:xcargs]} -allowProvisioningUpdates"
+    end
+
+    # Build the app
+    build_app(build_options)
+
+    # Parse groups if provided
+    groups = options[:groups] ? options[:groups].split(",").map(&:strip) : nil
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: groups.nil?,
+      distribute_external: !groups.nil?,
+      groups: groups,
+      changelog: options[:changelog] || "Bug fixes and improvements"
+    )
+
+    # Clean up
+    clean_build_artifacts
+
+    if groups
+      UI.success("Build uploaded and distributed to: #{groups.join(', ')}")
+    else
+      UI.success("Build uploaded to TestFlight!")
+    end
+  end
+
+  # ============================================
+  # APP STORE RELEASE
+  # ============================================
+
+  desc "Submit app to App Store review"
+  lane :release do |options|
+    # Increment version if specified
+    if options[:bump]
+      increment_version_number(bump_type: options[:bump])
+    end
+
+    # Build
+    increment_build_number(
+      build_number: Time.now.strftime("%Y%m%d%H%M")
+    )
+
+    build_app(
+      scheme: "Sudoku",
+      configuration: "Release",
+      export_method: "app-store"
+    )
+
+    # Upload to App Store
+    upload_to_app_store(
+      skip_metadata: options[:skip_metadata] || false,
+      skip_screenshots: options[:skip_screenshots] || false,
+      submit_for_review: options[:submit] || false,
+      automatic_release: options[:automatic_release] || false,
+      precheck_include_in_app_purchases: false
+    )
+
+    clean_build_artifacts
+    UI.success("App submitted to App Store!")
+  end
+
+  # ============================================
+  # TESTING LANES
+  # ============================================
+
+  desc "Run unit tests"
+  lane :test do
+    run_tests(
+      scheme: "Sudoku",
+      device: "iPhone 15",
+      clean: true
+    )
+  end
+
+  # ============================================
+  # UTILITY LANES
+  # ============================================
+
+  desc "Increment version number"
+  lane :bump_version do |options|
+    increment_version_number(
+      bump_type: options[:type] || "patch"
+    )
+  end
+
+  desc "Get current version and build number"
+  lane :version_info do
+    version = get_version_number(target: "Sudoku")
+    build = get_build_number
+    UI.message("Version: #{version} (#{build})")
+  end
+
+  # ============================================
+  # SCREENSHOTS
+  # ============================================
+
+  desc "Capture App Store screenshots"
+  lane :screenshots do
+    capture_screenshots(
+      scheme: "Sudoku",
+      devices: [
+        "iPhone 15 Pro Max",
+        "iPhone 15 Pro",
+        "iPhone SE (3rd generation)",
+        "iPad Pro (12.9-inch) (6th generation)"
+      ],
+      languages: ["en-US"],
+      clear_previous_screenshots: true
+    )
+    frame_screenshots(
+      silver: true
+    )
+  end
+
+  # ============================================
+  # ERROR HANDLING
+  # ============================================
+
+  error do |lane, exception|
+    UI.error("Lane #{lane} failed with error: #{exception.message}")
+  end
+end

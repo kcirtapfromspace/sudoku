@@ -1,4 +1,4 @@
-use crate::animations::{LoseScreen, WinScreen};
+use crate::animations::{CelebrationManager, LoseScreen, WinScreen};
 use crate::game::Game;
 use crate::stats::{GameResult, StatsManager};
 use crate::theme::Theme;
@@ -83,6 +83,8 @@ pub struct App {
     pub win_screen: WinScreen,
     /// Lose screen animation
     pub lose_screen: LoseScreen,
+    /// Celebration manager for row/column/box completions
+    pub celebrations: CelebrationManager,
     /// Whether to show valid candidate suggestions
     pub show_suggestions: bool,
     /// Whether to show naked singles (cells with only one candidate) as hints
@@ -142,6 +144,7 @@ impl App {
             screen_state: ScreenState::Playing,
             win_screen: WinScreen::new(),
             lose_screen: LoseScreen::new(),
+            celebrations: CelebrationManager::new(),
             show_suggestions: true,
             show_naked_singles: false, // Off by default - it's basically cheating!
             stats: StatsManager::load(),
@@ -158,8 +161,15 @@ impl App {
     pub fn get_tick_rate(&self) -> Duration {
         match self.screen_state {
             ScreenState::Win | ScreenState::Lose => Duration::from_millis(33), // 30 FPS for animations
-            ScreenState::Playing | ScreenState::Stats | ScreenState::Leaderboard | ScreenState::History => {
-                Duration::from_millis(100) // 10 FPS for normal screens
+            ScreenState::Playing => {
+                if self.celebrations.has_active_celebrations() {
+                    Duration::from_millis(33) // 30 FPS for celebration animations
+                } else {
+                    Duration::from_millis(100) // 10 FPS for normal gameplay
+                }
+            }
+            ScreenState::Stats | ScreenState::Leaderboard | ScreenState::History => {
+                Duration::from_millis(100) // 10 FPS for menu screens
             }
         }
     }
@@ -183,6 +193,21 @@ impl App {
                 self.lose_screen.update();
             }
             ScreenState::Playing => {
+                // Update celebrations for row/column/box completions
+                self.celebrations.update(
+                    self.game.completed_rows(),
+                    self.game.completed_columns(),
+                    self.game.completed_boxes(),
+                );
+
+                // Show celebration message if any
+                if let Some(msg) = self.celebrations.get_celebration_message() {
+                    if self.message.is_none() {
+                        self.message = Some(msg.to_string());
+                        self.message_timer = 20;
+                    }
+                }
+
                 // Check for win/lose conditions
                 if self.game.is_completed() {
                     self.record_game(GameResult::Win);
@@ -261,6 +286,7 @@ impl App {
                     self.game = Game::new(self.game.difficulty());
                     self.cursor = Position::new(4, 4);
                     self.game_recorded = false;
+                    self.celebrations.reset();
                     self.screen_state = ScreenState::Playing;
                     self.show_message("KONAMI! New game started!");
                     return AppAction::Continue;
@@ -320,6 +346,7 @@ impl App {
                 self.game = Game::new(self.game.difficulty());
                 self.cursor = Position::new(4, 4);
                 self.game_recorded = false;
+                self.celebrations.reset();
                 self.screen_state = ScreenState::Playing;
                 self.show_message(&format!("New {} game", self.game.difficulty()));
             }
@@ -580,6 +607,7 @@ impl App {
                         self.cursor = Position::new(4, 4);
                         self.screen_state = ScreenState::Playing;
                         self.game_recorded = false;
+                        self.celebrations.reset();
                         self.show_message(&format!("New {} game", difficulty));
                         self.menu = MenuState::None;
                     }
