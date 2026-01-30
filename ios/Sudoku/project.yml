@@ -50,6 +50,10 @@ targets:
       path: Sudoku/Sudoku.entitlements
       properties:
         com.apple.developer.game-center: true
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.ukodus.app
+        com.apple.developer.icloud-services:
+          - CloudKit
 
   SudokuTests:
     type: bundle.unit-test
