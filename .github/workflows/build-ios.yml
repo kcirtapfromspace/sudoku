@@ -21,7 +21,7 @@ on:
 env:
   SCHEME: Sudoku
   PROJECT_PATH: ios/Sudoku/Sudoku.xcodeproj
-  BUNDLE_ID: com.sudoku.app
+  BUNDLE_ID: com.ukodus.app
 
 jobs:
   # Build and test on PRs

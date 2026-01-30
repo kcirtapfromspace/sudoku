@@ -1,6 +1,6 @@
 name: Sudoku
 options:
-  bundleIdPrefix: com.sudoku
+  bundleIdPrefix: com.ukodus
   deploymentTarget:
     iOS: "16.0"
   xcodeVersion: "15.0"
@@ -23,7 +23,7 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: Sudoku/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.sudoku.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.ukodus.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: true
@@ -50,7 +50,7 @@ targets:
       path: Sudoku/Sudoku.entitlements
       properties:
         com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.sudoku.app
+          - iCloud.com.ukodus.app
         com.apple.developer.icloud-services:
           - CloudKit
         com.apple.developer.game-center: true
@@ -64,7 +64,7 @@ targets:
       - target: Sudoku
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.sudoku.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.ukodus.app.tests
 
 schemes:
   Sudoku:

@@ -6,7 +6,7 @@ This guide explains how to set up automated iOS App Store publishing via GitHub 
 
 1. **Apple Developer Account** ($99/year)
 2. **App Store Connect access**
-3. **App registered in App Store Connect** with bundle ID `com.sudoku.app`
+3. **App registered in App Store Connect** with bundle ID `com.ukodus.app`
 
 ## Required GitHub Secrets
 
@@ -38,7 +38,7 @@ Add these secrets to your repository (Settings > Secrets and variables > Actions
 ### Provisioning Profile
 
 1. Go to [Apple Developer > Certificates, IDs & Profiles](https://developer.apple.com/account/resources/profiles/list)
-2. Create an "App Store" distribution profile for `com.sudoku.app`
+2. Create an "App Store" distribution profile for `com.ukodus.app`
 3. Download the `.mobileprovision` file
 
 | Secret Name | Description | How to Get |
@@ -115,7 +115,7 @@ Make sure you've:
 ### "Profile doesn't match bundle identifier"
 
 Ensure your provisioning profile is for:
-- Bundle ID: `com.sudoku.app`
+- Bundle ID: `com.ukodus.app`
 - Distribution type: App Store
 
 ### "API key not authorized"

@@ -1,7 +1,7 @@
 # App Store Connect configuration
 # Update these values with your actual App Store Connect details
 
-app_identifier("com.sudoku.app")  # The bundle identifier of your app
+app_identifier("com.ukodus.app")  # The bundle identifier of your app (sudoku backwards - original was taken)
 # apple_id("your-apple-id@example.com")  # Your Apple Developer email
 # team_id("XXXXXXXXXX")  # Your Apple Developer Team ID
 

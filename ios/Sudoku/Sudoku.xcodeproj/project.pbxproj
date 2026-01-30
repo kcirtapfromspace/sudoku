@@ -312,7 +312,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sudoku.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ukodus.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Sudoku.app/Sudoku";
@@ -342,7 +342,7 @@
 				OTHER_LDFLAGS = (
 					"-lsudoku_ffi_sim",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sudoku.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ukodus.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_INCLUDE_PATHS = (
@@ -361,7 +361,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sudoku.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ukodus.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Sudoku.app/Sudoku";
@@ -391,7 +391,7 @@
 				OTHER_LDFLAGS = (
 					"-lsudoku_ffi_device",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sudoku.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ukodus.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_INCLUDE_PATHS = (
