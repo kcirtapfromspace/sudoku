@@ -1,0 +1,15 @@
+# App Store Connect configuration
+# Update these values with your actual App Store Connect details
+
+app_identifier("com.sudoku.app")  # The bundle identifier of your app
+# apple_id("your-apple-id@example.com")  # Your Apple Developer email
+# team_id("XXXXXXXXXX")  # Your Apple Developer Team ID
+
+# For App Store Connect API (recommended for CI)
+# These are set via environment variables in CI:
+# - APP_STORE_CONNECT_API_KEY_ID
+# - APP_STORE_CONNECT_ISSUER_ID
+# - APP_STORE_CONNECT_API_KEY_KEY_FILEPATH
+
+# For manual runs, you can uncomment and set:
+# itc_team_id("XXXXXXXXXX")  # App Store Connect Team ID

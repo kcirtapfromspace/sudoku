@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		1726143491F7B599683DFCD8 /* SudokuEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C888EF30EC69E5CCD23F685 /* SudokuEngine.swift */; };
 		2016B849A2DCBB7187F84DB8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 336003ADD5BA9ED5B4FCBACE /* ContentView.swift */; };
+		A1B2C3D4E5F67890ABCD0001 /* WinScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F67890ABCD0002 /* WinScreenView.swift */; };
+		A1B2C3D4E5F67890ABCD0003 /* LoseScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F67890ABCD0004 /* LoseScreenView.swift */; };
 		20BF373D007D303C7EBB7BE7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E2B8111C142D1E948BAC29F9 /* Assets.xcassets */; };
 		2C6528C1F6B245F937841280 /* GridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C655A4BF5C47359EC66D564 /* GridView.swift */; };
 		5474199DD268AB4DF3A6D1A6 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B98B31F0CE963EC1CD01AA8D /* GameView.swift */; };
@@ -56,6 +58,8 @@
 		BC9BD24D8389D483E341F48E /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
 		E2B8111C142D1E948BAC29F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FE1F7E4A124E1E6523353A9A /* SudokuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SudokuApp.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F67890ABCD0002 /* WinScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WinScreenView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F67890ABCD0004 /* LoseScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoseScreenView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -150,9 +154,11 @@
 				336003ADD5BA9ED5B4FCBACE /* ContentView.swift */,
 				B98B31F0CE963EC1CD01AA8D /* GameView.swift */,
 				7C655A4BF5C47359EC66D564 /* GridView.swift */,
+				A1B2C3D4E5F67890ABCD0004 /* LoseScreenView.swift */,
 				5845121794317A59FF4BEA24 /* NumberPadView.swift */,
 				5F81857F69ADEC8F76D93DF3 /* SettingsView.swift */,
 				4996D6E89188CCEE2DDA0882 /* StatsView.swift */,
+				A1B2C3D4E5F67890ABCD0002 /* WinScreenView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -275,12 +281,14 @@
 				5474199DD268AB4DF3A6D1A6 /* GameView.swift in Sources */,
 				B99C366A95303857F1451367 /* GameViewModel.swift in Sources */,
 				2C6528C1F6B245F937841280 /* GridView.swift in Sources */,
+				A1B2C3D4E5F67890ABCD0003 /* LoseScreenView.swift in Sources */,
 				FFDAC89D9AE5F86EA0F1B996 /* NumberPadView.swift in Sources */,
 				E3D566CB81AA0EC9502D4FAA /* PuzzleCache.swift in Sources */,
 				9C35A44E74CBB456859B96EB /* SettingsView.swift in Sources */,
 				8B6258CC4DD4621086F43E90 /* StatsView.swift in Sources */,
 				B463F4C229827901EA86A192 /* SudokuApp.swift in Sources */,
 				1726143491F7B599683DFCD8 /* SudokuEngine.swift in Sources */,
+				A1B2C3D4E5F67890ABCD0001 /* WinScreenView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

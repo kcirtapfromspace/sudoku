@@ -1,4 +1,5 @@
 use crate::animations::particles::hue_to_rgb;
+use crate::animations::CelebrationManager;
 use crate::app::{App, InputMode, MenuState, ScreenState, MAX_MISTAKES};
 use crate::stats::{format_time, GameResult};
 use crossterm::{
@@ -105,52 +106,79 @@ fn render_grid(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::Result
     // Each cell is 3 chars: " X "
     // Border chars: + and - and |
 
-    let horizontal_line = "+---+---+---+---+---+---+---+---+---+";
-    let thick_line =      "+===+===+===+===+===+===+===+===+===+";
-
     execute!(stdout, SetBackgroundColor(theme.bg))?;
 
     // Top border (thick - uses box_border for visibility)
+    // Check if row 0 is celebrating
+    let row0_intensity = app.celebrations.row_intensity(0);
+    let top_border_color = CelebrationManager::throb_color(theme.box_border, row0_intensity);
     execute!(
         stdout,
         MoveTo(x, y),
-        SetForegroundColor(theme.box_border),
-        Print(thick_line)
+        SetForegroundColor(top_border_color),
+        Print("+===+===+===+===+===+===+===+===+===+")
     )?;
 
     for row in 0..9 {
         let cell_y = y + 1 + row as u16 * 2;
 
+        // Get row celebration intensity
+        let row_intensity = app.celebrations.row_intensity(row);
+
         // Cell row
         execute!(stdout, MoveTo(x, cell_y))?;
 
         for col in 0..9 {
+            // Get column celebration intensity
+            let col_intensity = app.celebrations.column_intensity(col);
+            let border_intensity = row_intensity.max(col_intensity);
+
             // Left border - thick borders at 3x3 boundaries
-            if col % 3 == 0 {
-                execute!(stdout, SetForegroundColor(theme.box_border), Print("║"))?;
+            let base_border_color = if col % 3 == 0 {
+                theme.box_border
             } else {
-                execute!(stdout, SetForegroundColor(theme.border), Print("│"))?;
+                theme.border
+            };
+            let border_color = CelebrationManager::throb_color(base_border_color, border_intensity);
+
+            if col % 3 == 0 {
+                execute!(stdout, SetForegroundColor(border_color), Print("║"))?;
+            } else {
+                execute!(stdout, SetForegroundColor(border_color), Print("│"))?;
             }
 
             let pos = Position::new(row, col);
             render_cell(stdout, app, pos)?;
         }
-        // Right border (thick)
-        execute!(stdout, SetForegroundColor(theme.box_border), Print("║"))?;
+        // Right border (thick) - use row intensity for right border
+        let right_border_color = CelebrationManager::throb_color(theme.box_border, row_intensity);
+        execute!(stdout, SetForegroundColor(right_border_color), Print("║"))?;
 
         // Horizontal separator
         let sep_y = cell_y + 1;
         execute!(stdout, MoveTo(x, sep_y))?;
 
+        // Get intensities for the row below this separator
+        let next_row = row + 1;
+        let row_below_intensity = if next_row < 9 {
+            app.celebrations.row_intensity(next_row)
+        } else {
+            0.0
+        };
+        let sep_intensity = row_intensity.max(row_below_intensity);
+
         if row == 8 {
             // Bottom border (thick - highlighted)
-            execute!(stdout, SetForegroundColor(theme.box_border), Print(thick_line))?;
+            let bottom_color = CelebrationManager::throb_color(theme.box_border, row_intensity);
+            execute!(stdout, SetForegroundColor(bottom_color), Print("+===+===+===+===+===+===+===+===+===+"))?;
         } else if (row + 1) % 3 == 0 {
             // Box separator (thick - highlighted)
-            execute!(stdout, SetForegroundColor(theme.box_border), Print(thick_line))?;
+            let box_sep_color = CelebrationManager::throb_color(theme.box_border, sep_intensity);
+            execute!(stdout, SetForegroundColor(box_sep_color), Print("+===+===+===+===+===+===+===+===+===+"))?;
         } else {
             // Regular separator (thinner color)
-            execute!(stdout, SetForegroundColor(theme.border), Print(horizontal_line))?;
+            let sep_color = CelebrationManager::throb_color(theme.border, sep_intensity);
+            execute!(stdout, SetForegroundColor(sep_color), Print("+---+---+---+---+---+---+---+---+---+"))?;
         }
     }
 
@@ -166,8 +194,16 @@ fn render_cell(stdout: &mut io::Stdout, app: &App, pos: Position) -> io::Result<
     let has_same_value = app.has_same_value(pos);
     let has_conflict = game.has_conflict(pos);
 
+    // Calculate celebration intensity for this cell
+    let row_intensity = app.celebrations.row_intensity(pos.row);
+    let col_intensity = app.celebrations.column_intensity(pos.col);
+    let box_idx = (pos.row / 3) * 3 + (pos.col / 3);
+    let box_intensity = app.celebrations.box_intensity(box_idx);
+    // Take the maximum intensity from any active celebration affecting this cell
+    let celebration_intensity = row_intensity.max(col_intensity).max(box_intensity);
+
     // Background color
-    let bg = if is_cursor {
+    let mut bg = if is_cursor {
         theme.selected_bg
     } else if has_same_value && !cell.is_empty() {
         Color::Rgb { r: 60, g: 60, b: 100 }
@@ -177,8 +213,13 @@ fn render_cell(stdout: &mut io::Stdout, app: &App, pos: Position) -> io::Result<
         theme.bg
     };
 
+    // Apply celebration throbbing to background
+    if celebration_intensity > 0.0 {
+        bg = CelebrationManager::throb_color(bg, celebration_intensity);
+    }
+
     // Foreground color
-    let fg = if has_conflict {
+    let mut fg = if has_conflict {
         theme.error
     } else if cell.is_given() {
         theme.given
@@ -187,6 +228,11 @@ fn render_cell(stdout: &mut io::Stdout, app: &App, pos: Position) -> io::Result<
     } else {
         theme.candidate
     };
+
+    // Apply celebration throbbing to foreground
+    if celebration_intensity > 0.0 && !has_conflict {
+        fg = CelebrationManager::throb_color(fg, celebration_intensity * 0.5);
+    }
 
     execute!(stdout, SetBackgroundColor(bg), SetForegroundColor(fg))?;
 

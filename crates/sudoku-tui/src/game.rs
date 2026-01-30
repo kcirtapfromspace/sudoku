@@ -602,6 +602,98 @@ impl Game {
         result
     }
 
+    /// Get which rows are completely and correctly filled
+    pub fn completed_rows(&self) -> [bool; 9] {
+        let values = self.grid.values();
+        let solution_values = self.solution.values();
+        let mut result = [false; 9];
+
+        for row in 0..9 {
+            let mut all_filled = true;
+            let mut all_correct = true;
+
+            for col in 0..9 {
+                match values[row][col] {
+                    Some(v) => {
+                        if solution_values[row][col] != Some(v) {
+                            all_correct = false;
+                        }
+                    }
+                    None => {
+                        all_filled = false;
+                    }
+                }
+            }
+
+            result[row] = all_filled && all_correct;
+        }
+        result
+    }
+
+    /// Get which columns are completely and correctly filled
+    pub fn completed_columns(&self) -> [bool; 9] {
+        let values = self.grid.values();
+        let solution_values = self.solution.values();
+        let mut result = [false; 9];
+
+        for col in 0..9 {
+            let mut all_filled = true;
+            let mut all_correct = true;
+
+            for row in 0..9 {
+                match values[row][col] {
+                    Some(v) => {
+                        if solution_values[row][col] != Some(v) {
+                            all_correct = false;
+                        }
+                    }
+                    None => {
+                        all_filled = false;
+                    }
+                }
+            }
+
+            result[col] = all_filled && all_correct;
+        }
+        result
+    }
+
+    /// Get which 3x3 boxes are completely and correctly filled
+    pub fn completed_boxes(&self) -> [bool; 9] {
+        let values = self.grid.values();
+        let solution_values = self.solution.values();
+        let mut result = [false; 9];
+
+        for box_idx in 0..9 {
+            let box_row = (box_idx / 3) * 3;
+            let box_col = (box_idx % 3) * 3;
+
+            let mut all_filled = true;
+            let mut all_correct = true;
+
+            for dr in 0..3 {
+                for dc in 0..3 {
+                    let row = box_row + dr;
+                    let col = box_col + dc;
+
+                    match values[row][col] {
+                        Some(v) => {
+                            if solution_values[row][col] != Some(v) {
+                                all_correct = false;
+                            }
+                        }
+                        None => {
+                            all_filled = false;
+                        }
+                    }
+                }
+            }
+
+            result[box_idx] = all_filled && all_correct;
+        }
+        result
+    }
+
     /// Check if a position has a conflict
     pub fn has_conflict(&self, pos: Position) -> bool {
         if let Some(value) = self.grid.get(pos) {
