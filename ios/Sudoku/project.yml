@@ -66,6 +66,18 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ukodus.app.tests
 
+  SudokuUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - SudokuUITests
+    dependencies:
+      - target: Sudoku
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ukodus.app.uitests
+        INFOPLIST_FILE: SudokuUITests/Info.plist
+
 schemes:
   Sudoku:
     build:
@@ -76,9 +88,25 @@ schemes:
     test:
       targets:
         - SudokuTests
+        - SudokuUITests
     profile:
       config: Release
     analyze:
       config: Debug
     archive:
       config: Release
+
+  SudokuScreenshots:
+    build:
+      targets:
+        Sudoku: all
+        SudokuUITests: [test]
+    run:
+      config: Debug
+    test:
+      targets:
+        - SudokuUITests
+      environmentVariables:
+        - variable: SCREENSHOT_MODE
+          value: "1"
+          isEnabled: true

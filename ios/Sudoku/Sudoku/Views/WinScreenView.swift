@@ -84,6 +84,18 @@ struct WinScreenView: View {
 
                 Spacer()
 
+                // Leaderboard button
+                Button {
+                    GameCenterManager.shared.showLeaderboards()
+                } label: {
+                    Label("View Leaderboard", systemImage: "trophy.fill")
+                        .font(.headline)
+                        .foregroundStyle(.yellow)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+
                 // Tap to continue
                 Text("Tap anywhere to continue")
                     .font(.subheadline)

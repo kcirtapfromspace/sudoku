@@ -11,6 +11,10 @@ class GameManager: ObservableObject {
     @Published var settings: GameSettings
     @Published var gameState: GameState = .menu
 
+    // MARK: - Game Center
+
+    let gameCenter = GameCenterManager.shared
+
     // MARK: - Private Properties
 
     private let statisticsKey = "sudoku_statistics"
@@ -38,6 +42,9 @@ class GameManager: ObservableObject {
 
         // Try to load saved game
         loadSavedGame()
+
+        // Authenticate with Game Center
+        gameCenter.authenticate()
     }
 
     // MARK: - Game Management
@@ -50,9 +57,13 @@ class GameManager: ObservableObject {
             let puzzle = await PuzzleCache.shared.getPuzzle(difficulty: difficulty)
             let game = GameViewModel(cachedGame: puzzle, difficulty: difficulty)
 
-            // Auto-fill candidates if setting is enabled
+            // Handle candidates based on setting
+            // The Rust engine auto-calculates candidates, so we need to clear them
+            // if the user doesn't want auto-fill
             if settings.autoFillCandidates {
                 game.fillAllCandidates()
+            } else {
+                game.clearAllCandidates()
             }
 
             currentGame = game
@@ -98,6 +109,17 @@ class GameManager: ObservableObject {
         if won {
             statistics.recordWin(difficulty: game.difficulty, time: time)
             gameState = .won
+
+            // Submit to Game Center
+            gameCenter.submitScore(time: time, difficulty: game.difficulty)
+            gameCenter.submitWinStreak(statistics.currentStreak)
+            gameCenter.checkAchievements(
+                difficulty: game.difficulty,
+                time: time,
+                mistakes: game.mistakes,
+                currentStreak: statistics.currentStreak,
+                totalWins: statistics.gamesWon
+            )
         } else {
             statistics.recordLoss(time: time)
             gameState = .lost

@@ -18,6 +18,10 @@ class GameViewModel: ObservableObject {
     @Published private(set) var canRedo: Bool = false
     @Published private(set) var lastCelebration: CelebrationEvent?
 
+    /// Controls whether auto-calculated candidates are displayed
+    /// When false, only user-entered candidates (via Notes mode) are shown
+    @Published private(set) var showCandidates: Bool = false
+
     let difficulty: Difficulty
     let maxMistakes = 3
 
@@ -113,7 +117,8 @@ class GameViewModel: ObservableObject {
         for state in cellStates {
             let row = Int(state.row)
             let col = Int(state.col)
-            let candidates = Self.dataToSet(state.candidates)
+            // Only include candidates if showCandidates is enabled
+            let candidates = showCandidates ? Self.dataToSet(state.candidates) : []
 
             let cell = CellModel(
                 row: row,
@@ -273,6 +278,9 @@ class GameViewModel: ObservableObject {
         let cell = cells[row][col]
         if cell.isGiven || cell.value != 0 { return }
 
+        // Enable candidate display when user manually enters candidates
+        showCandidates = true
+
         _ = game.toggleCandidate(row: UInt8(row), col: UInt8(col), value: UInt8(value))
         syncFromEngine()
     }
@@ -286,6 +294,7 @@ class GameViewModel: ObservableObject {
     }
 
     func fillAllCandidates() {
+        showCandidates = true
         game.fillAllCandidates()
         syncFromEngine()
     }
@@ -297,6 +306,7 @@ class GameViewModel: ObservableObject {
     }
 
     func clearAllCandidates() {
+        showCandidates = false
         game.clearAllCandidates()
         syncFromEngine()
     }

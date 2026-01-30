@@ -132,6 +132,7 @@ struct GameSettings: Codable {
     var highlightSameNumbers: Bool = true
     var autoFillCandidates: Bool = false  // Start games with notes pre-filled
     var celebrationsEnabled: Bool = true  // Show celebrations for completions
+    var showErrorsImmediately: Bool = true  // Show wrong answers immediately vs check on submit
 
     enum ThemeSetting: String, Codable, CaseIterable {
         case system = "System"

@@ -8,6 +8,9 @@ struct GameView: View {
     @State private var konamiMessage = ""
     @State private var celebrationText = ""
     @State private var showCelebration = false
+    @State private var heartShake = false
+    @State private var lastMistakeCount = 0
+    @State private var showingCheckResult = false  // Temporarily reveal errors on "Check"
     #if DEBUG
     @State private var showingDebugMenu = false
     #endif
@@ -42,7 +45,7 @@ struct GameView: View {
                     .zIndex(100)
             }
         }
-        .gesture(konamiGesture)
+        .simultaneousGesture(konamiGesture)
         .onChange(of: konamiDetector.isActivated) { activated in
             if activated {
                 triggerKonamiEasterEgg()
@@ -192,6 +195,9 @@ struct GameView: View {
         konamiMessage = easterEggs.randomElement() ?? "You did it!"
         showingKonamiAlert = true
         hapticFeedback(.heavy)
+
+        // Unlock Game Center achievement
+        GameCenterManager.shared.unlockKonamiAchievement()
     }
 
     // MARK: - Header
@@ -213,12 +219,62 @@ struct GameView: View {
 
             Spacer()
 
-            // Mistakes
+            // Mistakes - hearts with animation
             HStack(spacing: 4) {
                 ForEach(0..<game.maxMistakes, id: \.self) { i in
                     Image(systemName: i < game.mistakes ? "heart.slash.fill" : "heart.fill")
                         .foregroundStyle(i < game.mistakes ? .red : .pink)
+                        .scaleEffect(heartShake && i == game.mistakes - 1 ? 1.3 : 1.0)
+                        .opacity(heartShake && i == game.mistakes - 1 ? 0.7 : 1.0)
                 }
+            }
+            .modifier(ShakeEffect(shakes: heartShake ? 4 : 0))
+            .animation(.easeInOut(duration: 0.4), value: heartShake)
+        }
+        .onChange(of: game.mistakes) { newMistakes in
+            if newMistakes > lastMistakeCount && gameManager.settings.showErrorsImmediately {
+                // Mistake was made - trigger animation and haptic (only if showing errors immediately)
+                triggerMistakeFeedback()
+            }
+            lastMistakeCount = newMistakes
+        }
+        .onAppear {
+            lastMistakeCount = game.mistakes
+        }
+    }
+
+    private func checkSolution() {
+        showingCheckResult = true
+
+        // Check if there are any mistakes
+        if game.mistakes > 0 {
+            triggerMistakeFeedback()
+        } else {
+            // No mistakes - provide positive feedback
+            hapticFeedback(.medium)
+        }
+
+        // Auto-hide check results after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            showingCheckResult = false
+        }
+    }
+
+    private func triggerMistakeFeedback() {
+        // Haptic feedback
+        if gameManager.settings.hapticsEnabled {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        }
+
+        // Visual shake animation
+        withAnimation(.easeInOut(duration: 0.1)) {
+            heartShake = true
+        }
+
+        // Reset after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation {
+                heartShake = false
             }
         }
     }
@@ -226,7 +282,7 @@ struct GameView: View {
     // MARK: - Grid
 
     private func gridSection(size: CGFloat) -> some View {
-        GridView(game: game, size: size)
+        GridView(game: game, size: size, forceShowErrors: showingCheckResult)
             .frame(width: size, height: size)
     }
 
@@ -281,11 +337,39 @@ struct GameView: View {
                 Image(systemName: "delete.left")
             }
 
+            // Fill/Clear Notes button
+            Menu {
+                Button {
+                    game.fillAllCandidates()
+                    hapticFeedback(.medium)
+                } label: {
+                    Label("Fill All Notes", systemImage: "square.grid.3x3.fill")
+                }
+
+                Button {
+                    game.clearAllCandidates()
+                    hapticFeedback(.medium)
+                } label: {
+                    Label("Clear All Notes", systemImage: "square.grid.3x3")
+                }
+            } label: {
+                Image(systemName: "note.text")
+            }
+
             Button {
                 game.getHint()
                 hapticFeedback(.medium)
             } label: {
                 Image(systemName: "lightbulb")
+            }
+
+            // Check Solution button (only when not showing errors immediately)
+            if !gameManager.settings.showErrorsImmediately {
+                Button {
+                    checkSolution()
+                } label: {
+                    Image(systemName: "checkmark.circle")
+                }
             }
 
             Button {
@@ -353,6 +437,22 @@ struct CelebrationOverlay: View {
                     opacity = 1.0
                 }
             }
+    }
+}
+
+// MARK: - Shake Effect
+
+struct ShakeEffect: GeometryEffect {
+    var shakes: CGFloat
+
+    var animatableData: CGFloat {
+        get { shakes }
+        set { shakes = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let translation = sin(shakes * .pi * 2) * 6
+        return ProjectionTransform(CGAffineTransform(translationX: translation, y: 0))
     }
 }
 

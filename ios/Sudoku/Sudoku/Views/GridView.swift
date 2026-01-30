@@ -4,6 +4,7 @@ struct GridView: View {
     @EnvironmentObject var gameManager: GameManager
     @ObservedObject var game: GameViewModel
     let size: CGFloat
+    var forceShowErrors: Bool = false  // When true, forces errors to show even if setting is off
 
     private var cellSize: CGFloat { size / 9 }
     private var thickLineWidth: CGFloat { 2 }
@@ -28,6 +29,7 @@ struct GridView: View {
                                 isNakedSingle: gameManager.settings.highlightValidCells && game.isNakedSingle(row: row, col: col),
                                 ghostCandidates: gameManager.settings.ghostHintsEnabled ? game.getValidCandidates(row: row, col: col) : [],
                                 showGhosts: gameManager.settings.ghostHintsEnabled,
+                                showErrors: forceShowErrors || gameManager.settings.showErrorsImmediately,
                                 size: cellSize
                             )
                             .onTapGesture {
@@ -46,6 +48,7 @@ struct GridView: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .accessibilityIdentifier("SudokuGrid")
     }
 
     private func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {

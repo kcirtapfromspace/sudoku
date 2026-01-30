@@ -8,6 +8,7 @@ struct CellView: View {
     let isNakedSingle: Bool
     let ghostCandidates: Set<Int>
     let showGhosts: Bool
+    let showErrors: Bool  // Whether to show error indication
     let size: CGFloat
 
     private var backgroundColor: Color {
@@ -23,7 +24,8 @@ struct CellView: View {
     }
 
     private var textColor: Color {
-        if cell.hasConflict {
+        // Only show red for conflicts when showErrors is enabled
+        if cell.hasConflict && showErrors {
             return .red
         } else if cell.isGiven {
             return .primary
@@ -97,6 +99,7 @@ struct CellView: View {
             isNakedSingle: false,
             ghostCandidates: [],
             showGhosts: false,
+            showErrors: true,
             size: 50
         )
 
@@ -108,6 +111,7 @@ struct CellView: View {
             isNakedSingle: false,
             ghostCandidates: [],
             showGhosts: false,
+            showErrors: true,
             size: 50
         )
 
@@ -119,6 +123,7 @@ struct CellView: View {
             isNakedSingle: false,
             ghostCandidates: [],
             showGhosts: false,
+            showErrors: true,
             size: 50
         )
 
@@ -130,6 +135,7 @@ struct CellView: View {
             isNakedSingle: true,
             ghostCandidates: [4],
             showGhosts: true,
+            showErrors: true,
             size: 50
         )
     }

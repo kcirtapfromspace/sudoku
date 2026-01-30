@@ -112,13 +112,14 @@ struct MenuView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
+                    .accessibilityIdentifier("New Game")
                 }
                 .padding(.horizontal, 40)
 
                 Spacer()
 
                 // Bottom buttons
-                HStack(spacing: 40) {
+                HStack(spacing: 30) {
                     Button {
                         showingStats = true
                     } label: {
@@ -126,6 +127,18 @@ struct MenuView: View {
                             Image(systemName: "chart.bar.fill")
                                 .font(.title2)
                             Text("Stats")
+                                .font(.caption)
+                        }
+                    }
+                    .accessibilityIdentifier("Stats")
+
+                    Button {
+                        GameCenterManager.shared.showGameCenter()
+                    } label: {
+                        VStack {
+                            Image(systemName: "trophy.fill")
+                                .font(.title2)
+                            Text("Leaderboard")
                                 .font(.caption)
                         }
                     }
@@ -140,6 +153,7 @@ struct MenuView: View {
                                 .font(.caption)
                         }
                     }
+                    .accessibilityIdentifier("Settings")
                 }
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 40)

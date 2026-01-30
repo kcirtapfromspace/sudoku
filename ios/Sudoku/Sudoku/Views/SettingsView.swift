@@ -28,6 +28,8 @@ struct SettingsView: View {
                                 value: $gameManager.settings.mistakeLimit,
                                 in: 1...10)
                     }
+
+                    Toggle("Show Errors Immediately", isOn: $gameManager.settings.showErrorsImmediately)
                 }
 
                 // Helpers
