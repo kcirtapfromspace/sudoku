@@ -6,6 +6,7 @@
 mod bitset;
 mod cell;
 mod constraint;
+mod diversity;
 mod generator;
 mod grid;
 mod position;
@@ -17,6 +18,7 @@ pub use constraint::{
     BoxConstraint, ColumnConstraint, Constraint, ConstraintBox, DiagonalConstraint,
     KillerCageConstraint, RowConstraint, ThermoConstraint,
 };
+pub use diversity::{DifficultyStats, DiversityAnalyzer, DiversityReport, TheoreticalEstimates};
 pub use generator::{Generator, GeneratorConfig, SymmetryType};
 pub use grid::{Grid, MoveError, ValidationResult};
 pub use position::Position;
