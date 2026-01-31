@@ -27,9 +27,9 @@ struct StatsView: View {
                     StatItem(title: "Best Streak", value: "\(stats.bestStreak)")
                 }
 
-                // Best Times
+                // Best Times - only show unlocked difficulties
                 Section("Best Times") {
-                    ForEach(Difficulty.allCases) { difficulty in
+                    ForEach(stats.availableDifficulties) { difficulty in
                         if let bestTime = stats.bestTimes[difficulty] {
                             StatItem(title: difficulty.displayName, value: formatTime(bestTime))
                         } else {

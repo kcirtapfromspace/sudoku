@@ -201,7 +201,7 @@ struct DifficultyPickerView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Show only unlocked difficulties
+                // Show only unlocked difficulties - locked ones are completely hidden
                 ForEach(gameManager.statistics.availableDifficulties) { difficulty in
                     Button {
                         onSelect(difficulty)
@@ -212,16 +212,6 @@ struct DifficultyPickerView: View {
                             Spacer()
                             difficultyIndicator(difficulty)
                         }
-                    }
-                }
-
-                // Show locked difficulties with progress
-                ForEach(lockedDifficulties, id: \.self) { difficulty in
-                    HStack {
-                        Text(difficulty.displayName)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        lockIndicator(difficulty)
                     }
                 }
             }
@@ -235,11 +225,9 @@ struct DifficultyPickerView: View {
         }
     }
 
-    private var lockedDifficulties: [Difficulty] {
-        Difficulty.allCases.filter { !gameManager.statistics.isUnlocked($0) }
-    }
-
     private func difficultyIndicator(_ diff: Difficulty) -> some View {
+        // Number of dots based on max unlocked difficulty
+        let maxDots = gameManager.statistics.availableDifficulties.count
         let filled: Int = {
             switch diff {
             case .beginner: return 1
@@ -254,24 +242,11 @@ struct DifficultyPickerView: View {
         }()
 
         return HStack(spacing: 2) {
-            ForEach(0..<8, id: \.self) { i in
+            ForEach(0..<maxDots, id: \.self) { i in
                 Circle()
                     .fill(i < filled ? Color.accentColor : Color.secondary.opacity(0.3))
                     .frame(width: 6, height: 6)
             }
-        }
-    }
-
-    private func lockIndicator(_ diff: Difficulty) -> some View {
-        HStack(spacing: 8) {
-            if let requirement = diff.unlockRequirement {
-                let wins = gameManager.statistics.wins(for: requirement.difficulty)
-                Text("\(wins)/\(requirement.wins)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Image(systemName: "lock.fill")
-                .foregroundStyle(.secondary)
         }
     }
 }
