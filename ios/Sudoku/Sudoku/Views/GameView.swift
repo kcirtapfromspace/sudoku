@@ -205,17 +205,27 @@ struct GameView: View {
     }
 
     private func triggerKonamiEasterEgg() {
-        let easterEggs = [
-            "🚀 +30 extra lives! (Just kidding, you only had 3)",
-            "🎯 God mode activated! (Your mistakes still count though)",
-            "🧠 IQ temporarily boosted to 9000!",
-            "🎮 You found the secret! Here's a virtual high-five: 🖐️",
-            "🔮 The puzzle whispers its secrets to you...",
-            "⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️ - A true gamer!",
-            "🏆 Achievement Unlocked: Nostalgia Master",
-            "🎪 Circus mode engaged! 🤹‍♂️ (Nothing changed, but imagine it did)"
-        ]
-        konamiMessage = easterEggs.randomElement() ?? "You did it!"
+        // Check if already unlocked
+        let alreadyUnlocked = gameManager.statistics.easterEggUnlocked
+
+        if alreadyUnlocked {
+            let easterEggs = [
+                "🚀 +30 extra lives! (Just kidding, you only had 3)",
+                "🎯 God mode activated! (Your mistakes still count though)",
+                "🧠 IQ temporarily boosted to 9000!",
+                "🎮 You found the secret! Here's a virtual high-five: 🖐️",
+                "🔮 The puzzle whispers its secrets to you...",
+                "⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️ - A true gamer!",
+                "🏆 Achievement Unlocked: Nostalgia Master",
+                "🎪 Circus mode engaged! 🤹‍♂️ (Nothing changed, but imagine it did)"
+            ]
+            konamiMessage = easterEggs.randomElement() ?? "You did it!"
+        } else {
+            // First time - unlock Master and Extreme difficulties!
+            gameManager.unlockEasterEgg()
+            konamiMessage = "🔓 SECRET UNLOCKED!\n\nMaster & Extreme difficulties are now available!\n\n⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️"
+        }
+
         showingKonamiAlert = true
         hapticFeedback(.heavy)
 

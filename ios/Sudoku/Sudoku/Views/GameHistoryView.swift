@@ -166,6 +166,8 @@ struct PuzzleRowView: View {
         case .intermediate: return .orange
         case .hard: return .red
         case .expert: return .purple
+        case .master: return .indigo
+        case .extreme: return .pink
         }
     }
 
