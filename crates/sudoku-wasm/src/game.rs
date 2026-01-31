@@ -133,9 +133,10 @@ impl GameState {
 
     /// Get elapsed time in seconds
     pub fn elapsed_secs(&self) -> u32 {
-        if self.screen == ScreenState::Paused {
-            (self.paused_elapsed / 1000.0) as u32
-        } else if self.screen == ScreenState::Win || self.screen == ScreenState::Lose {
+        if self.screen == ScreenState::Paused
+            || self.screen == ScreenState::Win
+            || self.screen == ScreenState::Lose
+        {
             (self.paused_elapsed / 1000.0) as u32
         } else {
             let elapsed = Self::now() - self.start_time + self.paused_elapsed;
@@ -608,6 +609,7 @@ impl GameState {
     }
 
     /// Check if a cell has a conflict
+    #[allow(clippy::needless_range_loop)]
     pub fn has_conflict(&self, pos: Position) -> bool {
         if let Some(value) = self.grid.get(pos) {
             let values = self.grid.values();
@@ -661,21 +663,15 @@ impl GameState {
         let mut counts = [0u8; 9];
         let values = self.grid.values();
 
-        for row in 0..9 {
-            for col in 0..9 {
-                if let Some(v) = values[row][col] {
-                    if (1..=9).contains(&v) {
-                        counts[(v - 1) as usize] += 1;
-                    }
+        for row in &values {
+            for v in row.iter().flatten() {
+                if (1..=9).contains(v) {
+                    counts[(v - 1) as usize] += 1;
                 }
             }
         }
 
-        let mut result = [false; 9];
-        for i in 0..9 {
-            result[i] = counts[i] >= 9;
-        }
-        result
+        std::array::from_fn(|i| counts[i] >= 9)
     }
 
     /// Convert to serializable format

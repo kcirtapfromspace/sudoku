@@ -3,11 +3,6 @@
 //! This crate provides a browser-based Sudoku game that looks and feels
 //! like the terminal UI version.
 
-#![allow(clippy::needless_range_loop)]
-#![allow(clippy::manual_clamp)]
-#![allow(clippy::if_same_then_else)]
-#![allow(clippy::wrong_self_convention)]
-
 use sudoku_core::Difficulty;
 use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, KeyboardEvent};
@@ -265,10 +260,10 @@ impl SudokuGame {
         // Cell size is limited by both dimensions
         let cell_by_height = max_grid_height / 9.0;
         let cell_by_width = max_grid_width / 9.0;
-        self.cell_size = cell_by_height.min(cell_by_width).min(70.0).max(35.0);
+        self.cell_size = cell_by_height.min(cell_by_width).clamp(35.0, 70.0);
 
         // Font size scales with cell size
-        self.font_size = (self.cell_size * 0.55).max(16.0).min(36.0);
+        self.font_size = (self.cell_size * 0.55).clamp(16.0, 36.0);
 
         self.render();
     }

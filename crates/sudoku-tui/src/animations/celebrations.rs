@@ -88,16 +88,24 @@ impl CelebrationManager {
         self.frame_count += 1;
 
         // Check for newly completed rows
-        for i in 0..9 {
-            if completed_rows[i] && !self.prev_completed_rows[i] {
+        for (i, (&curr, &prev)) in completed_rows
+            .iter()
+            .zip(self.prev_completed_rows.iter())
+            .enumerate()
+        {
+            if curr && !prev {
                 self.celebrations
                     .push(Celebration::new(CelebrationType::Row(i), self.frame_count));
             }
         }
 
         // Check for newly completed columns
-        for i in 0..9 {
-            if completed_cols[i] && !self.prev_completed_cols[i] {
+        for (i, (&curr, &prev)) in completed_cols
+            .iter()
+            .zip(self.prev_completed_cols.iter())
+            .enumerate()
+        {
+            if curr && !prev {
                 self.celebrations.push(Celebration::new(
                     CelebrationType::Column(i),
                     self.frame_count,
@@ -106,8 +114,12 @@ impl CelebrationManager {
         }
 
         // Check for newly completed boxes
-        for i in 0..9 {
-            if completed_boxes[i] && !self.prev_completed_boxes[i] {
+        for (i, (&curr, &prev)) in completed_boxes
+            .iter()
+            .zip(self.prev_completed_boxes.iter())
+            .enumerate()
+        {
+            if curr && !prev {
                 self.celebrations
                     .push(Celebration::new(CelebrationType::Box(i), self.frame_count));
             }
