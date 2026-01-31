@@ -1,5 +1,3 @@
-#![allow(clippy::needless_range_loop)]
-
 use std::sync::{Arc, Mutex};
 use sudoku_core::{Difficulty, Generator, Grid, Hint, HintType, Position, Solver};
 
@@ -510,12 +508,10 @@ impl SudokuGame {
         let grid = self.grid.lock().unwrap();
         let values = grid.values();
         let mut counts = [0u8; 9];
-        for row in 0..9 {
-            for col in 0..9 {
-                if let Some(v) = values[row][col] {
-                    if (1..=9).contains(&v) {
-                        counts[(v - 1) as usize] += 1;
-                    }
+        for row in &values {
+            for v in row.iter().flatten() {
+                if (1..=9).contains(v) {
+                    counts[(v - 1) as usize] += 1;
                 }
             }
         }
@@ -569,6 +565,7 @@ impl SudokuGame {
 }
 
 impl SudokuGame {
+    #[allow(clippy::needless_range_loop)]
     fn check_conflict(values: &[[Option<u8>; 9]; 9], pos: Position, value: u8) -> bool {
         // Check row
         for col in 0..9 {

@@ -43,7 +43,7 @@ pub fn render_game(
     font_size: f64,
 ) {
     // Clear background
-    ctx.set_fill_style_str(&theme.background.to_css());
+    ctx.set_fill_style_str(&theme.background.as_css());
     ctx.fill_rect(0.0, 0.0, width as f64, height as f64);
 
     // Calculate grid position (centered with room for info panel)
@@ -129,12 +129,12 @@ fn render_grid(
             };
 
             // Draw cell background
-            ctx.set_fill_style_str(&bg_color.to_css());
+            ctx.set_fill_style_str(&bg_color.as_css());
             ctx.fill_rect(cell_x, cell_y, cell_size, cell_size);
 
             // Highlight naked singles if valid cells mode is on
             if state.show_valid_cells() && state.is_naked_single(pos) {
-                ctx.set_stroke_style_str(&theme.win_color.to_css_alpha(0.6));
+                ctx.set_stroke_style_str(&theme.win_color.as_css_alpha(0.6));
                 ctx.set_line_width(2.0);
                 ctx.stroke_rect(cell_x + 2.0, cell_y + 2.0, cell_size - 4.0, cell_size - 4.0);
             }
@@ -153,7 +153,7 @@ fn render_grid(
                     &theme.player_text
                 };
 
-                ctx.set_fill_style_str(&text_color.to_css());
+                ctx.set_fill_style_str(&text_color.as_css());
                 let _ = ctx.fill_text(
                     &value.to_string(),
                     cell_x + cell_size / 2.0,
@@ -176,7 +176,7 @@ fn render_grid(
 
                 // Draw user's candidates
                 if !candidates.is_empty() {
-                    ctx.set_fill_style_str(&theme.candidate_text.to_css());
+                    ctx.set_fill_style_str(&theme.candidate_text.as_css());
                     for v in candidates.iter() {
                         let (dx, dy) = candidate_offset(v);
                         let cx = cell_x + cell_size * dx;
@@ -187,7 +187,7 @@ fn render_grid(
 
                 // Draw ghost candidates (faded)
                 if !ghost_candidates.is_empty() {
-                    ctx.set_fill_style_str(&theme.candidate_text.to_css_alpha(0.4));
+                    ctx.set_fill_style_str(&theme.candidate_text.as_css_alpha(0.4));
                     for v in ghost_candidates.iter() {
                         let (dx, dy) = candidate_offset(*v);
                         let cx = cell_x + cell_size * dx;
@@ -203,7 +203,7 @@ fn render_grid(
     }
 
     // Draw grid lines
-    ctx.set_stroke_style_str(&theme.grid_lines.to_css());
+    ctx.set_stroke_style_str(&theme.grid_lines.as_css());
     ctx.set_line_width(1.0);
 
     for i in 0..=9 {
@@ -223,7 +223,7 @@ fn render_grid(
     }
 
     // Draw thick box borders
-    ctx.set_stroke_style_str(&theme.box_border.to_css());
+    ctx.set_stroke_style_str(&theme.box_border.as_css());
     ctx.set_line_width(3.0);
 
     for i in 0..=3 {
@@ -243,7 +243,7 @@ fn render_grid(
     }
 
     // Draw cursor outline
-    ctx.set_stroke_style_str(&theme.cursor_bg.to_css());
+    ctx.set_stroke_style_str(&theme.cursor_bg.as_css());
     ctx.set_line_width(3.0);
     let cursor_x = x + cursor.col as f64 * cell_size;
     let cursor_y = y + cursor.row as f64 * cell_size;
@@ -254,16 +254,16 @@ fn render_grid(
     ctx.set_font(&format!("{}px monospace", font_size * 0.6));
     ctx.set_text_align("center");
 
-    for i in 0..9 {
+    for (i, &is_completed) in completed.iter().enumerate() {
         let num = (i + 1) as u8;
         let indicator_x = x + (i as f64 + 0.5) * cell_size;
 
-        if completed[i] {
-            ctx.set_fill_style_str(&theme.completed_bg.to_css());
+        if is_completed {
+            ctx.set_fill_style_str(&theme.completed_bg.as_css());
             ctx.fill_rect(indicator_x - 10.0, indicator_y - 10.0, 20.0, 20.0);
-            ctx.set_fill_style_str(&theme.given_text.to_css());
+            ctx.set_fill_style_str(&theme.given_text.as_css());
         } else {
-            ctx.set_fill_style_str(&theme.candidate_text.to_css());
+            ctx.set_fill_style_str(&theme.candidate_text.as_css());
         }
 
         let _ = ctx.fill_text(&num.to_string(), indicator_x, indicator_y);
@@ -300,12 +300,12 @@ fn render_info_panel(
 
     // Game stats section
     ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", info_font));
-    ctx.set_fill_style_str(&theme.given_text.to_css());
+    ctx.set_fill_style_str(&theme.given_text.as_css());
     let _ = ctx.fill_text("Game", x, cy);
     cy += line_height;
 
     ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", info_font));
-    ctx.set_fill_style_str(&theme.info_text.to_css());
+    ctx.set_fill_style_str(&theme.info_text.as_css());
 
     let _ = ctx.fill_text(&format!("Time: {}", state.elapsed_string()), x, cy);
     cy += line_height;
@@ -333,15 +333,15 @@ fn render_info_panel(
 
     // Number completion
     ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", info_font));
-    ctx.set_fill_style_str(&theme.given_text.to_css());
+    ctx.set_fill_style_str(&theme.given_text.as_css());
     let _ = ctx.fill_text("Numbers", x, cy);
     cy += line_height;
 
     let completed = state.completed_numbers();
     ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", info_font));
     let mut num_line = String::new();
-    for i in 0..9 {
-        if completed[i] {
+    for (i, &is_completed) in completed.iter().enumerate() {
+        if is_completed {
             num_line.push('✓');
         } else {
             num_line.push_str(&format!("{}", i + 1));
@@ -350,18 +350,18 @@ fn render_info_panel(
             num_line.push(' ');
         }
     }
-    ctx.set_fill_style_str(&theme.info_text.to_css());
+    ctx.set_fill_style_str(&theme.info_text.as_css());
     let _ = ctx.fill_text(&num_line, x, cy);
     cy += line_height * 1.3;
 
     // Controls - single column, compact
     ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", info_font));
-    ctx.set_fill_style_str(&theme.given_text.to_css());
+    ctx.set_fill_style_str(&theme.given_text.as_css());
     let _ = ctx.fill_text("Controls", x, cy);
     cy += line_height;
 
     ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font));
-    ctx.set_fill_style_str(&theme.candidate_text.to_css());
+    ctx.set_fill_style_str(&theme.candidate_text.as_css());
 
     let controls = [
         "↑↓←→ hjkl   Move",
@@ -396,7 +396,7 @@ fn render_pause_overlay(
     font_size: f64,
 ) {
     // Semi-transparent overlay
-    ctx.set_fill_style_str(&theme.background.to_css_alpha(0.9));
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.9));
     ctx.fill_rect(0.0, 0.0, width as f64, height as f64);
 
     // Pause text
@@ -404,7 +404,7 @@ fn render_pause_overlay(
         "bold {}px 'JetBrains Mono', monospace",
         font_size * 2.0
     ));
-    ctx.set_fill_style_str(&theme.message_text.to_css());
+    ctx.set_fill_style_str(&theme.message_text.as_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text("PAUSED", width as f64 / 2.0, height as f64 / 2.0 - 30.0);
@@ -413,7 +413,7 @@ fn render_pause_overlay(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.8
     ));
-    ctx.set_fill_style_str(&theme.info_text.to_css());
+    ctx.set_fill_style_str(&theme.info_text.as_css());
     let _ = ctx.fill_text(
         "Press P or Space to resume",
         width as f64 / 2.0,
@@ -445,7 +445,7 @@ fn render_win_screen(
             let mut x = 0.0;
             while x < w {
                 let color = bg.color_at(x as f32, y as f32, w as f32, h as f32, frame);
-                ctx.set_fill_style_str(&color.to_css_alpha(0.3));
+                ctx.set_fill_style_str(&color.as_css_alpha(0.3));
                 ctx.fill_rect(x, y, step, step);
                 x += step;
             }
@@ -454,7 +454,7 @@ fn render_win_screen(
 
         // Render particles
         for particle in win_screen.particles() {
-            ctx.set_fill_style_str(&particle.color.to_css());
+            ctx.set_fill_style_str(&particle.color.as_css());
             ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", particle.size));
             ctx.set_text_align("center");
             ctx.set_text_baseline("middle");
@@ -497,13 +497,13 @@ fn render_win_screen(
         let _ = ctx.fill_text(win_screen.current_message(), w / 2.0, h / 2.0 + 20.0);
     } else {
         // Fallback: simple overlay
-        ctx.set_fill_style_str(&theme.win_color.to_css_alpha(0.15));
+        ctx.set_fill_style_str(&theme.win_color.as_css_alpha(0.15));
         ctx.fill_rect(0.0, 0.0, w, h);
     }
 
     // Stats
     ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size));
-    ctx.set_fill_style_str(&theme.info_text.to_css());
+    ctx.set_fill_style_str(&theme.info_text.as_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text(
@@ -521,7 +521,7 @@ fn render_win_screen(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.7
     ));
-    ctx.set_fill_style_str(&theme.info_text.to_css_alpha(0.8));
+    ctx.set_fill_style_str(&theme.info_text.as_css_alpha(0.8));
     let _ = ctx.fill_text(
         "Press N for new game, 1-6 for difficulty",
         w / 2.0,
@@ -542,13 +542,13 @@ fn render_lose_screen(
     let h = height as f64;
 
     // Dark overlay
-    ctx.set_fill_style_str(&theme.lose_color.to_css_alpha(0.2));
+    ctx.set_fill_style_str(&theme.lose_color.as_css_alpha(0.2));
     ctx.fill_rect(0.0, 0.0, w, h);
 
     // Render rain/debris particles
     if let Some(lose_screen) = state.lose_screen() {
         for particle in lose_screen.particles() {
-            ctx.set_fill_style_str(&particle.color.to_css());
+            ctx.set_fill_style_str(&particle.color.as_css());
             ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", particle.size));
             ctx.set_text_align("center");
             ctx.set_text_baseline("middle");
@@ -600,7 +600,7 @@ fn render_lose_screen(
 
     // Message
     ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size));
-    ctx.set_fill_style_str(&theme.info_text.to_css());
+    ctx.set_fill_style_str(&theme.info_text.as_css());
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text("Too many mistakes!", w / 2.0, h / 2.0 + 50.0);
 
@@ -608,7 +608,7 @@ fn render_lose_screen(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.7
     ));
-    ctx.set_fill_style_str(&theme.info_text.to_css_alpha(0.8));
+    ctx.set_fill_style_str(&theme.info_text.as_css_alpha(0.8));
     let _ = ctx.fill_text(
         "Press N for new game, 1-6 for difficulty",
         w / 2.0,
@@ -625,7 +625,7 @@ fn render_menu(
     font_size: f64,
 ) {
     // Semi-transparent overlay
-    ctx.set_fill_style_str(&theme.background.to_css_alpha(0.9));
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.9));
     ctx.fill_rect(0.0, 0.0, width as f64, height as f64);
 
     // Title
@@ -633,7 +633,7 @@ fn render_menu(
         "bold {}px 'JetBrains Mono', monospace",
         font_size * 1.5
     ));
-    ctx.set_fill_style_str(&theme.given_text.to_css());
+    ctx.set_fill_style_str(&theme.given_text.as_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text("NEW GAME", width as f64 / 2.0, height as f64 / 2.0 - 120.0);
@@ -642,7 +642,7 @@ fn render_menu(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.9
     ));
-    ctx.set_fill_style_str(&theme.info_text.to_css());
+    ctx.set_fill_style_str(&theme.info_text.as_css());
 
     let difficulties = [
         ("1", "Beginner"),
@@ -663,7 +663,7 @@ fn render_menu(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.7
     ));
-    ctx.set_fill_style_str(&theme.candidate_text.to_css());
+    ctx.set_fill_style_str(&theme.candidate_text.as_css());
     let _ = ctx.fill_text("Press Escape to cancel", width as f64 / 2.0, cy + 30.0);
 }
 
@@ -679,7 +679,7 @@ fn render_message(
     let msg_y = height as f64 - 50.0;
 
     // Background
-    ctx.set_fill_style_str(&theme.background.to_css_alpha(0.8));
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.8));
     let metrics = ctx.measure_text(message).ok();
     let msg_width = metrics.map(|m| m.width()).unwrap_or(200.0) + 40.0;
     ctx.fill_rect(
@@ -694,7 +694,7 @@ fn render_message(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.8
     ));
-    ctx.set_fill_style_str(&theme.message_text.to_css());
+    ctx.set_fill_style_str(&theme.message_text.as_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text(message, width as f64 / 2.0, msg_y);

@@ -528,11 +528,7 @@ impl LeaderboardBackend for RemoteLeaderboard {
 
         let response: RankResponse = self.request(
             "GET",
-            &format!(
-                "/api/v1/leaderboard/rank/{}/{}",
-                player_name,
-                format!("{:?}", difficulty)
-            ),
+            &format!("/api/v1/leaderboard/rank/{}/{:?}", player_name, difficulty),
             None::<&()>,
         )?;
 

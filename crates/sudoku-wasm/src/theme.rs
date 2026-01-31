@@ -15,11 +15,11 @@ impl Color {
         Self { r, g, b }
     }
 
-    pub fn to_css(&self) -> String {
+    pub fn as_css(&self) -> String {
         format!("rgb({}, {}, {})", self.r, self.g, self.b)
     }
 
-    pub fn to_css_alpha(&self, alpha: f64) -> String {
+    pub fn as_css_alpha(&self, alpha: f64) -> String {
         format!("rgba({}, {}, {}, {})", self.r, self.g, self.b, alpha)
     }
 }

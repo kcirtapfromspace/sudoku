@@ -376,9 +376,9 @@ fn render_info_panel(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::
         SetForegroundColor(theme.info),
         Print("Numbers: ")
     )?;
-    for i in 0..9 {
+    for (i, &is_completed) in completed.iter().enumerate() {
         let num = (i + 1) as u8;
-        if completed[i] {
+        if is_completed {
             execute!(
                 stdout,
                 SetForegroundColor(theme.success),
