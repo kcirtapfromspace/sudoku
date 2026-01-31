@@ -80,6 +80,10 @@ pub fn render_game(
             render_grid(ctx, state, theme, grid_x, grid_y, cell_size, font_size);
             render_menu(ctx, theme, width, height, font_size);
         }
+        ScreenState::Stats => {
+            render_grid(ctx, state, theme, grid_x, grid_y, cell_size, font_size);
+            render_stats_screen(ctx, state, theme, width, height, font_size);
+        }
     }
 
     // Render message if present
@@ -378,7 +382,7 @@ fn render_info_panel(
         "v           Valid cells",
         "? / !       Hint/Apply",
         "u           Undo",
-        "p   n       Pause/New",
+        "p  n  S     Pause/New/Stats",
     ];
 
     for line in controls {
@@ -415,7 +419,7 @@ fn render_pause_overlay(
     ));
     ctx.set_fill_style_str(&theme.info_text.as_css());
     let _ = ctx.fill_text(
-        "Press P or Space to resume",
+        "P/Space: Resume    S: Statistics",
         width as f64 / 2.0,
         height as f64 / 2.0 + 30.0,
     );
@@ -517,15 +521,35 @@ fn render_win_screen(
         h / 2.0 + 70.0,
     );
 
+    // Puzzle Universe progress
+    let stats = state.player_stats();
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.65
+    ));
+    ctx.set_fill_style_str(&theme.message_text.as_css_alpha(0.9));
+    let _ = ctx.fill_text(
+        &format!("✨ Universe explored: {}", stats.universe_explored_text()),
+        w / 2.0,
+        h / 2.0 + 100.0,
+    );
+
+    ctx.set_font(&format!(
+        "italic {}px 'JetBrains Mono', monospace",
+        font_size * 0.55
+    ));
+    ctx.set_fill_style_str(&theme.candidate_text.as_css_alpha(0.7));
+    let _ = ctx.fill_text(stats.universe_progress_note(), w / 2.0, h / 2.0 + 125.0);
+
     ctx.set_font(&format!(
         "{}px 'JetBrains Mono', monospace",
         font_size * 0.7
     ));
     ctx.set_fill_style_str(&theme.info_text.as_css_alpha(0.8));
     let _ = ctx.fill_text(
-        "Press N for new game, 1-6 for difficulty",
+        "N: New game  1-6: Difficulty  S: Full stats",
         w / 2.0,
-        h / 2.0 + 110.0,
+        h / 2.0 + 160.0,
     );
 }
 
@@ -664,7 +688,188 @@ fn render_menu(
         font_size * 0.7
     ));
     ctx.set_fill_style_str(&theme.candidate_text.as_css());
-    let _ = ctx.fill_text("Press Escape to cancel", width as f64 / 2.0, cy + 30.0);
+    let _ = ctx.fill_text(
+        "[S] Statistics    [Esc] Cancel",
+        width as f64 / 2.0,
+        cy + 30.0,
+    );
+}
+
+/// Render statistics screen with Puzzle Universe
+fn render_stats_screen(
+    ctx: &CanvasRenderingContext2d,
+    state: &GameState,
+    theme: &Theme,
+    width: u32,
+    height: u32,
+    font_size: f64,
+) {
+    let w = width as f64;
+    let h = height as f64;
+    let stats = state.player_stats();
+
+    // Semi-transparent overlay
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.95));
+    ctx.fill_rect(0.0, 0.0, w, h);
+
+    let line_height = font_size * 1.3;
+    let small_font = font_size * 0.7;
+
+    // Title
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        font_size * 1.5
+    ));
+    ctx.set_fill_style_str(&theme.given_text.as_css());
+    ctx.set_text_align("center");
+    ctx.set_text_baseline("middle");
+    let _ = ctx.fill_text("STATISTICS", w / 2.0, 60.0);
+
+    let mut cy = 110.0;
+    let left_x = w / 2.0 - 180.0;
+    let right_x = w / 2.0 + 180.0;
+
+    ctx.set_text_align("left");
+
+    // Overview section
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        font_size * 0.9
+    ));
+    ctx.set_fill_style_str(&theme.win_color.as_css());
+    let _ = ctx.fill_text("Overview", left_x, cy);
+    cy += line_height;
+
+    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font));
+    ctx.set_fill_style_str(&theme.info_text.as_css());
+
+    let _ = ctx.fill_text("Games Played:", left_x, cy);
+    ctx.set_text_align("right");
+    let _ = ctx.fill_text(&format!("{}", stats.games_played), right_x, cy);
+    ctx.set_text_align("left");
+    cy += line_height * 0.8;
+
+    let _ = ctx.fill_text("Games Won:", left_x, cy);
+    ctx.set_text_align("right");
+    let _ = ctx.fill_text(&format!("{}", stats.games_won), right_x, cy);
+    ctx.set_text_align("left");
+    cy += line_height * 0.8;
+
+    let _ = ctx.fill_text("Win Rate:", left_x, cy);
+    ctx.set_text_align("right");
+    let _ = ctx.fill_text(&format!("{:.1}%", stats.win_rate()), right_x, cy);
+    ctx.set_text_align("left");
+    cy += line_height * 0.8;
+
+    let _ = ctx.fill_text("Total Play Time:", left_x, cy);
+    ctx.set_text_align("right");
+    let _ = ctx.fill_text(&stats.total_time_formatted(), right_x, cy);
+    ctx.set_text_align("left");
+    cy += line_height;
+
+    // Streaks section
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        font_size * 0.9
+    ));
+    ctx.set_fill_style_str(&theme.win_color.as_css());
+    let _ = ctx.fill_text("Streaks", left_x, cy);
+    cy += line_height;
+
+    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font));
+    ctx.set_fill_style_str(&theme.info_text.as_css());
+
+    let _ = ctx.fill_text("Current Streak:", left_x, cy);
+    ctx.set_text_align("right");
+    let _ = ctx.fill_text(&format!("{}", stats.current_streak), right_x, cy);
+    ctx.set_text_align("left");
+    cy += line_height * 0.8;
+
+    let _ = ctx.fill_text("Best Streak:", left_x, cy);
+    ctx.set_text_align("right");
+    let _ = ctx.fill_text(&format!("{}", stats.best_streak), right_x, cy);
+    ctx.set_text_align("left");
+    cy += line_height * 1.2;
+
+    // Puzzle Universe section
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        font_size * 0.9
+    ));
+    ctx.set_fill_style_str(&theme.message_text.as_css());
+    let _ = ctx.fill_text("✨ Puzzle Universe", left_x, cy);
+    cy += line_height;
+
+    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font));
+    ctx.set_fill_style_str(&theme.info_text.as_css());
+
+    let _ = ctx.fill_text("Universe Explored:", left_x, cy);
+    cy += line_height * 0.8;
+
+    // Universe explored text (indented, monospace)
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        small_font * 0.9
+    ));
+    ctx.set_fill_style_str(&theme.candidate_text.as_css());
+    let _ = ctx.fill_text(&format!("  {}", stats.universe_explored_text()), left_x, cy);
+    cy += line_height * 0.8;
+
+    // Progress bar
+    let bar_x = left_x + 20.0;
+    let bar_width = 300.0;
+    let bar_height = 8.0;
+
+    ctx.set_fill_style_str(&theme.cell_bg.as_css());
+    ctx.fill_rect(bar_x, cy, bar_width, bar_height);
+
+    // The actual progress would be invisibly small, so show a tiny sliver
+    if stats.games_won > 0 {
+        ctx.set_fill_style_str(&theme.win_color.as_css());
+        let progress_width = (bar_width * 0.002).max(2.0); // At least 2px
+        ctx.fill_rect(bar_x, cy, progress_width, bar_height);
+    }
+    cy += line_height;
+
+    // Cheeky progress note
+    ctx.set_font(&format!(
+        "italic {}px 'JetBrains Mono', monospace",
+        small_font * 0.85
+    ));
+    ctx.set_fill_style_str(&theme.candidate_text.as_css_alpha(0.8));
+    let _ = ctx.fill_text(stats.universe_progress_note(), left_x, cy);
+    cy += line_height * 1.2;
+
+    // Time to complete all
+    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font));
+    ctx.set_fill_style_str(&theme.info_text.as_css());
+    let _ = ctx.fill_text("Time to Complete All:", left_x, cy);
+    cy += line_height * 0.8;
+
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        small_font * 0.9
+    ));
+    ctx.set_fill_style_str(&theme.candidate_text.as_css());
+    let _ = ctx.fill_text(&format!("  {}", stats.time_to_complete_text()), left_x, cy);
+    cy += line_height * 0.8;
+
+    // Cheeky time note
+    ctx.set_font(&format!(
+        "italic {}px 'JetBrains Mono', monospace",
+        small_font * 0.85
+    ));
+    ctx.set_fill_style_str(&theme.candidate_text.as_css_alpha(0.8));
+    let _ = ctx.fill_text(stats.time_note(), left_x, cy);
+
+    // Instructions at bottom
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.7
+    ));
+    ctx.set_fill_style_str(&theme.candidate_text.as_css());
+    ctx.set_text_align("center");
+    let _ = ctx.fill_text("Press Escape or S to return", w / 2.0, h - 40.0);
 }
 
 /// Render temporary message

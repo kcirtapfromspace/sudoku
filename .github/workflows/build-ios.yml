@@ -27,7 +27,7 @@ jobs:
   # Build and test on PRs
   build:
     name: Build & Test
-    runs-on: macos-14
+    runs-on: macos-15
     if: github.event_name == 'pull_request'
     defaults:
       run:
@@ -81,7 +81,7 @@ jobs:
   # Deploy to TestFlight on main branch pushes
   deploy-testflight:
     name: Deploy to TestFlight
-    runs-on: macos-14
+    runs-on: macos-15
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy_testflight)
     defaults:
       run:

@@ -168,6 +168,30 @@ impl SudokuGame {
         }
     }
 
+    /// Get player statistics as JSON for persistence
+    #[wasm_bindgen]
+    pub fn get_stats_json(&self) -> String {
+        self.state.stats_json()
+    }
+
+    /// Load player statistics from JSON
+    #[wasm_bindgen]
+    pub fn load_stats_json(&mut self, json: &str) -> bool {
+        self.state.load_stats_json(json)
+    }
+
+    /// Get games won count
+    #[wasm_bindgen]
+    pub fn games_won(&self) -> u32 {
+        self.state.player_stats().games_won
+    }
+
+    /// Get games played count
+    #[wasm_bindgen]
+    pub fn games_played(&self) -> u32 {
+        self.state.player_stats().games_played
+    }
+
     /// Check if game is complete
     #[wasm_bindgen]
     pub fn is_complete(&self) -> bool {

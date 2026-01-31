@@ -7,6 +7,9 @@ use sudoku_core::{BitSet, Difficulty, Generator, Grid, Hint, HintType, Position,
 /// Maximum mistakes before game over
 pub const MAX_MISTAKES: usize = 3;
 
+/// Estimated total puzzles in the puzzle universe (~10^30)
+pub const TOTAL_PUZZLE_UNIVERSE: f64 = 1e30;
+
 /// Input mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InputMode {
@@ -22,6 +25,137 @@ pub enum ScreenState {
     Win,
     Lose,
     Menu,
+    Stats,
+}
+
+/// Player statistics for lifetime tracking
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PlayerStats {
+    /// Total games played
+    pub games_played: u32,
+    /// Total games won
+    pub games_won: u32,
+    /// Total play time in seconds
+    pub total_play_time_secs: u64,
+    /// Current win streak
+    pub current_streak: u32,
+    /// Best win streak
+    pub best_streak: u32,
+    /// Best times by difficulty (in seconds)
+    pub best_times: std::collections::HashMap<String, u32>,
+}
+
+impl PlayerStats {
+    /// Record a game completion
+    pub fn record_game(&mut self, won: bool, difficulty: Difficulty, time_secs: u32) {
+        self.games_played += 1;
+        self.total_play_time_secs += time_secs as u64;
+
+        if won {
+            self.games_won += 1;
+            self.current_streak += 1;
+            if self.current_streak > self.best_streak {
+                self.best_streak = self.current_streak;
+            }
+
+            // Update best time for difficulty
+            let diff_key = format!("{:?}", difficulty);
+            let entry = self.best_times.entry(diff_key).or_insert(u32::MAX);
+            if time_secs < *entry {
+                *entry = time_secs;
+            }
+        } else {
+            self.current_streak = 0;
+        }
+    }
+
+    /// Calculate average solve time (for wins only)
+    pub fn avg_solve_time_secs(&self) -> u64 {
+        if self.games_won == 0 {
+            300 // Default 5 minutes
+        } else {
+            self.total_play_time_secs / self.games_won as u64
+        }
+    }
+
+    /// Calculate universe explored percentage text
+    pub fn universe_explored_text(&self) -> String {
+        if self.games_won == 0 {
+            "0 / 10³⁰ puzzles (0%)".to_string()
+        } else {
+            let percentage = self.games_won as f64 / TOTAL_PUZZLE_UNIVERSE * 100.0;
+            let exponent = percentage.log10().floor() as i32;
+            format!("{} / 10³⁰ puzzles (10^{}%)", self.games_won, exponent)
+        }
+    }
+
+    /// Get a cheeky note about universe progress
+    pub fn universe_progress_note(&self) -> &'static str {
+        match self.games_won {
+            0 => "The puzzle universe awaits your first victory!",
+            1 => "One small step for you, one giant... well, still tiny step for puzzlekind.",
+            2..=9 => "You've made a dent! A very, very, very small dent.",
+            10..=99 => "At this rate, you'll finish in approximately... never.",
+            100..=999 => "Impressive dedication! The universe remains unimpressed.",
+            _ => "A true puzzle warrior! The universe trembles (microscopically).",
+        }
+    }
+
+    /// Calculate time to complete all puzzles
+    pub fn time_to_complete_text(&self) -> String {
+        if self.games_won == 0 {
+            return "∞ years".to_string();
+        }
+
+        let avg_time = self.avg_solve_time_secs() as f64;
+        let total_seconds = avg_time * TOTAL_PUZZLE_UNIVERSE;
+        let years = total_seconds / (365.25 * 24.0 * 3600.0);
+
+        let exponent = years.log10().floor() as i32;
+        let mantissa = years / 10_f64.powi(exponent);
+
+        format!("≈ {:.1} × 10^{} years", mantissa, exponent)
+    }
+
+    /// Get a cheeky note about time to complete
+    pub fn time_note(&self) -> &'static str {
+        if self.games_won == 0 {
+            return "Complete a puzzle to see this stat!";
+        }
+
+        let avg_minutes = self.avg_solve_time_secs() as f64 / 60.0;
+        if avg_minutes < 2.0 {
+            "Speed demon! But even at light speed, you'd need multiple universe lifetimes."
+        } else if avg_minutes < 5.0 {
+            "Quick solver! The heat death of the universe called - it'll wait."
+        } else if avg_minutes < 10.0 {
+            "Solid pace! Only 10²² generations of your descendants needed to help."
+        } else if avg_minutes < 20.0 {
+            "Taking your time? Good strategy. You'll still need immortality though."
+        } else if avg_minutes < 30.0 {
+            "Thoughtful approach! The Sun will burn out first, but hey, no pressure."
+        } else {
+            "Savoring each puzzle! At this pace, new universes will form and die. Repeatedly."
+        }
+    }
+
+    /// Win rate as percentage
+    pub fn win_rate(&self) -> f64 {
+        if self.games_played == 0 {
+            0.0
+        } else {
+            self.games_won as f64 / self.games_played as f64 * 100.0
+        }
+    }
+
+    /// Format total play time as HH:MM:SS
+    pub fn total_time_formatted(&self) -> String {
+        let secs = self.total_play_time_secs;
+        let hours = secs / 3600;
+        let mins = (secs % 3600) / 60;
+        let secs = secs % 60;
+        format!("{:02}:{:02}:{:02}", hours, mins, secs)
+    }
 }
 
 /// Serializable game state for save/load
@@ -85,6 +219,10 @@ pub struct GameState {
     show_ghost_hints: bool,
     /// Show valid cells (highlight cells with only one valid number)
     show_valid_cells: bool,
+    /// Player lifetime statistics
+    player_stats: PlayerStats,
+    /// Whether we've already recorded this game (prevent double-counting)
+    game_recorded: bool,
 }
 
 impl GameState {
@@ -120,7 +258,16 @@ impl GameState {
             lose_screen: None,
             show_ghost_hints: false,
             show_valid_cells: false,
+            player_stats: PlayerStats::default(),
+            game_recorded: false,
         }
+    }
+
+    /// Create a new game preserving player stats
+    pub fn new_with_stats(difficulty: Difficulty, stats: PlayerStats) -> Self {
+        let mut game = Self::new(difficulty);
+        game.player_stats = stats;
+        game
     }
 
     /// Get current timestamp in milliseconds
@@ -169,12 +316,24 @@ impl GameState {
             if self.is_complete() {
                 self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Win;
+                // Record the win
+                if !self.game_recorded {
+                    self.player_stats
+                        .record_game(true, self.difficulty, self.elapsed_secs());
+                    self.game_recorded = true;
+                }
                 // Create win screen animation
                 let seed = (Self::now() * 1000.0) as u64;
                 self.win_screen = Some(WinScreen::new(seed));
             } else if self.mistakes >= MAX_MISTAKES {
                 self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Lose;
+                // Record the loss
+                if !self.game_recorded {
+                    self.player_stats
+                        .record_game(false, self.difficulty, self.elapsed_secs());
+                    self.game_recorded = true;
+                }
                 // Create lose screen animation
                 let seed = (Self::now() * 1000.0) as u64;
                 self.lose_screen = Some(LoseScreen::new(seed));
@@ -199,6 +358,7 @@ impl GameState {
             ScreenState::Win | ScreenState::Lose => self.handle_endgame_key(key),
             ScreenState::Paused => self.handle_paused_key(key),
             ScreenState::Menu => self.handle_menu_key(key),
+            ScreenState::Stats => self.handle_stats_key(key),
             ScreenState::Playing => self.handle_playing_key(key, shift, ctrl),
         }
     }
@@ -206,15 +366,21 @@ impl GameState {
     fn handle_endgame_key(&mut self, key: &str) -> bool {
         match key {
             "q" | "Escape" => return false,
+            "s" => self.screen = ScreenState::Stats,
             "n" | "Enter" | " " => {
-                *self = GameState::new(self.difficulty);
+                *self = GameState::new_with_stats(self.difficulty, self.player_stats.clone());
             }
-            "1" => *self = GameState::new(Difficulty::Beginner),
-            "2" => *self = GameState::new(Difficulty::Easy),
-            "3" => *self = GameState::new(Difficulty::Medium),
-            "4" => *self = GameState::new(Difficulty::Intermediate),
-            "5" => *self = GameState::new(Difficulty::Hard),
-            "6" => *self = GameState::new(Difficulty::Expert),
+            "1" => {
+                *self = GameState::new_with_stats(Difficulty::Beginner, self.player_stats.clone())
+            }
+            "2" => *self = GameState::new_with_stats(Difficulty::Easy, self.player_stats.clone()),
+            "3" => *self = GameState::new_with_stats(Difficulty::Medium, self.player_stats.clone()),
+            "4" => {
+                *self =
+                    GameState::new_with_stats(Difficulty::Intermediate, self.player_stats.clone())
+            }
+            "5" => *self = GameState::new_with_stats(Difficulty::Hard, self.player_stats.clone()),
+            "6" => *self = GameState::new_with_stats(Difficulty::Expert, self.player_stats.clone()),
             _ => {}
         }
         true
@@ -223,6 +389,7 @@ impl GameState {
     fn handle_paused_key(&mut self, key: &str) -> bool {
         match key {
             "q" | "Escape" => return false,
+            "s" => self.screen = ScreenState::Stats,
             "p" | " " | "Enter" => {
                 self.screen = ScreenState::Playing;
                 self.start_time = Self::now();
@@ -235,12 +402,27 @@ impl GameState {
     fn handle_menu_key(&mut self, key: &str) -> bool {
         match key {
             "Escape" => self.screen = ScreenState::Playing,
-            "1" => *self = GameState::new(Difficulty::Beginner),
-            "2" => *self = GameState::new(Difficulty::Easy),
-            "3" => *self = GameState::new(Difficulty::Medium),
-            "4" => *self = GameState::new(Difficulty::Intermediate),
-            "5" => *self = GameState::new(Difficulty::Hard),
-            "6" => *self = GameState::new(Difficulty::Expert),
+            "s" => self.screen = ScreenState::Stats,
+            "1" => {
+                *self = GameState::new_with_stats(Difficulty::Beginner, self.player_stats.clone())
+            }
+            "2" => *self = GameState::new_with_stats(Difficulty::Easy, self.player_stats.clone()),
+            "3" => *self = GameState::new_with_stats(Difficulty::Medium, self.player_stats.clone()),
+            "4" => {
+                *self =
+                    GameState::new_with_stats(Difficulty::Intermediate, self.player_stats.clone())
+            }
+            "5" => *self = GameState::new_with_stats(Difficulty::Hard, self.player_stats.clone()),
+            "6" => *self = GameState::new_with_stats(Difficulty::Expert, self.player_stats.clone()),
+            _ => {}
+        }
+        true
+    }
+
+    fn handle_stats_key(&mut self, key: &str) -> bool {
+        match key {
+            "Escape" | "s" | " " | "Enter" => self.screen = ScreenState::Menu,
+            "q" => return false,
             _ => {}
         }
         true
@@ -340,6 +522,12 @@ impl GameState {
             "p" => {
                 self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Paused;
+            }
+
+            // Stats
+            "S" | "s" if shift => {
+                self.paused_elapsed += Self::now() - self.start_time;
+                self.screen = ScreenState::Stats;
             }
 
             // Ghost hints toggle
@@ -565,6 +753,24 @@ impl GameState {
     pub fn show_valid_cells(&self) -> bool {
         self.show_valid_cells
     }
+    pub fn player_stats(&self) -> &PlayerStats {
+        &self.player_stats
+    }
+
+    /// Get player stats as JSON for persistence
+    pub fn stats_json(&self) -> String {
+        serde_json::to_string(&self.player_stats).unwrap_or_default()
+    }
+
+    /// Load player stats from JSON
+    pub fn load_stats_json(&mut self, json: &str) -> bool {
+        if let Ok(stats) = serde_json::from_str(json) {
+            self.player_stats = stats;
+            true
+        } else {
+            false
+        }
+    }
 
     /// Get ghost candidates for a cell (valid candidates not yet noted)
     pub fn get_ghost_candidates(&self, pos: Position) -> Vec<u8> {
@@ -738,6 +944,8 @@ impl GameState {
             lose_screen: None,
             show_ghost_hints: false,
             show_valid_cells: false,
+            player_stats: PlayerStats::default(),
+            game_recorded: false,
         }
     }
 }
