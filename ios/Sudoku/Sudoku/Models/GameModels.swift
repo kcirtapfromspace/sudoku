@@ -9,10 +9,31 @@ enum Difficulty: String, CaseIterable, Identifiable, Codable {
     case intermediate = "Intermediate"
     case hard = "Hard"
     case expert = "Expert"
+    case master = "Master"
+    case extreme = "Extreme"
 
     var id: String { rawValue }
 
     var displayName: String { rawValue }
+
+    /// Difficulties that are always available
+    static var alwaysUnlocked: [Difficulty] {
+        [.beginner, .easy, .medium, .intermediate, .hard, .expert]
+    }
+
+    /// Check if this difficulty requires unlocking
+    var requiresUnlock: Bool {
+        self == .master || self == .extreme
+    }
+
+    /// Required wins to unlock this difficulty
+    var unlockRequirement: (difficulty: Difficulty, wins: Int)? {
+        switch self {
+        case .master: return (.expert, 50)
+        case .extreme: return (.master, 50)
+        default: return nil
+        }
+    }
 }
 
 // MARK: - Cell Model
@@ -60,13 +81,48 @@ struct GameStatistics: Codable {
     var gamesWon: Int = 0
     var totalPlayTime: TimeInterval = 0
     var bestTimes: [Difficulty: TimeInterval] = [:]
+    var winsPerDifficulty: [Difficulty: Int] = [:]  // Track wins per difficulty for unlocks
     var currentStreak: Int = 0
     var bestStreak: Int = 0
     var sequentialCompletions: Int = 0  // Count of rows/cols/boxes filled in order 1-9
+    var easterEggUnlocked: Bool = false  // Secret unlock for testing
 
     var winRate: Double {
         guard gamesPlayed > 0 else { return 0 }
         return Double(gamesWon) / Double(gamesPlayed)
+    }
+
+    /// Get wins for a specific difficulty
+    func wins(for difficulty: Difficulty) -> Int {
+        winsPerDifficulty[difficulty] ?? 0
+    }
+
+    /// Check if a difficulty is unlocked
+    func isUnlocked(_ difficulty: Difficulty) -> Bool {
+        // Easter egg unlocks everything
+        if easterEggUnlocked { return true }
+
+        // Always-available difficulties
+        if !difficulty.requiresUnlock { return true }
+
+        // Check unlock requirement
+        if let requirement = difficulty.unlockRequirement {
+            return wins(for: requirement.difficulty) >= requirement.wins
+        }
+
+        return false
+    }
+
+    /// Get all currently available difficulties
+    var availableDifficulties: [Difficulty] {
+        Difficulty.allCases.filter { isUnlocked($0) }
+    }
+
+    /// Get progress toward unlocking a difficulty (0.0 to 1.0)
+    func unlockProgress(for difficulty: Difficulty) -> Double {
+        guard let requirement = difficulty.unlockRequirement else { return 1.0 }
+        let currentWins = wins(for: requirement.difficulty)
+        return min(1.0, Double(currentWins) / Double(requirement.wins))
     }
 
     mutating func recordWin(difficulty: Difficulty, time: TimeInterval) {
@@ -75,6 +131,9 @@ struct GameStatistics: Codable {
         totalPlayTime += time
         currentStreak += 1
         bestStreak = max(bestStreak, currentStreak)
+
+        // Track wins per difficulty
+        winsPerDifficulty[difficulty, default: 0] += 1
 
         if let best = bestTimes[difficulty] {
             bestTimes[difficulty] = min(best, time)
@@ -91,6 +150,10 @@ struct GameStatistics: Codable {
 
     mutating func recordSequentialCompletion() {
         sequentialCompletions += 1
+    }
+
+    mutating func activateEasterEgg() {
+        easterEggUnlocked = true
     }
 }
 

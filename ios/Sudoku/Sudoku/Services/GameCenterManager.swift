@@ -22,6 +22,8 @@ class GameCenterManager: NSObject, ObservableObject {
         static let bestTimeIntermediate = "best_time_intermediate"
         static let bestTimeHard = "best_time_hard"
         static let bestTimeExpert = "best_time_expert"
+        static let bestTimeMaster = "best_time_master"
+        static let bestTimeExtreme = "best_time_extreme"
         static let winStreak = "win_streak"
 
         static func forDifficulty(_ difficulty: Difficulty) -> String {
@@ -32,6 +34,8 @@ class GameCenterManager: NSObject, ObservableObject {
             case .intermediate: return bestTimeIntermediate
             case .hard: return bestTimeHard
             case .expert: return bestTimeExpert
+            case .master: return bestTimeMaster
+            case .extreme: return bestTimeExtreme
             }
         }
     }

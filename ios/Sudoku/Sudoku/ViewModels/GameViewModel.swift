@@ -613,6 +613,8 @@ extension Difficulty {
         case .intermediate: return .intermediate
         case .hard: return .hard
         case .expert: return .expert
+        case .master: return .master
+        case .extreme: return .extreme
         }
     }
 
@@ -623,7 +625,9 @@ extension Difficulty {
         case .medium: return .medium
         case .intermediate: return .intermediate
         case .hard: return .hard
-        case .expert, .master, .extreme: return .expert
+        case .expert: return .expert
+        case .master: return .master
+        case .extreme: return .extreme
         }
     }
 }

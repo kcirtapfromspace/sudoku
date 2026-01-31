@@ -196,11 +196,13 @@ struct MenuView: View {
 struct DifficultyPickerView: View {
     let onSelect: (Difficulty) -> Void
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var gameManager: GameManager
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(Difficulty.allCases) { difficulty in
+                // Show only unlocked difficulties
+                ForEach(gameManager.statistics.availableDifficulties) { difficulty in
                     Button {
                         onSelect(difficulty)
                     } label: {
@@ -210,6 +212,16 @@ struct DifficultyPickerView: View {
                             Spacer()
                             difficultyIndicator(difficulty)
                         }
+                    }
+                }
+
+                // Show locked difficulties with progress
+                ForEach(lockedDifficulties, id: \.self) { difficulty in
+                    HStack {
+                        Text(difficulty.displayName)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        lockIndicator(difficulty)
                     }
                 }
             }
@@ -223,6 +235,10 @@ struct DifficultyPickerView: View {
         }
     }
 
+    private var lockedDifficulties: [Difficulty] {
+        Difficulty.allCases.filter { !gameManager.statistics.isUnlocked($0) }
+    }
+
     private func difficultyIndicator(_ diff: Difficulty) -> some View {
         let filled: Int = {
             switch diff {
@@ -232,15 +248,30 @@ struct DifficultyPickerView: View {
             case .intermediate: return 4
             case .hard: return 5
             case .expert: return 6
+            case .master: return 7
+            case .extreme: return 8
             }
         }()
 
         return HStack(spacing: 2) {
-            ForEach(0..<6) { i in
+            ForEach(0..<8, id: \.self) { i in
                 Circle()
                     .fill(i < filled ? Color.accentColor : Color.secondary.opacity(0.3))
-                    .frame(width: 8, height: 8)
+                    .frame(width: 6, height: 6)
             }
+        }
+    }
+
+    private func lockIndicator(_ diff: Difficulty) -> some View {
+        HStack(spacing: 8) {
+            if let requirement = diff.unlockRequirement {
+                let wins = gameManager.statistics.wins(for: requirement.difficulty)
+                Text("\(wins)/\(requirement.wins)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Image(systemName: "lock.fill")
+                .foregroundStyle(.secondary)
         }
     }
 }

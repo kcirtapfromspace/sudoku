@@ -187,6 +187,12 @@ class GameManager: ObservableObject {
         saveStatistics()
     }
 
+    /// Unlock Master and Extreme difficulties via easter egg
+    func unlockEasterEgg() {
+        statistics.activateEasterEgg()
+        saveStatistics()
+    }
+
     // MARK: - Computed Properties
 
     var hasSavedGame: Bool {
