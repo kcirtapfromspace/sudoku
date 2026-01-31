@@ -38,7 +38,8 @@ fn main() {
 
     // Parse a puzzle from a string
     println!("\n--- Parsing a puzzle from string ---\n");
-    let puzzle_string = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
+    let puzzle_string =
+        "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
     if let Some(grid) = Grid::from_string(puzzle_string) {
         println!("Parsed puzzle:");
         println!("{}", grid);

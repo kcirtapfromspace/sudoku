@@ -171,6 +171,7 @@ impl Grid {
     }
 
     /// Get the values as a 2D array (for constraint checking)
+    #[allow(clippy::needless_range_loop)]
     pub fn values(&self) -> [[Option<u8>; 9]; 9] {
         let mut values = [[None; 9]; 9];
         for row in 0..9 {
@@ -187,7 +188,7 @@ impl Grid {
             return Err(MoveError::PositionOutOfBounds);
         }
 
-        if value < 1 || value > 9 {
+        if !(1..=9).contains(&value) {
             return Err(MoveError::ValueOutOfRange);
         }
 
@@ -280,6 +281,7 @@ impl Grid {
 
         // Then remove candidates based on filled cells
         let values = self.values();
+        #[allow(clippy::needless_range_loop)]
         for row in 0..9 {
             for col in 0..9 {
                 if let Some(value) = values[row][col] {
@@ -405,7 +407,7 @@ impl Grid {
 
     /// Check if a move would be valid (without making it)
     pub fn is_valid_move(&self, pos: Position, value: u8) -> bool {
-        if pos.row >= 9 || pos.col >= 9 || value < 1 || value > 9 {
+        if pos.row >= 9 || pos.col >= 9 || !(1..=9).contains(&value) {
             return false;
         }
 
@@ -575,7 +577,8 @@ mod tests {
 
     #[test]
     fn test_from_string() {
-        let puzzle = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
+        let puzzle =
+            "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
         let grid = Grid::from_string(puzzle).unwrap();
 
         assert_eq!(grid.get(Position::new(0, 0)), Some(5));
@@ -596,7 +599,8 @@ mod tests {
 
     #[test]
     fn test_is_complete() {
-        let solved = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+        let solved =
+            "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
         let grid = Grid::from_string(solved).unwrap();
         assert!(grid.is_complete());
     }

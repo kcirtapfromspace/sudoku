@@ -9,11 +9,16 @@ struct AnimRng {
 
 impl AnimRng {
     fn new(seed: u64) -> Self {
-        Self { state: seed.wrapping_add(1) }
+        Self {
+            state: seed.wrapping_add(1),
+        }
     }
 
     fn next_u32(&mut self) -> u32 {
-        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((self.state >> 33) ^ self.state) as u32
     }
 
@@ -177,15 +182,12 @@ impl WinBackground {
         let h = height.max(1.0);
 
         let hue = match self.pattern {
-            BgPattern::Gradient => {
-                (x / w + y / h * 0.5 + t * 0.1) % 1.0
-            }
+            BgPattern::Gradient => (x / w + y / h * 0.5 + t * 0.1) % 1.0,
             BgPattern::Waves => {
-                let wave = ((x * self.wave_freq_x + t).sin() * 0.5
+                ((x * self.wave_freq_x + t).sin() * 0.5
                     + 0.5
                     + (y * self.wave_freq_y + t * 0.7).cos() * 0.5)
-                    % 1.0;
-                wave
+                    % 1.0
             }
             BgPattern::Plasma => {
                 let cx = w / 2.0;
@@ -233,11 +235,7 @@ fn hue_to_color(hue: f32, brightness: f32) -> Color {
         _ => (c, 0.0, x),
     };
 
-    Color::new(
-        (r * 255.0) as u8,
-        (g * 255.0) as u8,
-        (b * 255.0) as u8,
-    )
+    Color::new((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8)
 }
 
 /// Random bright color
@@ -304,7 +302,7 @@ impl WinScreen {
         self.rainbow_offset += 0.02;
 
         // Switch effects periodically
-        if self.frame_count % 300 == 0 {
+        if self.frame_count.is_multiple_of(300) {
             self.effect_type = EffectType::random(&mut self.rng);
             self.message_index = self.rng.gen_range_usize(0, WIN_MESSAGES.len());
         }

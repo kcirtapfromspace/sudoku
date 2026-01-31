@@ -55,7 +55,14 @@ pub fn render_game(
     match state.screen() {
         ScreenState::Playing | ScreenState::Paused => {
             render_grid(ctx, state, theme, grid_x, grid_y, cell_size, font_size);
-            render_info_panel(ctx, state, theme, grid_x + grid_width + 30.0, grid_y, font_size);
+            render_info_panel(
+                ctx,
+                state,
+                theme,
+                grid_x + grid_width + 30.0,
+                grid_y,
+                font_size,
+            );
 
             if state.screen() == ScreenState::Paused {
                 render_pause_overlay(ctx, theme, width, height, font_size);
@@ -95,7 +102,10 @@ fn render_grid(
     let completed = state.completed_numbers();
 
     // Set font for numbers
-    ctx.set_font(&format!("{}px 'JetBrains Mono', 'Fira Code', 'Consolas', monospace", font_size));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+        font_size
+    ));
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
 
@@ -159,7 +169,10 @@ fn render_grid(
                 };
 
                 let small_font = font_size * 0.45;
-                ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", small_font));
+                ctx.set_font(&format!(
+                    "bold {}px 'JetBrains Mono', monospace",
+                    small_font
+                ));
 
                 // Draw user's candidates
                 if !candidates.is_empty() {
@@ -302,7 +315,11 @@ fn render_info_panel(
 
     let remaining = MAX_MISTAKES.saturating_sub(state.mistakes());
     let hearts: String = "♥".repeat(remaining) + &"♡".repeat(state.mistakes());
-    let _ = ctx.fill_text(&format!("{} │ Hints: {}", hearts, state.hints_used()), x, cy);
+    let _ = ctx.fill_text(
+        &format!("{} │ Hints: {}", hearts, state.hints_used()),
+        x,
+        cy,
+    );
     cy += line_height;
 
     let mode_str = match state.mode() {
@@ -329,7 +346,9 @@ fn render_info_panel(
         } else {
             num_line.push_str(&format!("{}", i + 1));
         }
-        if i < 8 { num_line.push(' '); }
+        if i < 8 {
+            num_line.push(' ');
+        }
     }
     ctx.set_fill_style_str(&theme.info_text.to_css());
     let _ = ctx.fill_text(&num_line, x, cy);
@@ -381,15 +400,25 @@ fn render_pause_overlay(
     ctx.fill_rect(0.0, 0.0, width as f64, height as f64);
 
     // Pause text
-    ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", font_size * 2.0));
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        font_size * 2.0
+    ));
     ctx.set_fill_style_str(&theme.message_text.to_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text("PAUSED", width as f64 / 2.0, height as f64 / 2.0 - 30.0);
 
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size * 0.8));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.8
+    ));
     ctx.set_fill_style_str(&theme.info_text.to_css());
-    let _ = ctx.fill_text("Press P or Space to resume", width as f64 / 2.0, height as f64 / 2.0 + 30.0);
+    let _ = ctx.fill_text(
+        "Press P or Space to resume",
+        width as f64 / 2.0,
+        height as f64 / 2.0 + 30.0,
+    );
 }
 
 /// Render win screen with animated particles and ASCII banner
@@ -458,7 +487,10 @@ fn render_win_screen(
         }
 
         // Win message
-        ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", font_size * 1.5));
+        ctx.set_font(&format!(
+            "bold {}px 'JetBrains Mono', monospace",
+            font_size * 1.5
+        ));
         let msg_hue = (win_screen.rainbow_offset() * 360.0) % 360.0;
         ctx.set_fill_style_str(&format!("hsl({}, 100%, 70%)", msg_hue));
         ctx.set_text_baseline("middle");
@@ -475,7 +507,8 @@ fn render_win_screen(
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text(
-        &format!("Time: {}  Hints: {}  Mistakes: {}",
+        &format!(
+            "Time: {}  Hints: {}  Mistakes: {}",
             state.elapsed_string(),
             state.hints_used(),
             state.mistakes()
@@ -484,9 +517,16 @@ fn render_win_screen(
         h / 2.0 + 70.0,
     );
 
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size * 0.7));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.7
+    ));
     ctx.set_fill_style_str(&theme.info_text.to_css_alpha(0.8));
-    let _ = ctx.fill_text("Press N for new game, 1-6 for difficulty", w / 2.0, h / 2.0 + 110.0);
+    let _ = ctx.fill_text(
+        "Press N for new game, 1-6 for difficulty",
+        w / 2.0,
+        h / 2.0 + 110.0,
+    );
 }
 
 /// Render lose screen with rain/debris particles
@@ -564,9 +604,16 @@ fn render_lose_screen(
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text("Too many mistakes!", w / 2.0, h / 2.0 + 50.0);
 
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size * 0.7));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.7
+    ));
     ctx.set_fill_style_str(&theme.info_text.to_css_alpha(0.8));
-    let _ = ctx.fill_text("Press N for new game, 1-6 for difficulty", w / 2.0, h / 2.0 + 90.0);
+    let _ = ctx.fill_text(
+        "Press N for new game, 1-6 for difficulty",
+        w / 2.0,
+        h / 2.0 + 90.0,
+    );
 }
 
 /// Render new game menu
@@ -582,13 +629,19 @@ fn render_menu(
     ctx.fill_rect(0.0, 0.0, width as f64, height as f64);
 
     // Title
-    ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", font_size * 1.5));
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        font_size * 1.5
+    ));
     ctx.set_fill_style_str(&theme.given_text.to_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     let _ = ctx.fill_text("NEW GAME", width as f64 / 2.0, height as f64 / 2.0 - 120.0);
 
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size * 0.9));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.9
+    ));
     ctx.set_fill_style_str(&theme.info_text.to_css());
 
     let difficulties = [
@@ -606,7 +659,10 @@ fn render_menu(
         cy += font_size * 1.3;
     }
 
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size * 0.7));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.7
+    ));
     ctx.set_fill_style_str(&theme.candidate_text.to_css());
     let _ = ctx.fill_text("Press Escape to cancel", width as f64 / 2.0, cy + 30.0);
 }
@@ -634,7 +690,10 @@ fn render_message(
     );
 
     // Text
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", font_size * 0.8));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        font_size * 0.8
+    ));
     ctx.set_fill_style_str(&theme.message_text.to_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");

@@ -1,5 +1,7 @@
-use sudoku_core::{Difficulty, Generator, Grid, Hint, HintType, Position, Solver};
+#![allow(clippy::needless_range_loop)]
+
 use std::sync::{Arc, Mutex};
+use sudoku_core::{Difficulty, Generator, Grid, Hint, HintType, Position, Solver};
 
 uniffi::setup_scaffolding!();
 
@@ -81,7 +83,9 @@ pub struct GameHint {
 impl From<Hint> for GameHint {
     fn from(hint: Hint) -> Self {
         let (row, col, value, eliminate) = match hint.hint_type {
-            HintType::SetValue { pos, value } => (pos.row as u8, pos.col as u8, Some(value), vec![]),
+            HintType::SetValue { pos, value } => {
+                (pos.row as u8, pos.col as u8, Some(value), vec![])
+            }
             HintType::EliminateCandidates { pos, values } => {
                 (pos.row as u8, pos.col as u8, None, values)
             }
@@ -137,7 +141,9 @@ impl SudokuGame {
         let grid = generator.generate(diff);
 
         let solver = Solver::new();
-        let solution = solver.solve(&grid).expect("Generated puzzle should be solvable");
+        let solution = solver
+            .solve(&grid)
+            .expect("Generated puzzle should be solvable");
 
         Arc::new(Self {
             grid: Mutex::new(grid),
@@ -152,7 +158,7 @@ impl SudokuGame {
 
     /// Make a move: place a value at a position
     pub fn make_move(&self, row: u8, col: u8, value: u8) -> MoveResult {
-        if value < 1 || value > 9 {
+        if !(1..=9).contains(&value) {
             return MoveResult::InvalidValue;
         }
 
@@ -166,7 +172,10 @@ impl SudokuGame {
 
         // Save for undo
         let old_value = grid.get(pos);
-        self.undo_stack.lock().unwrap().push((row as usize, col as usize, old_value));
+        self.undo_stack
+            .lock()
+            .unwrap()
+            .push((row as usize, col as usize, old_value));
         self.redo_stack.lock().unwrap().clear();
 
         // Check if correct
@@ -208,7 +217,10 @@ impl SudokuGame {
             return MoveResult::Success;
         }
 
-        self.undo_stack.lock().unwrap().push((row as usize, col as usize, old_value));
+        self.undo_stack
+            .lock()
+            .unwrap()
+            .push((row as usize, col as usize, old_value));
         self.redo_stack.lock().unwrap().clear();
 
         grid.set_cell_unchecked(pos, None);
@@ -219,7 +231,7 @@ impl SudokuGame {
 
     /// Toggle a candidate (pencil mark)
     pub fn toggle_candidate(&self, row: u8, col: u8, value: u8) -> bool {
-        if value < 1 || value > 9 {
+        if !(1..=9).contains(&value) {
             return false;
         }
 
@@ -243,7 +255,10 @@ impl SudokuGame {
             let mut grid = self.grid.lock().unwrap();
             let current_value = grid.get(pos);
 
-            self.redo_stack.lock().unwrap().push((row, col, current_value));
+            self.redo_stack
+                .lock()
+                .unwrap()
+                .push((row, col, current_value));
 
             grid.set_cell_unchecked(pos, old_value);
             grid.recalculate_candidates();
@@ -261,7 +276,10 @@ impl SudokuGame {
             let mut grid = self.grid.lock().unwrap();
             let current_value = grid.get(pos);
 
-            self.undo_stack.lock().unwrap().push((row, col, current_value));
+            self.undo_stack
+                .lock()
+                .unwrap()
+                .push((row, col, current_value));
 
             grid.set_cell_unchecked(pos, value);
             grid.recalculate_candidates();
@@ -417,7 +435,8 @@ impl SudokuGame {
         if cell.is_given() || cell.is_filled() {
             return false;
         }
-        grid.cell_mut(pos).set_candidates(sudoku_core::BitSet::empty());
+        grid.cell_mut(pos)
+            .set_candidates(sudoku_core::BitSet::empty());
         true
     }
 
@@ -445,10 +464,12 @@ impl SudokuGame {
                 if let Some(correct) = solution.get(pos) {
                     // Only keep the correct value as a candidate if it was already there
                     if cell.has_candidate(correct) {
-                        grid.cell_mut(pos).set_candidates(sudoku_core::BitSet::single(correct));
+                        grid.cell_mut(pos)
+                            .set_candidates(sudoku_core::BitSet::single(correct));
                     } else {
                         // Cell had no candidates or didn't have the correct one
-                        grid.cell_mut(pos).set_candidates(sudoku_core::BitSet::empty());
+                        grid.cell_mut(pos)
+                            .set_candidates(sudoku_core::BitSet::empty());
                     }
                 }
             }
@@ -492,7 +513,7 @@ impl SudokuGame {
         for row in 0..9 {
             for col in 0..9 {
                 if let Some(v) = values[row][col] {
-                    if v >= 1 && v <= 9 {
+                    if (1..=9).contains(&v) {
                         counts[(v - 1) as usize] += 1;
                     }
                 }
@@ -525,7 +546,10 @@ impl SudokuGame {
             HintType::SetValue { pos, value } => {
                 let mut grid = self.grid.lock().unwrap();
                 let old_value = grid.get(*pos);
-                self.undo_stack.lock().unwrap().push((pos.row, pos.col, old_value));
+                self.undo_stack
+                    .lock()
+                    .unwrap()
+                    .push((pos.row, pos.col, old_value));
                 self.redo_stack.lock().unwrap().clear();
                 grid.set_cell_unchecked(*pos, Some(*value));
                 grid.recalculate_candidates();

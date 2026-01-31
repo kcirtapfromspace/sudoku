@@ -1,3 +1,8 @@
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::wrong_self_convention)]
+#![allow(clippy::format_in_format_args)]
+
 mod animations;
 mod app;
 mod game;

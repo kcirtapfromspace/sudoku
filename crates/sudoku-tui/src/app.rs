@@ -114,16 +114,30 @@ impl Default for App {
 impl App {
     /// Konami code sequence: ↑↑↓↓←→←→BA
     const KONAMI_CODE: [KeyCode; 10] = [
-        KeyCode::Up, KeyCode::Up, KeyCode::Down, KeyCode::Down,
-        KeyCode::Left, KeyCode::Right, KeyCode::Left, KeyCode::Right,
-        KeyCode::Char('b'), KeyCode::Char('a'),
+        KeyCode::Up,
+        KeyCode::Up,
+        KeyCode::Down,
+        KeyCode::Down,
+        KeyCode::Left,
+        KeyCode::Right,
+        KeyCode::Left,
+        KeyCode::Right,
+        KeyCode::Char('b'),
+        KeyCode::Char('a'),
     ];
 
     /// Reverse Konami code: AB→←→←↓↓↑↑
     const REVERSE_KONAMI: [KeyCode; 10] = [
-        KeyCode::Char('a'), KeyCode::Char('b'),
-        KeyCode::Right, KeyCode::Left, KeyCode::Right, KeyCode::Left,
-        KeyCode::Down, KeyCode::Down, KeyCode::Up, KeyCode::Up,
+        KeyCode::Char('a'),
+        KeyCode::Char('b'),
+        KeyCode::Right,
+        KeyCode::Left,
+        KeyCode::Right,
+        KeyCode::Left,
+        KeyCode::Down,
+        KeyCode::Down,
+        KeyCode::Up,
+        KeyCode::Up,
     ];
 
     /// "The Answer" pattern: 42

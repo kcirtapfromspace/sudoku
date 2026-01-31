@@ -21,12 +21,11 @@ pub type ConstraintBox = Box<dyn Constraint>;
 pub struct RowConstraint;
 
 impl Constraint for RowConstraint {
+    #[allow(clippy::needless_range_loop)]
     fn validate(&self, cells: &[[Option<u8>; 9]; 9], pos: Position, value: u8) -> bool {
         for col in 0..9 {
-            if col != pos.col {
-                if cells[pos.row][col] == Some(value) {
-                    return false;
-                }
+            if col != pos.col && cells[pos.row][col] == Some(value) {
+                return false;
             }
         }
         true
@@ -49,12 +48,11 @@ impl Constraint for RowConstraint {
 pub struct ColumnConstraint;
 
 impl Constraint for ColumnConstraint {
+    #[allow(clippy::needless_range_loop)]
     fn validate(&self, cells: &[[Option<u8>; 9]; 9], pos: Position, value: u8) -> bool {
         for row in 0..9 {
-            if row != pos.row {
-                if cells[row][pos.col] == Some(value) {
-                    return false;
-                }
+            if row != pos.row && cells[row][pos.col] == Some(value) {
+                return false;
             }
         }
         true
@@ -77,16 +75,15 @@ impl Constraint for ColumnConstraint {
 pub struct BoxConstraint;
 
 impl Constraint for BoxConstraint {
+    #[allow(clippy::needless_range_loop)]
     fn validate(&self, cells: &[[Option<u8>; 9]; 9], pos: Position, value: u8) -> bool {
         let box_row = (pos.row / 3) * 3;
         let box_col = (pos.col / 3) * 3;
 
         for row in box_row..box_row + 3 {
             for col in box_col..box_col + 3 {
-                if row != pos.row || col != pos.col {
-                    if cells[row][col] == Some(value) {
-                        return false;
-                    }
+                if (row != pos.row || col != pos.col) && cells[row][col] == Some(value) {
+                    return false;
                 }
             }
         }
@@ -118,6 +115,7 @@ impl Constraint for BoxConstraint {
 pub struct DiagonalConstraint;
 
 impl Constraint for DiagonalConstraint {
+    #[allow(clippy::needless_range_loop)]
     fn validate(&self, cells: &[[Option<u8>; 9]; 9], pos: Position, value: u8) -> bool {
         // Check main diagonal (top-left to bottom-right)
         if pos.is_on_main_diagonal(9) {
@@ -195,10 +193,8 @@ impl Constraint for KillerCageConstraint {
 
         // Check uniqueness within cage
         for &cage_pos in &self.cells {
-            if cage_pos != pos {
-                if cells[cage_pos.row][cage_pos.col] == Some(value) {
-                    return false;
-                }
+            if cage_pos != pos && cells[cage_pos.row][cage_pos.col] == Some(value) {
+                return false;
             }
         }
 
@@ -230,11 +226,7 @@ impl Constraint for KillerCageConstraint {
             return Vec::new();
         }
 
-        self.cells
-            .iter()
-            .filter(|&&p| p != pos)
-            .copied()
-            .collect()
+        self.cells.iter().filter(|&&p| p != pos).copied().collect()
     }
 
     fn name(&self) -> &'static str {
@@ -399,7 +391,11 @@ mod tests {
     fn test_killer_cage_constraint() {
         let mut grid = empty_grid();
         let cage = KillerCageConstraint::new(
-            vec![Position::new(0, 0), Position::new(0, 1), Position::new(1, 0)],
+            vec![
+                Position::new(0, 0),
+                Position::new(0, 1),
+                Position::new(1, 0),
+            ],
             15, // Target sum is 15
         );
 

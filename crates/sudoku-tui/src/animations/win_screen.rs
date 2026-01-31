@@ -97,7 +97,7 @@ impl WinBackground {
                 (BG_CHARS[char_idx], wave)
             }
             BgPattern::Checkerboard => {
-                let check = ((x + y + (t * 5.0) as usize) % 2) == 0;
+                let check = (x + y + (t * 5.0) as usize).is_multiple_of(2);
                 let hue = if check { 0.0 } else { 0.5 };
                 let char_idx = if check { 0 } else { BG_CHARS.len() / 2 };
                 (BG_CHARS[char_idx % BG_CHARS.len()], (hue + t * 0.1) % 1.0)
@@ -257,7 +257,7 @@ impl WinScreen {
         self.rainbow_offset += 0.05;
 
         // Switch effects periodically
-        if self.frame_count % 300 == 0 {
+        if self.frame_count.is_multiple_of(300) {
             self.effect_type = EffectType::random();
             let mut rng = rand::thread_rng();
             self.message_index = rng.gen_range(0..WIN_MESSAGES.len());

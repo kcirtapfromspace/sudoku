@@ -102,7 +102,11 @@ impl LoseBackground {
         let mut rng = rand::thread_rng();
 
         // Base dark color to avoid black spots
-        let base_color = Color::Rgb { r: 15, g: 10, b: 12 };
+        let base_color = Color::Rgb {
+            r: 15,
+            g: 10,
+            b: 12,
+        };
 
         match self.pattern {
             LoseBgPattern::StaticNoise => {
@@ -223,7 +227,7 @@ impl LoseScreen {
         self.frame_count += 1;
 
         // Switch effects periodically
-        if self.frame_count % 400 == 0 {
+        if self.frame_count.is_multiple_of(400) {
             self.effect_type = LoseEffectType::random();
             let mut rng = rand::thread_rng();
             self.message_index = rng.gen_range(0..LOSE_MESSAGES.len());

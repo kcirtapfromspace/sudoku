@@ -67,11 +67,7 @@ fn render_game_screen(
         1
     };
 
-    let start_y = if term_height > grid_height + 12 {
-        2
-    } else {
-        1
-    };
+    let start_y = if term_height > grid_height + 12 { 2 } else { 1 };
 
     render_grid(stdout, app, start_x, start_y)?;
 
@@ -170,15 +166,27 @@ fn render_grid(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::Result
         if row == 8 {
             // Bottom border (thick - highlighted)
             let bottom_color = CelebrationManager::throb_color(theme.box_border, row_intensity);
-            execute!(stdout, SetForegroundColor(bottom_color), Print("+===+===+===+===+===+===+===+===+===+"))?;
+            execute!(
+                stdout,
+                SetForegroundColor(bottom_color),
+                Print("+===+===+===+===+===+===+===+===+===+")
+            )?;
         } else if (row + 1) % 3 == 0 {
             // Box separator (thick - highlighted)
             let box_sep_color = CelebrationManager::throb_color(theme.box_border, sep_intensity);
-            execute!(stdout, SetForegroundColor(box_sep_color), Print("+===+===+===+===+===+===+===+===+===+"))?;
+            execute!(
+                stdout,
+                SetForegroundColor(box_sep_color),
+                Print("+===+===+===+===+===+===+===+===+===+")
+            )?;
         } else {
             // Regular separator (thinner color)
             let sep_color = CelebrationManager::throb_color(theme.border, sep_intensity);
-            execute!(stdout, SetForegroundColor(sep_color), Print("+---+---+---+---+---+---+---+---+---+"))?;
+            execute!(
+                stdout,
+                SetForegroundColor(sep_color),
+                Print("+---+---+---+---+---+---+---+---+---+")
+            )?;
         }
     }
 
@@ -206,7 +214,11 @@ fn render_cell(stdout: &mut io::Stdout, app: &App, pos: Position) -> io::Result<
     let mut bg = if is_cursor {
         theme.selected_bg
     } else if has_same_value && !cell.is_empty() {
-        Color::Rgb { r: 60, g: 60, b: 100 }
+        Color::Rgb {
+            r: 60,
+            g: 60,
+            b: 100,
+        }
     } else if is_highlighted {
         theme.highlight_bg
     } else {
@@ -248,7 +260,11 @@ fn render_cell(stdout: &mut io::Stdout, app: &App, pos: Position) -> io::Result<
                 let valid = app.game.grid().get_candidates(pos);
                 if valid.count() == 1 {
                     let val = valid.single_value().unwrap();
-                    execute!(stdout, SetForegroundColor(Color::DarkGrey), Print(format!(" {} ", val)))?;
+                    execute!(
+                        stdout,
+                        SetForegroundColor(Color::DarkGrey),
+                        Print(format!(" {} ", val))
+                    )?;
                 } else {
                     execute!(stdout, SetForegroundColor(Color::DarkGrey), Print(" · "))?;
                 }
@@ -330,7 +346,10 @@ fn render_info_panel(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::
         stdout,
         MoveTo(x, y + 8),
         SetForegroundColor(mistakes_color),
-        Print(format!("Mistakes: {:>6}", format!("{}/{}", game.mistakes(), MAX_MISTAKES)))
+        Print(format!(
+            "Mistakes: {:>6}",
+            format!("{}/{}", game.mistakes(), MAX_MISTAKES)
+        ))
     )?;
 
     // Hints
@@ -351,13 +370,26 @@ fn render_info_panel(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::
 
     // Number completion indicator
     let completed = game.completed_numbers();
-    execute!(stdout, MoveTo(x, y + 14), SetForegroundColor(theme.info), Print("Numbers: "))?;
+    execute!(
+        stdout,
+        MoveTo(x, y + 14),
+        SetForegroundColor(theme.info),
+        Print("Numbers: ")
+    )?;
     for i in 0..9 {
         let num = (i + 1) as u8;
         if completed[i] {
-            execute!(stdout, SetForegroundColor(theme.success), Print(format!("{}", num)))?;
+            execute!(
+                stdout,
+                SetForegroundColor(theme.success),
+                Print(format!("{}", num))
+            )?;
         } else {
-            execute!(stdout, SetForegroundColor(theme.border), Print(format!("{}", num)))?;
+            execute!(
+                stdout,
+                SetForegroundColor(theme.border),
+                Print(format!("{}", num))
+            )?;
         }
     }
 
@@ -374,7 +406,11 @@ fn render_info_panel(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::
     if cell.is_empty() {
         if app.show_suggestions {
             let valid = game.grid().get_candidates(pos);
-            let valid_str: String = valid.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ");
+            let valid_str: String = valid
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
             execute!(
                 stdout,
                 MoveTo(x, y + 17),
@@ -391,7 +427,11 @@ fn render_info_panel(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::
         }
 
         let notes = cell.candidates();
-        let notes_str: String = notes.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ");
+        let notes_str: String = notes
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
         execute!(
             stdout,
             MoveTo(x, y + 18),
@@ -455,7 +495,12 @@ fn render_controls(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::Re
     Ok(())
 }
 
-fn render_message(stdout: &mut io::Stdout, app: &App, msg: &str, term_width: u16) -> io::Result<()> {
+fn render_message(
+    stdout: &mut io::Stdout,
+    app: &App,
+    msg: &str,
+    term_width: u16,
+) -> io::Result<()> {
     let theme = &app.theme;
     let padded = format!("  {}  ", msg);
     let x = term_width.saturating_sub(padded.len() as u16) / 2;
@@ -471,13 +516,22 @@ fn render_message(stdout: &mut io::Stdout, app: &App, msg: &str, term_width: u16
     Ok(())
 }
 
-fn render_menu(stdout: &mut io::Stdout, app: &App, term_width: u16, term_height: u16) -> io::Result<()> {
+fn render_menu(
+    stdout: &mut io::Stdout,
+    app: &App,
+    term_width: u16,
+    term_height: u16,
+) -> io::Result<()> {
     let theme = &app.theme;
 
     // Calculate menu size based on content
     let is_difficulty_menu = matches!(app.menu, MenuState::NewGame | MenuState::Difficulty);
     let num_options = if is_difficulty_menu {
-        if app.stats.secrets_unlocked() { 8 } else { 6 }
+        if app.stats.secrets_unlocked() {
+            8
+        } else {
+            6
+        }
     } else {
         match app.menu {
             MenuState::Theme => 3,
@@ -491,7 +545,11 @@ fn render_menu(stdout: &mut io::Stdout, app: &App, term_width: u16, term_height:
     let x = (term_width.saturating_sub(menu_width)) / 2;
     let y = (term_height.saturating_sub(menu_height)) / 2;
 
-    let bg = Color::Rgb { r: 30, g: 30, b: 40 };
+    let bg = Color::Rgb {
+        r: 30,
+        g: 30,
+        b: 40,
+    };
 
     // Background
     for row in 0..menu_height {
@@ -504,13 +562,29 @@ fn render_menu(stdout: &mut io::Stdout, app: &App, term_width: u16, term_height:
     }
 
     // Border
-    execute!(stdout, SetForegroundColor(theme.border), SetBackgroundColor(bg))?;
-    execute!(stdout, MoveTo(x, y), Print("┌"), Print("─".repeat(menu_width as usize - 2)), Print("┐"))?;
+    execute!(
+        stdout,
+        SetForegroundColor(theme.border),
+        SetBackgroundColor(bg)
+    )?;
+    execute!(
+        stdout,
+        MoveTo(x, y),
+        Print("┌"),
+        Print("─".repeat(menu_width as usize - 2)),
+        Print("┐")
+    )?;
     for row in 1..menu_height - 1 {
         execute!(stdout, MoveTo(x, y + row), Print("│"))?;
         execute!(stdout, MoveTo(x + menu_width - 1, y + row), Print("│"))?;
     }
-    execute!(stdout, MoveTo(x, y + menu_height - 1), Print("└"), Print("─".repeat(menu_width as usize - 2)), Print("┘"))?;
+    execute!(
+        stdout,
+        MoveTo(x, y + menu_height - 1),
+        Print("└"),
+        Print("─".repeat(menu_width as usize - 2)),
+        Print("┘")
+    )?;
 
     // Title
     let title = match app.menu {
@@ -535,19 +609,59 @@ fn render_menu(stdout: &mut io::Stdout, app: &App, term_width: u16, term_height:
                 ("Beginner", Color::Cyan, true),
                 ("Easy", Color::Green, true),
                 ("Medium", Color::Yellow, true),
-                ("Intermediate", Color::Rgb { r: 255, g: 200, b: 100 }, true),
-                ("Hard", Color::Rgb { r: 255, g: 165, b: 0 }, true),
+                (
+                    "Intermediate",
+                    Color::Rgb {
+                        r: 255,
+                        g: 200,
+                        b: 100,
+                    },
+                    true,
+                ),
+                (
+                    "Hard",
+                    Color::Rgb {
+                        r: 255,
+                        g: 165,
+                        b: 0,
+                    },
+                    true,
+                ),
                 ("Expert", Color::Red, true),
                 ("★ Master", Color::Magenta, true),
-                ("★ Extreme", Color::Rgb { r: 255, g: 50, b: 255 }, true),
+                (
+                    "★ Extreme",
+                    Color::Rgb {
+                        r: 255,
+                        g: 50,
+                        b: 255,
+                    },
+                    true,
+                ),
             ]
         } else {
             vec![
                 ("Beginner", Color::Cyan, true),
                 ("Easy", Color::Green, true),
                 ("Medium", Color::Yellow, true),
-                ("Intermediate", Color::Rgb { r: 255, g: 200, b: 100 }, true),
-                ("Hard", Color::Rgb { r: 255, g: 165, b: 0 }, true),
+                (
+                    "Intermediate",
+                    Color::Rgb {
+                        r: 255,
+                        g: 200,
+                        b: 100,
+                    },
+                    true,
+                ),
+                (
+                    "Hard",
+                    Color::Rgb {
+                        r: 255,
+                        g: 165,
+                        b: 0,
+                    },
+                    true,
+                ),
                 ("Expert", Color::Red, true),
             ]
         };
@@ -626,7 +740,11 @@ fn render_hint(
     let x = term_width.saturating_sub(box_width) / 2;
     let y = term_height.saturating_sub(box_height) / 2;
 
-    let bg = Color::Rgb { r: 25, g: 45, b: 25 };
+    let bg = Color::Rgb {
+        r: 25,
+        g: 45,
+        b: 25,
+    };
 
     // Background
     for row in 0..box_height {
@@ -678,8 +796,10 @@ fn render_win_screen(
     for y in 0..term_height {
         for x in 0..term_width {
             let (ch, color) = app.win_screen.background.render_at(
-                x as usize, y as usize,
-                term_width as usize, term_height as usize,
+                x as usize,
+                y as usize,
+                term_width as usize,
+                term_height as usize,
                 app.win_screen.frame_count() as f32,
             );
             execute!(
@@ -749,7 +869,11 @@ fn render_win_screen(
         stdout,
         MoveTo(stats_x, msg_y + 3),
         SetForegroundColor(Color::White),
-        SetBackgroundColor(Color::Rgb { r: 30, g: 50, b: 30 }),
+        SetBackgroundColor(Color::Rgb {
+            r: 30,
+            g: 50,
+            b: 30
+        }),
         Print(format!(" {} ", stats))
     )?;
 
@@ -776,14 +900,20 @@ fn render_lose_screen(
     app.lose_screen.resize(term_width, term_height);
 
     // Consistent dark background base
-    let bg_base = Color::Rgb { r: 15, g: 10, b: 12 };
+    let bg_base = Color::Rgb {
+        r: 15,
+        g: 10,
+        b: 12,
+    };
 
     // Background - draw entire screen
     for y in 0..term_height {
         for x in 0..term_width {
             let (ch, color) = app.lose_screen.background.render_at(
-                x as usize, y as usize,
-                term_width as usize, term_height as usize,
+                x as usize,
+                y as usize,
+                term_width as usize,
+                term_height as usize,
                 app.lose_screen.frame_count() as f32,
             );
             execute!(
@@ -821,7 +951,11 @@ fn render_lose_screen(
         execute!(
             stdout,
             MoveTo(banner_x, banner_y + i as u16),
-            SetForegroundColor(Color::Rgb { r: intensity, g: 30, b: 30 }),
+            SetForegroundColor(Color::Rgb {
+                r: intensity,
+                g: 30,
+                b: 30
+            }),
             SetBackgroundColor(bg_base),
             Print(line)
         )?;
@@ -836,7 +970,11 @@ fn render_lose_screen(
     execute!(
         stdout,
         MoveTo(msg_x, msg_y),
-        SetForegroundColor(Color::Rgb { r: pulse as u8, g: 50, b: 50 }),
+        SetForegroundColor(Color::Rgb {
+            r: pulse as u8,
+            g: 50,
+            b: 50
+        }),
         SetBackgroundColor(bg_base),
         Print(msg)
     )?;
@@ -844,7 +982,8 @@ fn render_lose_screen(
     // Stats box
     let stats = format!(
         "Mistakes: {}/{} | Time: {} | Difficulty: {}",
-        app.game.mistakes(), MAX_MISTAKES,
+        app.game.mistakes(),
+        MAX_MISTAKES,
         app.game.elapsed_string(),
         app.game.difficulty()
     );
@@ -853,7 +992,11 @@ fn render_lose_screen(
         stdout,
         MoveTo(stats_x, msg_y + 3),
         SetForegroundColor(Color::Grey),
-        SetBackgroundColor(Color::Rgb { r: 30, g: 20, b: 20 }),
+        SetBackgroundColor(Color::Rgb {
+            r: 30,
+            g: 20,
+            b: 20
+        }),
         Print(format!(" {} ", stats))
     )?;
 
@@ -972,7 +1115,13 @@ fn render_stats_screen(
         SetForegroundColor(streak_color),
         Print(format!("Current Streak: {}", player.current_streak.abs())),
         SetForegroundColor(theme.info),
-        Print(if player.current_streak > 0 { " wins" } else if player.current_streak < 0 { " losses" } else { "" })
+        Print(if player.current_streak > 0 {
+            " wins"
+        } else if player.current_streak < 0 {
+            " losses"
+        } else {
+            ""
+        })
     )?;
     execute!(
         stdout,
@@ -1004,11 +1153,23 @@ fn render_stats_screen(
             sudoku_core::Difficulty::Beginner => Color::Cyan,
             sudoku_core::Difficulty::Easy => Color::Green,
             sudoku_core::Difficulty::Medium => Color::Yellow,
-            sudoku_core::Difficulty::Intermediate => Color::Rgb { r: 255, g: 200, b: 100 },
-            sudoku_core::Difficulty::Hard => Color::Rgb { r: 255, g: 165, b: 0 },
+            sudoku_core::Difficulty::Intermediate => Color::Rgb {
+                r: 255,
+                g: 200,
+                b: 100,
+            },
+            sudoku_core::Difficulty::Hard => Color::Rgb {
+                r: 255,
+                g: 165,
+                b: 0,
+            },
             sudoku_core::Difficulty::Expert => Color::Red,
             sudoku_core::Difficulty::Master => Color::Magenta,
-            sudoku_core::Difficulty::Extreme => Color::Rgb { r: 255, g: 50, b: 255 },
+            sudoku_core::Difficulty::Extreme => Color::Rgb {
+                r: 255,
+                g: 50,
+                b: 255,
+            },
         };
 
         execute!(
@@ -1021,11 +1182,22 @@ fn render_stats_screen(
             stdout,
             MoveTo(col2_x + 2, y + 1),
             SetForegroundColor(theme.info),
-            Print(format!("Games: {} | Wins: {} ({:.0}%)", ds.total_games, ds.wins, ds.win_rate()))
+            Print(format!(
+                "Games: {} | Wins: {} ({:.0}%)",
+                ds.total_games,
+                ds.wins,
+                ds.win_rate()
+            ))
         )?;
 
-        let best_str = ds.best_time_secs.map(format_time).unwrap_or_else(|| "--:--".to_string());
-        let avg_str = ds.avg_time_secs().map(format_time).unwrap_or_else(|| "--:--".to_string());
+        let best_str = ds
+            .best_time_secs
+            .map(format_time)
+            .unwrap_or_else(|| "--:--".to_string());
+        let avg_str = ds
+            .avg_time_secs()
+            .map(format_time)
+            .unwrap_or_else(|| "--:--".to_string());
         execute!(
             stdout,
             MoveTo(col2_x + 2, y + 2),
@@ -1086,7 +1258,9 @@ fn render_leaderboard_screen(
     // Difficulty filter
     let diff_y = 3;
     let difficulties: Vec<&str> = if app.stats.secrets_unlocked() {
-        vec!["Beginner", "Easy", "Medium", "Inter", "Hard", "Expert", "Master", "Extreme"]
+        vec![
+            "Beginner", "Easy", "Medium", "Inter", "Hard", "Expert", "Master", "Extreme",
+        ]
     } else {
         vec!["Beginner", "Easy", "Medium", "Inter", "Hard", "Expert"]
     };
@@ -1109,8 +1283,16 @@ fn render_leaderboard_screen(
     )?;
 
     for (i, name) in difficulties.iter().enumerate() {
-        let color = if i == current_idx { theme.key } else { theme.border };
-        execute!(stdout, SetForegroundColor(color), Print(format!(" {} ", name)))?;
+        let color = if i == current_idx {
+            theme.key
+        } else {
+            theme.border
+        };
+        execute!(
+            stdout,
+            SetForegroundColor(color),
+            Print(format!(" {} ", name))
+        )?;
     }
     execute!(stdout, SetForegroundColor(theme.info), Print(" ▶"))?;
 
@@ -1120,8 +1302,10 @@ fn render_leaderboard_screen(
         stdout,
         MoveTo(4, header_y),
         SetForegroundColor(theme.fg),
-        Print(format!("{:>4} {:>12} {:>8} {:>6} {:>8} {:>10}",
-            "Rank", "Player", "Score", "Time", "Hints", "Verified"))
+        Print(format!(
+            "{:>4} {:>12} {:>8} {:>6} {:>8} {:>10}",
+            "Rank", "Player", "Score", "Time", "Hints", "Verified"
+        ))
     )?;
     execute!(
         stdout,
@@ -1137,9 +1321,13 @@ fn render_leaderboard_screen(
     for (i, entry) in entries.iter().take(max_entries).enumerate() {
         let y = header_y + 2 + i as u16;
         let rank_color = match i {
-            0 => Color::Yellow,      // Gold
-            1 => Color::Grey,        // Silver
-            2 => Color::Rgb { r: 205, g: 127, b: 50 }, // Bronze
+            0 => Color::Yellow, // Gold
+            1 => Color::Grey,   // Silver
+            2 => Color::Rgb {
+                r: 205,
+                g: 127,
+                b: 50,
+            }, // Bronze
             _ => theme.info,
         };
 
@@ -1149,7 +1337,10 @@ fn render_leaderboard_screen(
             SetForegroundColor(rank_color),
             Print(format!("{:>4}", i + 1)),
             SetForegroundColor(theme.fg),
-            Print(format!(" {:>12}", &entry.player_name[..entry.player_name.len().min(12)])),
+            Print(format!(
+                " {:>12}",
+                &entry.player_name[..entry.player_name.len().min(12)]
+            )),
             SetForegroundColor(theme.key),
             Print(format!(" {:>8}", entry.score)),
             SetForegroundColor(theme.info),
@@ -1232,8 +1423,10 @@ fn render_history_screen(
         stdout,
         MoveTo(4, header_y),
         SetForegroundColor(theme.fg),
-        Print(format!("{:>4} {:>8} {:>8} {:>8} {:>6} {:>8} {:>10}",
-            "#", "Result", "Diff", "Time", "Hints", "Errors", "Verified"))
+        Print(format!(
+            "{:>4} {:>8} {:>8} {:>8} {:>6} {:>8} {:>10}",
+            "#", "Result", "Diff", "Time", "Hints", "Errors", "Verified"
+        ))
     )?;
     execute!(
         stdout,
@@ -1246,7 +1439,12 @@ fn render_history_screen(
     let visible_rows = (term_height.saturating_sub(header_y + 6)) as usize;
     let history = stats.recent_games(100);
 
-    for (i, record) in history.iter().skip(app.history_scroll).take(visible_rows).enumerate() {
+    for (i, record) in history
+        .iter()
+        .skip(app.history_scroll)
+        .take(visible_rows)
+        .enumerate()
+    {
         let y = header_y + 2 + i as u16;
         let is_selected = i + app.history_scroll == app.history_scroll;
         let actual_idx = i + app.history_scroll;
@@ -1272,10 +1470,18 @@ fn render_history_screen(
 
         let diff_str = format!("{:?}", record.difficulty);
         let verified_str = if record.verified { "✓" } else { "✗" };
-        let verified_color = if record.verified { theme.success } else { theme.error };
+        let verified_color = if record.verified {
+            theme.success
+        } else {
+            theme.error
+        };
 
         // Highlight selected row
-        let prefix = if actual_idx == app.history_scroll { "▶" } else { " " };
+        let prefix = if actual_idx == app.history_scroll {
+            "▶"
+        } else {
+            " "
+        };
 
         execute!(
             stdout,
@@ -1312,7 +1518,8 @@ fn render_history_screen(
     if history.len() > visible_rows {
         let scroll_y = header_y + 2;
         let scroll_height = visible_rows as u16;
-        let scroll_pos = (app.history_scroll as f32 / history.len() as f32 * scroll_height as f32) as u16;
+        let scroll_pos =
+            (app.history_scroll as f32 / history.len() as f32 * scroll_height as f32) as u16;
 
         for i in 0..scroll_height {
             let ch = if i == scroll_pos { '█' } else { '░' };

@@ -5,6 +5,8 @@
 //! - Test: In-memory mock for testing
 //! - Production: Remote HTTP API
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -209,7 +211,7 @@ impl LeaderboardBackend for LocalLeaderboard {
         let filtered: Vec<LeaderboardEntry> = data
             .entries
             .into_iter()
-            .filter(|e| difficulty.map_or(true, |d| e.difficulty == d))
+            .filter(|e| difficulty.is_none_or(|d| e.difficulty == d))
             .skip(offset)
             .take(limit)
             .enumerate()
@@ -331,7 +333,7 @@ impl LeaderboardBackend for MockLeaderboard {
         let data = self.data.lock().unwrap();
         let filtered: Vec<LeaderboardEntry> = data
             .iter()
-            .filter(|e| difficulty.map_or(true, |d| e.difficulty == d))
+            .filter(|e| difficulty.is_none_or(|d| e.difficulty == d))
             .skip(offset)
             .take(limit)
             .cloned()
@@ -596,7 +598,10 @@ impl std::fmt::Debug for LeaderboardManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LeaderboardManager")
             .field("primary", &self.primary.backend_name())
-            .field("fallback", &self.fallback.as_ref().map(|f| f.backend_name()))
+            .field(
+                "fallback",
+                &self.fallback.as_ref().map(|f| f.backend_name()),
+            )
             .finish()
     }
 }
@@ -713,7 +718,9 @@ impl LeaderboardManager {
         }
 
         // Fetch from backend
-        let entries = self.active_backend().get_leaderboard(difficulty, limit, 0)?;
+        let entries = self
+            .active_backend()
+            .get_leaderboard(difficulty, limit, 0)?;
 
         // Update cache
         {
@@ -730,7 +737,8 @@ impl LeaderboardManager {
         player_name: &str,
         difficulty: Difficulty,
     ) -> LeaderboardResult<Option<usize>> {
-        self.active_backend().get_player_rank(player_name, difficulty)
+        self.active_backend()
+            .get_player_rank(player_name, difficulty)
     }
 
     /// Get backend status info

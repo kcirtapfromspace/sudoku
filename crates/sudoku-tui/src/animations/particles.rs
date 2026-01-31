@@ -83,8 +83,16 @@ pub fn random_dark_color() -> Color {
     match rng.gen_range(0..4) {
         0 => Color::DarkRed,
         1 => Color::DarkGrey,
-        2 => Color::Rgb { r: 100, g: 50, b: 50 },
-        _ => Color::Rgb { r: 80, g: 80, b: 100 },
+        2 => Color::Rgb {
+            r: 100,
+            g: 50,
+            b: 50,
+        },
+        _ => Color::Rgb {
+            r: 80,
+            g: 80,
+            b: 100,
+        },
     }
 }
 

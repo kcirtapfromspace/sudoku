@@ -1,0 +1,46 @@
+name: Build WASM and Trigger Blog Update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/sudoku-wasm/**'
+      - 'crates/sudoku-core/**'
+  workflow_dispatch:
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WASM
+        run: |
+          cd crates/sudoku-wasm
+          wasm-pack build --target web --release
+
+      - name: Commit WASM artifacts
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add crates/sudoku-wasm/www/pkg/
+          git diff --staged --quiet || git commit -m "build: update WASM artifacts [skip ci]"
+          git push
+
+      - name: Trigger blog rebuild
+        env:
+          BLOG_TOKEN: ${{ secrets.BLOG_REPO_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${BLOG_TOKEN}" \
+            https://api.github.com/repos/kcirtapfromspace/kcirtap-blog/dispatches \
+            -d '{"event_type":"wasm-updated"}'

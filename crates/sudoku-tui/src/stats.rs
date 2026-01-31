@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::leaderboard::{self, LeaderboardManager};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -100,7 +102,7 @@ pub struct PlayerStats {
     pub total_wins: usize,
     pub total_losses: usize,
     pub total_abandoned: usize,
-    pub current_streak: i32,  // Positive = win streak, negative = loss streak
+    pub current_streak: i32, // Positive = win streak, negative = loss streak
     pub best_streak: i32,
     pub by_difficulty: HashMap<String, DifficultyStats>,
     /// Whether secret difficulties are unlocked
@@ -219,7 +221,8 @@ impl AntiBot {
         if record.avg_move_time_ms < Self::MIN_AVG_MOVE_TIME_MS && record.moves_count > 10 {
             issues.push(format!(
                 "Avg move time too fast: {}ms (min {}ms)",
-                record.avg_move_time_ms, Self::MIN_AVG_MOVE_TIME_MS
+                record.avg_move_time_ms,
+                Self::MIN_AVG_MOVE_TIME_MS
             ));
         }
 
@@ -227,7 +230,8 @@ impl AntiBot {
         if record.min_move_time_ms < Self::MIN_SINGLE_MOVE_TIME_MS && record.moves_count > 5 {
             issues.push(format!(
                 "Fastest move too quick: {}ms (min {}ms)",
-                record.min_move_time_ms, Self::MIN_SINGLE_MOVE_TIME_MS
+                record.min_move_time_ms,
+                Self::MIN_SINGLE_MOVE_TIME_MS
             ));
         }
 
@@ -235,7 +239,8 @@ impl AntiBot {
         if record.move_time_std_dev < Self::MIN_STD_DEV && record.moves_count > 15 {
             issues.push(format!(
                 "Move timing too consistent: std_dev={:.1}ms (min {:.1}ms)",
-                record.move_time_std_dev, Self::MIN_STD_DEV
+                record.move_time_std_dev,
+                Self::MIN_STD_DEV
             ));
         }
 
@@ -501,7 +506,8 @@ impl StatsManager {
     /// Add entry to leaderboard (maintains sorted order, top 100)
     fn add_to_leaderboard(&mut self, entry: LeaderboardEntry) {
         // Find insertion point (sorted by score ascending - lower is better)
-        let pos = self.leaderboard
+        let pos = self
+            .leaderboard
             .iter()
             .position(|e| e.score > entry.score)
             .unwrap_or(self.leaderboard.len());
@@ -574,31 +580,45 @@ impl StatsManager {
         // Method 1: Perfect Game (Expert+, 0 hints, 0 mistakes)
         if self.player.perfect_game_achieved {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some("Perfect Game: Won Expert+ with no hints or mistakes!".to_string());
+            self.player.unlock_reason =
+                Some("Perfect Game: Won Expert+ with no hints or mistakes!".to_string());
             return;
         }
 
         // Method 2: Speed Demon (Hard+ under 5 minutes)
         if self.player.speed_demon_achieved {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some("Speed Demon: Won Hard+ in under 5 minutes!".to_string());
+            self.player.unlock_reason =
+                Some("Speed Demon: Won Hard+ in under 5 minutes!".to_string());
             return;
         }
 
         // Method 3: Win Streak (5 consecutive wins)
         if self.player.best_streak >= WIN_STREAK_TO_UNLOCK as i32 {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some(format!("Win Streak: {} consecutive wins!", WIN_STREAK_TO_UNLOCK));
+            self.player.unlock_reason = Some(format!(
+                "Win Streak: {} consecutive wins!",
+                WIN_STREAK_TO_UNLOCK
+            ));
             return;
         }
 
         // Method 4: Completionist (win on all 4 standard difficulties)
-        let standard_diffs = ["Beginner", "Easy", "Medium", "Intermediate", "Hard", "Expert"];
-        let all_standard_won = standard_diffs.iter()
+        let standard_diffs = [
+            "Beginner",
+            "Easy",
+            "Medium",
+            "Intermediate",
+            "Hard",
+            "Expert",
+        ];
+        let all_standard_won = standard_diffs
+            .iter()
             .all(|d| self.player.difficulties_won.contains(&d.to_string()));
         if all_standard_won {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some("Completionist: Won on all standard difficulties!".to_string());
+            self.player.unlock_reason =
+                Some("Completionist: Won on all standard difficulties!".to_string());
             return;
         }
 
@@ -612,21 +632,26 @@ impl StatsManager {
         // Method 6: Century (100 total wins)
         if self.player.total_wins >= CENTURY_WINS_TO_UNLOCK {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some(format!("Century: {} total wins!", CENTURY_WINS_TO_UNLOCK));
+            self.player.unlock_reason =
+                Some(format!("Century: {} total wins!", CENTURY_WINS_TO_UNLOCK));
             return;
         }
 
         // Method 7: No Notes Master (Hard+ without using notes)
         if self.player.no_notes_master_achieved {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some("No Notes Master: Won Hard+ without using notes!".to_string());
+            self.player.unlock_reason =
+                Some("No Notes Master: Won Hard+ without using notes!".to_string());
             return;
         }
 
         // Method 8: Expert Wins (10 wins on Expert)
         if self.player.expert_wins >= EXPERT_WINS_TO_UNLOCK {
             self.player.secret_unlocked = true;
-            self.player.unlock_reason = Some(format!("Expert Master: {} wins on Expert difficulty!", EXPERT_WINS_TO_UNLOCK));
+            self.player.unlock_reason = Some(format!(
+                "Expert Master: {} wins on Expert difficulty!",
+                EXPERT_WINS_TO_UNLOCK
+            ));
             return;
         }
 
@@ -634,7 +659,6 @@ impl StatsManager {
         if Self::check_secret_date() {
             self.player.secret_unlocked = true;
             self.player.unlock_reason = Some("Secret Date: Playing on 9/9!".to_string());
-            return;
         }
     }
 
@@ -756,7 +780,7 @@ impl StatsManager {
         // Fallback to local leaderboard
         self.leaderboard
             .iter()
-            .filter(|e| difficulty.map_or(true, |d| e.difficulty == d))
+            .filter(|e| difficulty.is_none_or(|d| e.difficulty == d))
             .take(limit)
             .enumerate()
             .map(|(i, e)| leaderboard::LeaderboardEntry {

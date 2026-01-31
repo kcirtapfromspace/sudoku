@@ -2,11 +2,12 @@ use crate::{Difficulty, Grid, Position, Solver};
 use serde::{Deserialize, Serialize};
 
 /// Symmetry type for puzzle generation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SymmetryType {
     /// No symmetry
     None,
     /// 180-degree rotational symmetry
+    #[default]
     Rotational180,
     /// 90-degree rotational symmetry
     Rotational90,
@@ -16,12 +17,6 @@ pub enum SymmetryType {
     Vertical,
     /// Diagonal symmetry
     Diagonal,
-}
-
-impl Default for SymmetryType {
-    fn default() -> Self {
-        Self::Rotational180
-    }
 }
 
 /// Configuration for puzzle generation
@@ -224,7 +219,9 @@ impl Generator {
             Difficulty::Beginner => actual == Difficulty::Beginner,
             Difficulty::Easy => actual == Difficulty::Beginner || actual == Difficulty::Easy,
             Difficulty::Medium => actual == Difficulty::Easy || actual == Difficulty::Medium,
-            Difficulty::Intermediate => actual == Difficulty::Medium || actual == Difficulty::Intermediate,
+            Difficulty::Intermediate => {
+                actual == Difficulty::Medium || actual == Difficulty::Intermediate
+            }
             Difficulty::Hard => actual == Difficulty::Intermediate || actual == Difficulty::Hard,
             Difficulty::Expert => actual == Difficulty::Hard || actual == Difficulty::Expert,
             Difficulty::Master => actual == Difficulty::Expert || actual == Difficulty::Master,

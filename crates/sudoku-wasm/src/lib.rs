@@ -3,21 +3,26 @@
 //! This crate provides a browser-based Sudoku game that looks and feels
 //! like the terminal UI version.
 
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::manual_clamp)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::wrong_self_convention)]
+
 use sudoku_core::Difficulty;
 use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, KeyboardEvent};
 
-mod theme;
-mod render;
-mod game;
 mod animations;
+mod game;
+mod render;
+mod theme;
 
 // WASM tests require wasm-pack test to run
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests;
 
-pub use theme::Theme;
 pub use game::GameState;
+pub use theme::Theme;
 
 // Initialize panic hook for better error messages
 #[wasm_bindgen(start)]
@@ -282,6 +287,14 @@ impl SudokuGame {
 
     /// Render the game to canvas
     fn render(&self) {
-        render::render_game(&self.ctx, &self.state, &self.theme, self.width, self.height, self.cell_size, self.font_size);
+        render::render_game(
+            &self.ctx,
+            &self.state,
+            &self.theme,
+            self.width,
+            self.height,
+            self.cell_size,
+            self.font_size,
+        );
     }
 }

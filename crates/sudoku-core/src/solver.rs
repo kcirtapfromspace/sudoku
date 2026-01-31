@@ -158,21 +158,12 @@ pub struct Hint {
 }
 
 /// Configuration for the solver
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SolverConfig {
     /// Maximum technique level to use (None = use all including backtracking)
     pub max_technique: Option<Technique>,
     /// Whether to track techniques used
     pub track_techniques: bool,
-}
-
-impl Default for SolverConfig {
-    fn default() -> Self {
-        Self {
-            max_technique: None,
-            track_techniques: false,
-        }
-    }
 }
 
 /// Sudoku solver with human-like techniques and backtracking fallback
@@ -421,12 +412,17 @@ impl Solver {
                 }
             }
             Technique::HiddenSingle => Difficulty::Medium,
-            Technique::NakedPair | Technique::HiddenPair |
-            Technique::NakedTriple | Technique::HiddenTriple => Difficulty::Intermediate,
+            Technique::NakedPair
+            | Technique::HiddenPair
+            | Technique::NakedTriple
+            | Technique::HiddenTriple => Difficulty::Intermediate,
             Technique::PointingPair | Technique::BoxLineReduction => Difficulty::Hard,
             Technique::XWing | Technique::Swordfish | Technique::Jellyfish => Difficulty::Expert,
-            Technique::XYWing | Technique::XYZWing | Technique::WWing |
-            Technique::SimpleColoring | Technique::XChain => Difficulty::Master,
+            Technique::XYWing
+            | Technique::XYZWing
+            | Technique::WWing
+            | Technique::SimpleColoring
+            | Technique::XChain => Difficulty::Master,
             _ => Difficulty::Extreme,
         }
     }
@@ -481,7 +477,9 @@ impl Solver {
                     hint_type: HintType::SetValue { pos, value },
                     explanation: format!(
                         "Cell ({}, {}) can only be {} - it's the only candidate left.",
-                        pos.row + 1, pos.col + 1, value
+                        pos.row + 1,
+                        pos.col + 1,
+                        value
                     ),
                     involved_cells: vec![pos],
                 });
@@ -531,7 +529,10 @@ impl Solver {
                         hint_type: HintType::SetValue { pos, value },
                         explanation: format!(
                             "{} can only go in cell ({}, {}) in row {}.",
-                            value, pos.row + 1, pos.col + 1, row + 1
+                            value,
+                            pos.row + 1,
+                            pos.col + 1,
+                            row + 1
                         ),
                         involved_cells: vec![pos],
                     });
@@ -556,7 +557,10 @@ impl Solver {
                         hint_type: HintType::SetValue { pos, value },
                         explanation: format!(
                             "{} can only go in cell ({}, {}) in column {}.",
-                            value, pos.row + 1, pos.col + 1, col + 1
+                            value,
+                            pos.row + 1,
+                            pos.col + 1,
+                            col + 1
                         ),
                         involved_cells: vec![pos],
                     });
@@ -581,7 +585,10 @@ impl Solver {
                         hint_type: HintType::SetValue { pos, value },
                         explanation: format!(
                             "{} can only go in cell ({}, {}) in box {}.",
-                            value, pos.row + 1, pos.col + 1, box_idx + 1
+                            value,
+                            pos.row + 1,
+                            pos.col + 1,
+                            box_idx + 1
                         ),
                         involved_cells: vec![pos],
                     });
@@ -724,8 +731,10 @@ impl Solver {
                             let cand1 = grid.get_candidates(pos1);
                             let cand2 = grid.get_candidates(pos2);
 
-                            let to_remove1: Vec<u8> = cand1.iter().filter(|&v| v != v1 && v != v2).collect();
-                            let to_remove2: Vec<u8> = cand2.iter().filter(|&v| v != v1 && v != v2).collect();
+                            let to_remove1: Vec<u8> =
+                                cand1.iter().filter(|&v| v != v1 && v != v2).collect();
+                            let to_remove2: Vec<u8> =
+                                cand2.iter().filter(|&v| v != v1 && v != v2).collect();
 
                             if !to_remove1.is_empty() {
                                 return Some(Hint {
@@ -736,9 +745,13 @@ impl Solver {
                                     },
                                     explanation: format!(
                                         "Hidden pair {{{}, {}}} in {} at ({}, {}) and ({}, {}).",
-                                        v1, v2, unit_name,
-                                        pos1.row + 1, pos1.col + 1,
-                                        pos2.row + 1, pos2.col + 1
+                                        v1,
+                                        v2,
+                                        unit_name,
+                                        pos1.row + 1,
+                                        pos1.col + 1,
+                                        pos2.row + 1,
+                                        pos2.col + 1
                                     ),
                                     involved_cells: vec![pos1, pos2],
                                 });
@@ -752,9 +765,13 @@ impl Solver {
                                     },
                                     explanation: format!(
                                         "Hidden pair {{{}, {}}} in {} at ({}, {}) and ({}, {}).",
-                                        v1, v2, unit_name,
-                                        pos1.row + 1, pos1.col + 1,
-                                        pos2.row + 1, pos2.col + 1
+                                        v1,
+                                        v2,
+                                        unit_name,
+                                        pos1.row + 1,
+                                        pos1.col + 1,
+                                        pos2.row + 1,
+                                        pos2.col + 1
                                     ),
                                     involved_cells: vec![pos1, pos2],
                                 });
@@ -814,8 +831,11 @@ impl Solver {
 
                             let combined = cand1.union(&cand2).union(&cand3);
 
-                            if combined.count() == 3 &&
-                               cand1.count() <= 3 && cand2.count() <= 3 && cand3.count() <= 3 {
+                            if combined.count() == 3
+                                && cand1.count() <= 3
+                                && cand2.count() <= 3
+                                && cand3.count() <= 3
+                            {
                                 let triple_values: Vec<u8> = combined.iter().collect();
 
                                 // Check if it eliminates anything
@@ -929,7 +949,9 @@ impl Solver {
             for value in 1..=9u8 {
                 let cells_with_value: Vec<Position> = box_positions
                     .iter()
-                    .filter(|&&pos| grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value))
+                    .filter(|&&pos| {
+                        grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value)
+                    })
                     .copied()
                     .collect();
 
@@ -1019,7 +1041,10 @@ impl Solver {
                 if cols_with_value.len() >= 2 && cols_with_value.len() <= 3 {
                     // Check if all in same box
                     let first_box = Position::new(row, cols_with_value[0]).box_index();
-                    if cols_with_value.iter().all(|&col| Position::new(row, col).box_index() == first_box) {
+                    if cols_with_value
+                        .iter()
+                        .all(|&col| Position::new(row, col).box_index() == first_box)
+                    {
                         // Eliminate from rest of box
                         let box_positions = Self::box_positions(first_box);
                         for &pos in &box_positions {
@@ -1059,7 +1084,10 @@ impl Solver {
 
                 if rows_with_value.len() >= 2 && rows_with_value.len() <= 3 {
                     let first_box = Position::new(rows_with_value[0], col).box_index();
-                    if rows_with_value.iter().all(|&row| Position::new(row, col).box_index() == first_box) {
+                    if rows_with_value
+                        .iter()
+                        .all(|&row| Position::new(row, col).box_index() == first_box)
+                    {
                         let box_positions = Self::box_positions(first_box);
                         for &pos in &box_positions {
                             if pos.col != col
@@ -1131,10 +1159,14 @@ impl Solver {
                             for row in 0..9 {
                                 if !rows.contains(&row) {
                                     let pos = Position::new(row, col);
-                                    if grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value) {
+                                    if grid.cell(pos).is_empty()
+                                        && grid.get_candidates(pos).contains(value)
+                                    {
                                         let involved: Vec<Position> = rows
                                             .iter()
-                                            .flat_map(|&r| cols.iter().map(move |&c| Position::new(r, c)))
+                                            .flat_map(|&r| {
+                                                cols.iter().map(move |&c| Position::new(r, c))
+                                            })
                                             .collect();
                                         return Some(Hint {
                                             technique: Technique::XWing,
@@ -1182,10 +1214,14 @@ impl Solver {
                             for col in 0..9 {
                                 if !cols.contains(&col) {
                                     let pos = Position::new(row, col);
-                                    if grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value) {
+                                    if grid.cell(pos).is_empty()
+                                        && grid.get_candidates(pos).contains(value)
+                                    {
                                         let involved: Vec<Position> = rows
                                             .iter()
-                                            .flat_map(|&r| cols.iter().map(move |&c| Position::new(r, c)))
+                                            .flat_map(|&r| {
+                                                cols.iter().map(move |&c| Position::new(r, c))
+                                            })
                                             .collect();
                                         return Some(Hint {
                                             technique: Technique::XWing,
@@ -1261,7 +1297,9 @@ impl Solver {
                                 for row in 0..9 {
                                     if !rows.contains(&row) {
                                         let pos = Position::new(row, col);
-                                        if grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value) {
+                                        if grid.cell(pos).is_empty()
+                                            && grid.get_candidates(pos).contains(value)
+                                        {
                                             return Some(Hint {
                                                 technique: Technique::Swordfish,
                                                 hint_type: HintType::EliminateCandidates {
@@ -1272,7 +1310,10 @@ impl Solver {
                                                     "Swordfish on {} in rows {:?}, columns {:?}.",
                                                     value,
                                                     rows.iter().map(|r| r + 1).collect::<Vec<_>>(),
-                                                    all_cols.iter().map(|c| c + 1).collect::<Vec<_>>()
+                                                    all_cols
+                                                        .iter()
+                                                        .map(|c| c + 1)
+                                                        .collect::<Vec<_>>()
                                                 ),
                                                 involved_cells: vec![],
                                             });
@@ -1318,7 +1359,9 @@ impl Solver {
                                 for col in 0..9 {
                                     if !cols.contains(&col) {
                                         let pos = Position::new(row, col);
-                                        if grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value) {
+                                        if grid.cell(pos).is_empty()
+                                            && grid.get_candidates(pos).contains(value)
+                                        {
                                             return Some(Hint {
                                                 technique: Technique::Swordfish,
                                                 hint_type: HintType::EliminateCandidates {
@@ -1329,7 +1372,10 @@ impl Solver {
                                                     "Swordfish on {} in columns {:?}, rows {:?}.",
                                                     value,
                                                     cols.iter().map(|c| c + 1).collect::<Vec<_>>(),
-                                                    all_rows.iter().map(|r| r + 1).collect::<Vec<_>>()
+                                                    all_rows
+                                                        .iter()
+                                                        .map(|r| r + 1)
+                                                        .collect::<Vec<_>>()
                                                 ),
                                                 involved_cells: vec![],
                                             });
@@ -1391,14 +1437,17 @@ impl Solver {
                             all_cols.dedup();
 
                             if all_cols.len() == 4 {
-                                let rows = [row_data[i].0, row_data[j].0, row_data[k].0, row_data[l].0];
+                                let rows =
+                                    [row_data[i].0, row_data[j].0, row_data[k].0, row_data[l].0];
                                 let mut eliminated = false;
 
                                 for &col in &all_cols {
                                     for row in 0..9 {
                                         if !rows.contains(&row) {
                                             let pos = Position::new(row, col);
-                                            if grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value) {
+                                            if grid.cell(pos).is_empty()
+                                                && grid.get_candidates(pos).contains(value)
+                                            {
                                                 grid.cell_mut(pos).remove_candidate(value);
                                                 eliminated = true;
                                             }
@@ -1444,11 +1493,17 @@ impl Solver {
                 }
 
                 // wing1 must share exactly one value with pivot
-                let (shared1, z1) = if a == x { (x, b) }
-                    else if a == y { (y, b) }
-                    else if b == x { (x, a) }
-                    else if b == y { (y, a) }
-                    else { continue };
+                let (shared1, z1) = if a == x {
+                    (x, b)
+                } else if a == y {
+                    (y, b)
+                } else if b == x {
+                    (x, a)
+                } else if b == y {
+                    (y, a)
+                } else {
+                    continue;
+                };
 
                 for &(wing2, c, d) in &bivalues {
                     if wing2 == pivot || wing2 == wing1 || !self.sees(pivot, wing2) {
@@ -1464,7 +1519,9 @@ impl Solver {
                     if has_other && has_z {
                         // Found XY-Wing! z1 can be eliminated from cells that see both wings
                         for pos in grid.empty_positions() {
-                            if pos != pivot && pos != wing1 && pos != wing2
+                            if pos != pivot
+                                && pos != wing1
+                                && pos != wing2
                                 && self.sees(pos, wing1)
                                 && self.sees(pos, wing2)
                                 && grid.get_candidates(pos).contains(z1)
@@ -1549,7 +1606,8 @@ impl Solver {
                     }
 
                     // Find the common value (z) that appears in both wings
-                    let common: Vec<u8> = xyz.iter()
+                    let common: Vec<u8> = xyz
+                        .iter()
                         .filter(|&&v| cand1.contains(v) && cand2.contains(v))
                         .copied()
                         .collect();
@@ -1562,7 +1620,9 @@ impl Solver {
 
                     // Eliminate z from cells that see all three (pivot and both wings)
                     for pos in grid.empty_positions() {
-                        if pos != pivot && pos != wing1 && pos != wing2
+                        if pos != pivot
+                            && pos != wing1
+                            && pos != wing2
                             && self.sees(pos, pivot)
                             && self.sees(pos, wing1)
                             && self.sees(pos, wing2)
@@ -1618,7 +1678,8 @@ impl Solver {
                         let positions_in_row: Vec<usize> = (0..9)
                             .filter(|&col| {
                                 let pos = Position::new(row, col);
-                                grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value)
+                                grid.cell(pos).is_empty()
+                                    && grid.get_candidates(pos).contains(value)
                             })
                             .collect();
 
@@ -1629,11 +1690,13 @@ impl Solver {
                             // Check if pos1 sees link1 and pos2 sees link2 (or vice versa)
                             let other_value = if value == x { y } else { x };
 
-                            if (self.sees(pos1, link1) && self.sees(pos2, link2)) ||
-                               (self.sees(pos1, link2) && self.sees(pos2, link1)) {
+                            if (self.sees(pos1, link1) && self.sees(pos2, link2))
+                                || (self.sees(pos1, link2) && self.sees(pos2, link1))
+                            {
                                 // W-Wing found! Eliminate other_value from cells seeing both pos1 and pos2
                                 for pos in grid.empty_positions() {
-                                    if pos != pos1 && pos != pos2
+                                    if pos != pos1
+                                        && pos != pos2
                                         && self.sees(pos, pos1)
                                         && self.sees(pos, pos2)
                                         && grid.get_candidates(pos).contains(other_value)
@@ -1653,7 +1716,8 @@ impl Solver {
                         let positions_in_col: Vec<usize> = (0..9)
                             .filter(|&row| {
                                 let pos = Position::new(row, col);
-                                grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value)
+                                grid.cell(pos).is_empty()
+                                    && grid.get_candidates(pos).contains(value)
                             })
                             .collect();
 
@@ -1663,10 +1727,12 @@ impl Solver {
 
                             let other_value = if value == x { y } else { x };
 
-                            if (self.sees(pos1, link1) && self.sees(pos2, link2)) ||
-                               (self.sees(pos1, link2) && self.sees(pos2, link1)) {
+                            if (self.sees(pos1, link1) && self.sees(pos2, link2))
+                                || (self.sees(pos1, link2) && self.sees(pos2, link1))
+                            {
                                 for pos in grid.empty_positions() {
-                                    if pos != pos1 && pos != pos2
+                                    if pos != pos1
+                                        && pos != pos2
                                         && self.sees(pos, pos1)
                                         && self.sees(pos, pos2)
                                         && grid.get_candidates(pos).contains(other_value)
@@ -1695,7 +1761,9 @@ impl Solver {
             for row in 0..9 {
                 let positions: Vec<Position> = (0..9)
                     .map(|col| Position::new(row, col))
-                    .filter(|&pos| grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value))
+                    .filter(|&pos| {
+                        grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value)
+                    })
                     .collect();
                 if positions.len() == 2 {
                     links.push((positions[0], positions[1]));
@@ -1706,7 +1774,9 @@ impl Solver {
             for col in 0..9 {
                 let positions: Vec<Position> = (0..9)
                     .map(|row| Position::new(row, col))
-                    .filter(|&pos| grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value))
+                    .filter(|&pos| {
+                        grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value)
+                    })
                     .collect();
                 if positions.len() == 2 {
                     links.push((positions[0], positions[1]));
@@ -1717,7 +1787,9 @@ impl Solver {
             for box_idx in 0..9 {
                 let positions: Vec<Position> = Self::box_positions(box_idx)
                     .into_iter()
-                    .filter(|&pos| grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value))
+                    .filter(|&pos| {
+                        grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(value)
+                    })
                     .collect();
                 if positions.len() == 2 {
                     links.push((positions[0], positions[1]));
@@ -1729,10 +1801,12 @@ impl Solver {
             }
 
             // Build connected chains using colors (true/false)
-            let mut colors: std::collections::HashMap<Position, bool> = std::collections::HashMap::new();
+            let mut colors: std::collections::HashMap<Position, bool> =
+                std::collections::HashMap::new();
 
             // Start from first link
-            let mut to_process: Vec<(Position, bool)> = vec![(links[0].0, true), (links[0].1, false)];
+            let mut to_process: Vec<(Position, bool)> =
+                vec![(links[0].0, true), (links[0].1, false)];
 
             while let Some((pos, color)) = to_process.pop() {
                 if colors.contains_key(&pos) {
@@ -1755,8 +1829,16 @@ impl Solver {
             }
 
             // Rule 2: If two cells of the same color see each other, that color is false
-            let true_cells: Vec<Position> = colors.iter().filter(|&(_, &c)| c).map(|(&p, _)| p).collect();
-            let false_cells: Vec<Position> = colors.iter().filter(|&(_, &c)| !c).map(|(&p, _)| p).collect();
+            let true_cells: Vec<Position> = colors
+                .iter()
+                .filter(|&(_, &c)| c)
+                .map(|(&p, _)| p)
+                .collect();
+            let false_cells: Vec<Position> = colors
+                .iter()
+                .filter(|&(_, &c)| !c)
+                .map(|(&p, _)| p)
+                .collect();
 
             // Check if same-colored cells see each other
             for i in 0..true_cells.len() {
@@ -1865,6 +1947,7 @@ impl Solver {
             .collect();
 
         // Look for rectangles in two rows and two columns
+        #[allow(clippy::needless_range_loop)]
         for i in 0..bivalues.len() {
             let (pos1, a, b) = bivalues[i];
 
@@ -1896,8 +1979,9 @@ impl Solver {
                         corner4 = Position::new(other_row, pos2.col);
 
                         // Check if corners 3 and 4 are in same box (required for deadly pattern)
-                        if corner3.box_index() != corner4.box_index() &&
-                           pos1.box_index() != pos2.box_index() {
+                        if corner3.box_index() != corner4.box_index()
+                            && pos1.box_index() != pos2.box_index()
+                        {
                             continue;
                         }
 
@@ -1905,8 +1989,13 @@ impl Solver {
                         let cand4 = grid.get_candidates(corner4);
 
                         // Type 1: One corner has extra candidates
-                        if cand3.count() == 2 && cand3.contains(a) && cand3.contains(b) &&
-                           cand4.count() > 2 && cand4.contains(a) && cand4.contains(b) {
+                        if cand3.count() == 2
+                            && cand3.contains(a)
+                            && cand3.contains(b)
+                            && cand4.count() > 2
+                            && cand4.contains(a)
+                            && cand4.contains(b)
+                        {
                             // corner4 must have at least one of a,b removed to break the pattern
                             // Actually Type 1 means corner4 can't be just {a,b}
                             // We eliminate a and b from corner4 if it would create deadly pattern
@@ -1915,15 +2004,18 @@ impl Solver {
 
                         // Type 2: Two corners have same extra candidate
                         if cand3.count() == 3 && cand4.count() == 3 {
-                            let extra3: Vec<u8> = cand3.iter().filter(|&v| v != a && v != b).collect();
-                            let extra4: Vec<u8> = cand4.iter().filter(|&v| v != a && v != b).collect();
+                            let extra3: Vec<u8> =
+                                cand3.iter().filter(|&v| v != a && v != b).collect();
+                            let extra4: Vec<u8> =
+                                cand4.iter().filter(|&v| v != a && v != b).collect();
 
                             if extra3.len() == 1 && extra4.len() == 1 && extra3[0] == extra4[0] {
                                 let extra = extra3[0];
 
                                 // Eliminate extra from cells that see both corner3 and corner4
                                 for pos in grid.empty_positions() {
-                                    if pos != corner3 && pos != corner4
+                                    if pos != corner3
+                                        && pos != corner4
                                         && self.sees(pos, corner3)
                                         && self.sees(pos, corner4)
                                         && grid.get_candidates(pos).contains(extra)
@@ -1945,8 +2037,9 @@ impl Solver {
                         corner3 = Position::new(pos1.row, other_col);
                         corner4 = Position::new(pos2.row, other_col);
 
-                        if corner3.box_index() != corner4.box_index() &&
-                           pos1.box_index() != pos2.box_index() {
+                        if corner3.box_index() != corner4.box_index()
+                            && pos1.box_index() != pos2.box_index()
+                        {
                             continue;
                         }
 
@@ -1954,14 +2047,17 @@ impl Solver {
                         let cand4 = grid.get_candidates(corner4);
 
                         if cand3.count() == 3 && cand4.count() == 3 {
-                            let extra3: Vec<u8> = cand3.iter().filter(|&v| v != a && v != b).collect();
-                            let extra4: Vec<u8> = cand4.iter().filter(|&v| v != a && v != b).collect();
+                            let extra3: Vec<u8> =
+                                cand3.iter().filter(|&v| v != a && v != b).collect();
+                            let extra4: Vec<u8> =
+                                cand4.iter().filter(|&v| v != a && v != b).collect();
 
                             if extra3.len() == 1 && extra4.len() == 1 && extra3[0] == extra4[0] {
                                 let extra = extra3[0];
 
                                 for pos in grid.empty_positions() {
-                                    if pos != corner3 && pos != corner4
+                                    if pos != corner3
+                                        && pos != corner4
                                         && self.sees(pos, corner3)
                                         && self.sees(pos, corner4)
                                         && grid.get_candidates(pos).contains(extra)

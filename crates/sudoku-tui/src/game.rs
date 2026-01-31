@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use sudoku_core::{Difficulty, Generator, Grid, Hint, Position, Solver};
 use std::time::{Duration, Instant};
+use sudoku_core::{Difficulty, Generator, Grid, Hint, Position, Solver};
 
 /// A single move in the game (for undo/redo)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,7 +74,9 @@ impl Game {
         let original_puzzle = grid.to_string_compact();
 
         let solver = Solver::new();
-        let solution = solver.solve(&grid).expect("Generated puzzle should be solvable");
+        let solution = solver
+            .solve(&grid)
+            .expect("Generated puzzle should be solvable");
 
         // Clear all candidates - players add their own notes manually
         grid.clear_all_candidates();
@@ -391,7 +393,9 @@ impl Game {
             new_candidates: 0,
         };
 
-        self.grid.cell_mut(pos).set_candidates(sudoku_core::BitSet::empty());
+        self.grid
+            .cell_mut(pos)
+            .set_candidates(sudoku_core::BitSet::empty());
 
         self.undo_stack.push(game_move);
         self.redo_stack.clear();
@@ -501,8 +505,14 @@ impl Game {
                     // Undo remove = add
                     self.grid.cell_mut(*pos).add_candidate(*value);
                 }
-                GameMove::SetCandidates { pos, old_candidates, .. } => {
-                    self.grid.cell_mut(*pos).set_candidates(sudoku_core::BitSet::from_raw(*old_candidates));
+                GameMove::SetCandidates {
+                    pos,
+                    old_candidates,
+                    ..
+                } => {
+                    self.grid
+                        .cell_mut(*pos)
+                        .set_candidates(sudoku_core::BitSet::from_raw(*old_candidates));
                 }
             }
             self.redo_stack.push(game_move);
@@ -533,8 +543,14 @@ impl Game {
                 GameMove::RemoveCandidate { pos, value } => {
                     self.grid.cell_mut(*pos).remove_candidate(*value);
                 }
-                GameMove::SetCandidates { pos, new_candidates, .. } => {
-                    self.grid.cell_mut(*pos).set_candidates(sudoku_core::BitSet::from_raw(*new_candidates));
+                GameMove::SetCandidates {
+                    pos,
+                    new_candidates,
+                    ..
+                } => {
+                    self.grid
+                        .cell_mut(*pos)
+                        .set_candidates(sudoku_core::BitSet::from_raw(*new_candidates));
                 }
             }
             self.undo_stack.push(game_move);
@@ -588,7 +604,7 @@ impl Game {
         for row in 0..9 {
             for col in 0..9 {
                 if let Some(v) = values[row][col] {
-                    if v >= 1 && v <= 9 {
+                    if (1..=9).contains(&v) {
                         counts[(v - 1) as usize] += 1;
                     }
                 }
@@ -764,7 +780,7 @@ impl Game {
             mistakes: state.mistakes,
             last_move_time: now,
             move_times_ms: Vec::new(), // Can't restore move times from save
-            notes_used: false, // Reset for loaded game
+            notes_used: false,         // Reset for loaded game
         })
     }
 }

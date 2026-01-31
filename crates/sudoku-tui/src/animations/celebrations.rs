@@ -98,8 +98,10 @@ impl CelebrationManager {
         // Check for newly completed columns
         for i in 0..9 {
             if completed_cols[i] && !self.prev_completed_cols[i] {
-                self.celebrations
-                    .push(Celebration::new(CelebrationType::Column(i), self.frame_count));
+                self.celebrations.push(Celebration::new(
+                    CelebrationType::Column(i),
+                    self.frame_count,
+                ));
             }
         }
 
@@ -117,8 +119,7 @@ impl CelebrationManager {
         self.prev_completed_boxes = completed_boxes;
 
         // Remove expired celebrations
-        self.celebrations
-            .retain(|c| c.is_active(self.frame_count));
+        self.celebrations.retain(|c| c.is_active(self.frame_count));
     }
 
     /// Reset all celebrations (for new game)
@@ -203,13 +204,11 @@ impl CelebrationManager {
                     b: (b as f32 + (target_b - b as f32) * blend) as u8,
                 }
             }
-            Color::White | Color::Grey | Color::DarkGrey => {
-                Color::Rgb {
-                    r: (target_r * intensity) as u8,
-                    g: (target_g * intensity) as u8,
-                    b: (target_b * intensity) as u8,
-                }
-            }
+            Color::White | Color::Grey | Color::DarkGrey => Color::Rgb {
+                r: (target_r * intensity) as u8,
+                g: (target_g * intensity) as u8,
+                b: (target_b * intensity) as u8,
+            },
             _ => {
                 // For other colors, return celebration color if active
                 if intensity > 0.3 {
@@ -239,7 +238,9 @@ impl CelebrationManager {
 
         let messages = match recent.celebration_type {
             CelebrationType::Row(_) => &["Row Complete!", "Nice Row!", "Row Cleared!"][..],
-            CelebrationType::Column(_) => &["Column Complete!", "Nice Column!", "Column Cleared!"][..],
+            CelebrationType::Column(_) => {
+                &["Column Complete!", "Nice Column!", "Column Cleared!"][..]
+            }
             CelebrationType::Box(_) => &["Box Complete!", "Nice Box!", "Section Cleared!"][..],
         };
 

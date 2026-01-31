@@ -1,8 +1,8 @@
 //! Game state management for WASM Sudoku
 
+use crate::animations::{LoseScreen, WinScreen};
 use serde::{Deserialize, Serialize};
 use sudoku_core::{BitSet, Difficulty, Generator, Grid, Hint, HintType, Position, Solver};
-use crate::animations::{WinScreen, LoseScreen};
 
 /// Maximum mistakes before game over
 pub const MAX_MISTAKES: usize = 3;
@@ -166,13 +166,13 @@ impl GameState {
         // Check win/lose conditions
         if self.screen == ScreenState::Playing {
             if self.is_complete() {
-                self.paused_elapsed = Self::now() - self.start_time + self.paused_elapsed;
+                self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Win;
                 // Create win screen animation
                 let seed = (Self::now() * 1000.0) as u64;
                 self.win_screen = Some(WinScreen::new(seed));
             } else if self.mistakes >= MAX_MISTAKES {
-                self.paused_elapsed = Self::now() - self.start_time + self.paused_elapsed;
+                self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Lose;
                 // Create lose screen animation
                 let seed = (Self::now() * 1000.0) as u64;
@@ -337,7 +337,7 @@ impl GameState {
 
             // Pause
             "p" => {
-                self.paused_elapsed = Self::now() - self.start_time + self.paused_elapsed;
+                self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Paused;
             }
 
@@ -433,7 +433,9 @@ impl GameState {
         if cell.is_given() || cell.is_filled() {
             return;
         }
-        self.grid.cell_mut(self.cursor).set_candidates(BitSet::empty());
+        self.grid
+            .cell_mut(self.cursor)
+            .set_candidates(BitSet::empty());
         self.show_message("Cleared notes");
     }
 
@@ -514,22 +516,54 @@ impl GameState {
     }
 
     // Getters
-    pub fn grid(&self) -> &Grid { &self.grid }
-    pub fn puzzle(&self) -> &Grid { &self.puzzle }
-    pub fn solution(&self) -> &Grid { &self.solution }
-    pub fn cursor(&self) -> Position { self.cursor }
-    pub fn mode(&self) -> InputMode { self.mode }
-    pub fn screen(&self) -> ScreenState { self.screen }
-    pub fn difficulty(&self) -> Difficulty { self.difficulty }
-    pub fn mistakes(&self) -> usize { self.mistakes }
-    pub fn hints_used(&self) -> usize { self.hints_used }
-    pub fn message(&self) -> Option<&str> { self.message.as_deref() }
-    pub fn current_hint(&self) -> Option<&Hint> { self.current_hint.as_ref() }
-    pub fn frame(&self) -> u32 { self.frame }
-    pub fn win_screen(&self) -> Option<&WinScreen> { self.win_screen.as_ref() }
-    pub fn lose_screen(&self) -> Option<&LoseScreen> { self.lose_screen.as_ref() }
-    pub fn show_ghost_hints(&self) -> bool { self.show_ghost_hints }
-    pub fn show_valid_cells(&self) -> bool { self.show_valid_cells }
+    pub fn grid(&self) -> &Grid {
+        &self.grid
+    }
+    pub fn puzzle(&self) -> &Grid {
+        &self.puzzle
+    }
+    pub fn solution(&self) -> &Grid {
+        &self.solution
+    }
+    pub fn cursor(&self) -> Position {
+        self.cursor
+    }
+    pub fn mode(&self) -> InputMode {
+        self.mode
+    }
+    pub fn screen(&self) -> ScreenState {
+        self.screen
+    }
+    pub fn difficulty(&self) -> Difficulty {
+        self.difficulty
+    }
+    pub fn mistakes(&self) -> usize {
+        self.mistakes
+    }
+    pub fn hints_used(&self) -> usize {
+        self.hints_used
+    }
+    pub fn message(&self) -> Option<&str> {
+        self.message.as_deref()
+    }
+    pub fn current_hint(&self) -> Option<&Hint> {
+        self.current_hint.as_ref()
+    }
+    pub fn frame(&self) -> u32 {
+        self.frame
+    }
+    pub fn win_screen(&self) -> Option<&WinScreen> {
+        self.win_screen.as_ref()
+    }
+    pub fn lose_screen(&self) -> Option<&LoseScreen> {
+        self.lose_screen.as_ref()
+    }
+    pub fn show_ghost_hints(&self) -> bool {
+        self.show_ghost_hints
+    }
+    pub fn show_valid_cells(&self) -> bool {
+        self.show_valid_cells
+    }
 
     /// Get ghost candidates for a cell (valid candidates not yet noted)
     pub fn get_ghost_candidates(&self, pos: Position) -> Vec<u8> {
@@ -562,7 +596,7 @@ impl GameState {
     pub fn toggle_pause(&mut self) {
         match self.screen {
             ScreenState::Playing => {
-                self.paused_elapsed = Self::now() - self.start_time + self.paused_elapsed;
+                self.paused_elapsed += Self::now() - self.start_time;
                 self.screen = ScreenState::Paused;
             }
             ScreenState::Paused => {
@@ -630,7 +664,7 @@ impl GameState {
         for row in 0..9 {
             for col in 0..9 {
                 if let Some(v) = values[row][col] {
-                    if v >= 1 && v <= 9 {
+                    if (1..=9).contains(&v) {
                         counts[(v - 1) as usize] += 1;
                     }
                 }
