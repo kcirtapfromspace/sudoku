@@ -1206,6 +1206,113 @@ fn render_stats_screen(
         )?;
     }
 
+    // Puzzle Universe section (fun stats!)
+    let universe_y = start_y + 18;
+    if term_height > universe_y + 8 {
+        execute!(
+            stdout,
+            MoveTo(col1_x, universe_y),
+            SetForegroundColor(theme.key),
+            Print("═══ PUZZLE UNIVERSE ═══")
+        )?;
+
+        // Total puzzles in universe (10^30 estimate)
+        let total_universe: f64 = 1e30;
+        let total_wins = player.total_wins as f64;
+
+        // Universe explored
+        let (explored_text, percentage_text) = if total_wins > 0.0 {
+            let percentage = total_wins / total_universe * 100.0;
+            let exponent = percentage.log10().floor() as i32;
+            (
+                format!("{} / 10³⁰ puzzles", player.total_wins),
+                format!("(10^{}%)", exponent),
+            )
+        } else {
+            ("0 / 10³⁰ puzzles".to_string(), "(0%)".to_string())
+        };
+
+        execute!(
+            stdout,
+            MoveTo(col1_x, universe_y + 1),
+            SetForegroundColor(Color::Blue),
+            Print("◉ "),
+            SetForegroundColor(theme.fg),
+            Print("Explored: "),
+            SetForegroundColor(theme.info),
+            Print(&explored_text),
+            Print(" "),
+            SetForegroundColor(theme.border),
+            Print(&percentage_text)
+        )?;
+
+        // Cheeky note about progress
+        let progress_note = match player.total_wins {
+            0 => "The universe awaits your first victory!",
+            1 => "One small step for puzzlekind...",
+            2..=9 => "A tiny dent in infinity!",
+            10..=99 => "At this rate: approximately... never.",
+            100..=999 => "Impressive! The universe remains unimpressed.",
+            _ => "A true warrior! The cosmos trembles (microscopically).",
+        };
+
+        execute!(
+            stdout,
+            MoveTo(col1_x + 2, universe_y + 2),
+            SetForegroundColor(theme.border),
+            Print("└─ "),
+            SetForegroundColor(Color::DarkGrey),
+            Print(progress_note)
+        )?;
+
+        // Time to complete all puzzles
+        if player.total_wins > 0 {
+            let avg_time = player
+                .total_play_time_secs
+                .checked_div(player.total_wins as u64)
+                .unwrap_or(300);
+            let total_seconds = avg_time as f64 * total_universe;
+            let years = total_seconds / (365.25 * 24.0 * 3600.0);
+            let exponent = years.log10().floor() as i32;
+            let mantissa = years / 10_f64.powi(exponent);
+
+            execute!(
+                stdout,
+                MoveTo(col1_x, universe_y + 4),
+                SetForegroundColor(Color::Rgb {
+                    r: 255,
+                    g: 165,
+                    b: 0
+                }),
+                Print("⏱ "),
+                SetForegroundColor(theme.fg),
+                Print("Time to finish all: "),
+                SetForegroundColor(theme.info),
+                Print(format!("≈ {:.1} × 10^{} years", mantissa, exponent))
+            )?;
+
+            // Cheeky time note based on average solve time
+            let avg_mins = avg_time / 60;
+            let time_note = match avg_mins {
+                0..=1 => "Speed demon! Still need multiple universe lifetimes.",
+                2..=4 => "Quick! The heat death of the universe will wait.",
+                5..=9 => "Solid pace! Only 10²² generations needed to help.",
+                10..=19 => "Taking your time? You'll need immortality.",
+                20..=29 => "Thoughtful! The Sun burns out first, no pressure.",
+                _ => "Savoring it! New universes will form and die. Repeatedly.",
+            };
+
+            execute!(
+                stdout,
+                MoveTo(col1_x + 2, universe_y + 5),
+                SetForegroundColor(theme.border),
+                Print("└─ "),
+                SetForegroundColor(Color::DarkGrey),
+                Print(time_note)
+            )?;
+        }
+    }
+
     // Navigation help
     let nav_y = term_height.saturating_sub(3);
     execute!(
