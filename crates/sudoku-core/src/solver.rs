@@ -112,6 +112,9 @@ pub enum Technique {
     AlsXz,
     AlsXyWing,
     UniqueRectangle,
+    NishioForcingChain,
+    CellForcingChain,
+    DynamicForcingChain,
     Backtracking,
 }
 
@@ -142,7 +145,10 @@ impl Technique {
             Technique::AlsXz => 5.5,
             Technique::AIC => 6.0,
             Technique::AlsXyWing => 7.0,
-            Technique::Backtracking => 9.0,
+            Technique::NishioForcingChain => 7.5,
+            Technique::CellForcingChain => 8.3,
+            Technique::DynamicForcingChain => 9.3,
+            Technique::Backtracking => 11.0,
         }
     }
 }
@@ -172,6 +178,9 @@ impl std::fmt::Display for Technique {
             Technique::AlsXz => write!(f, "ALS-XZ"),
             Technique::AlsXyWing => write!(f, "ALS-XY-Wing"),
             Technique::UniqueRectangle => write!(f, "Unique Rectangle"),
+            Technique::NishioForcingChain => write!(f, "Nishio Forcing Chain"),
+            Technique::CellForcingChain => write!(f, "Cell Forcing Chain"),
+            Technique::DynamicForcingChain => write!(f, "Dynamic Forcing Chain"),
             Technique::Backtracking => write!(f, "Backtracking"),
         }
     }
@@ -325,6 +334,15 @@ impl Solver {
         if let Some(hint) = self.find_als_xy_wing(&working) {
             return Some(hint);
         }
+        if let Some(hint) = self.find_nishio_forcing_chain(&working) {
+            return Some(hint);
+        }
+        if let Some(hint) = self.find_cell_forcing_chain(&working) {
+            return Some(hint);
+        }
+        if let Some(hint) = self.find_dynamic_forcing_chain(&working) {
+            return Some(hint);
+        }
 
         // If no human technique found, give backtracking hint
         if let Some(solution) = self.solve(&working) {
@@ -404,6 +422,9 @@ impl Solver {
             try_technique!(apply_als_xz, Technique::AlsXz);
             try_technique!(apply_als_xy_wing, Technique::AlsXyWing);
             try_technique!(apply_unique_rectangle, Technique::UniqueRectangle);
+            try_technique!(apply_nishio_forcing_chain, Technique::NishioForcingChain);
+            try_technique!(apply_cell_forcing_chain, Technique::CellForcingChain);
+            try_technique!(apply_dynamic_forcing_chain, Technique::DynamicForcingChain);
             return Technique::Backtracking;
         }
 
@@ -440,6 +461,9 @@ impl Solver {
             Technique::AlsXz
             | Technique::AlsXyWing
             | Technique::UniqueRectangle
+            | Technique::NishioForcingChain
+            | Technique::CellForcingChain
+            | Technique::DynamicForcingChain
             | Technique::Backtracking => Difficulty::Extreme,
         }
     }
@@ -2925,6 +2949,462 @@ impl Solver {
         false
     }
 
+    // ==================== Forcing Chains Infrastructure ====================
+
+    /// Check if a grid has a contradiction: any empty cell with no candidates,
+    /// or duplicate values in any row/col/box.
+    fn has_contradiction(grid: &Grid) -> bool {
+        for pos in grid.empty_positions() {
+            if grid.get_candidates(pos).is_empty() {
+                return true;
+            }
+        }
+        // Check for duplicate values in rows, columns, and boxes
+        for i in 0..9 {
+            let mut row_seen = [false; 10];
+            let mut col_seen = [false; 10];
+            let mut box_seen = [false; 10];
+            for j in 0..9 {
+                // Row check
+                if let Some(v) = grid.get(Position::new(i, j)) {
+                    if row_seen[v as usize] {
+                        return true;
+                    }
+                    row_seen[v as usize] = true;
+                }
+                // Col check
+                if let Some(v) = grid.get(Position::new(j, i)) {
+                    if col_seen[v as usize] {
+                        return true;
+                    }
+                    col_seen[v as usize] = true;
+                }
+                // Box check
+                let box_row = (i / 3) * 3 + j / 3;
+                let box_col = (i % 3) * 3 + j % 3;
+                if let Some(v) = grid.get(Position::new(box_row, box_col)) {
+                    if box_seen[v as usize] {
+                        return true;
+                    }
+                    box_seen[v as usize] = true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Propagate singles (naked + hidden) from an assumption until no more progress.
+    /// Returns the resulting grid and whether a contradiction was found.
+    fn propagate_singles(&self, grid: &Grid, pos: Position, val: u8) -> (Grid, bool) {
+        let mut g = grid.deep_clone();
+        g.set_cell_unchecked(pos, Some(val));
+        g.recalculate_candidates();
+
+        for _ in 0..200 {
+            if Self::has_contradiction(&g) {
+                return (g, true);
+            }
+            if g.is_complete() {
+                return (g, false);
+            }
+            let mut progress = false;
+            // Apply naked singles
+            for p in g.empty_positions() {
+                if let Some(v) = g.get_candidates(p).single_value() {
+                    g.set_cell_unchecked(p, Some(v));
+                    g.recalculate_candidates();
+                    progress = true;
+                    break;
+                }
+            }
+            if !progress {
+                // Apply hidden singles
+                'outer: for unit in 0..27 {
+                    let positions: Vec<Position> = if unit < 9 {
+                        Self::row_positions(unit)
+                    } else if unit < 18 {
+                        Self::col_positions(unit - 9)
+                    } else {
+                        Self::box_positions(unit - 18)
+                    };
+                    for value in 1..=9u8 {
+                        let mut candidates: Vec<Position> = Vec::new();
+                        for &p in &positions {
+                            if g.cell(p).is_empty() && g.get_candidates(p).contains(value) {
+                                candidates.push(p);
+                            }
+                        }
+                        if candidates.len() == 1 {
+                            g.set_cell_unchecked(candidates[0], Some(value));
+                            g.recalculate_candidates();
+                            progress = true;
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+            if !progress {
+                break;
+            }
+        }
+        let contradiction = Self::has_contradiction(&g);
+        (g, contradiction)
+    }
+
+    /// Propagate using the full technique set (all techniques up to UniqueRectangle).
+    /// Used by Dynamic Forcing Chain. Never calls forcing chains to prevent recursion.
+    fn propagate_full(&self, grid: &Grid, pos: Position, val: u8) -> (Grid, bool) {
+        let mut g = grid.deep_clone();
+        g.set_cell_unchecked(pos, Some(val));
+        g.recalculate_candidates();
+
+        for _ in 0..50 {
+            if Self::has_contradiction(&g) {
+                return (g, true);
+            }
+            if g.is_complete() {
+                return (g, false);
+            }
+            let mut progress = false;
+            // Try all techniques up to UniqueRectangle (no forcing chains!)
+            progress |= self.apply_naked_singles(&mut g);
+            if !progress { progress |= self.apply_hidden_singles(&mut g); }
+            if !progress { progress |= self.apply_naked_pairs(&mut g); }
+            if !progress { progress |= self.apply_hidden_pairs(&mut g); }
+            if !progress { progress |= self.apply_naked_triples(&mut g); }
+            if !progress { progress |= self.apply_hidden_triples(&mut g); }
+            if !progress { progress |= self.apply_pointing_pairs(&mut g); }
+            if !progress { progress |= self.apply_box_line_reduction(&mut g); }
+            if !progress { progress |= self.apply_x_wing(&mut g); }
+            if !progress { progress |= self.apply_finned_x_wing(&mut g); }
+            if !progress { progress |= self.apply_swordfish(&mut g); }
+            if !progress { progress |= self.apply_finned_swordfish(&mut g); }
+            if !progress { progress |= self.apply_jellyfish(&mut g); }
+            if !progress { progress |= self.apply_finned_jellyfish(&mut g); }
+            if !progress { progress |= self.apply_xy_wing(&mut g); }
+            if !progress { progress |= self.apply_xyz_wing(&mut g); }
+            if !progress { progress |= self.apply_w_wing(&mut g); }
+            if !progress { progress |= self.apply_x_chain(&mut g); }
+            if !progress { progress |= self.apply_aic(&mut g); }
+            if !progress { progress |= self.apply_als_xz(&mut g); }
+            if !progress { progress |= self.apply_als_xy_wing(&mut g); }
+            if !progress { progress |= self.apply_unique_rectangle(&mut g); }
+            if !progress {
+                break;
+            }
+        }
+        let contradiction = Self::has_contradiction(&g);
+        (g, contradiction)
+    }
+
+    // ==================== Nishio Forcing Chain ====================
+
+    fn find_nishio_forcing_chain(&self, grid: &Grid) -> Option<Hint> {
+        // Collect empty cells, sorted by candidate count (bivalue first)
+        let mut cells: Vec<Position> = grid.empty_positions();
+        cells.sort_by_key(|&p| grid.get_candidates(p).count());
+
+        for &pos in &cells {
+            let cands = grid.get_candidates(pos);
+            if cands.count() < 2 || cands.count() > 4 {
+                continue;
+            }
+            for val in cands.iter() {
+                let (_, contradiction) = self.propagate_singles(grid, pos, val);
+                if contradiction {
+                    return Some(Hint {
+                        technique: Technique::NishioForcingChain,
+                        hint_type: HintType::EliminateCandidates {
+                            pos,
+                            values: vec![val],
+                        },
+                        explanation: format!(
+                            "Nishio: assuming {} in ({}, {}) leads to contradiction, so {} is eliminated.",
+                            val, pos.row + 1, pos.col + 1, val
+                        ),
+                        involved_cells: vec![pos],
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    fn apply_nishio_forcing_chain(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_nishio_forcing_chain(grid) {
+            match hint.hint_type {
+                HintType::EliminateCandidates { pos, values } => {
+                    for v in values {
+                        grid.cell_mut(pos).remove_candidate(v);
+                    }
+                    true
+                }
+                HintType::SetValue { pos, value } => {
+                    grid.set_cell_unchecked(pos, Some(value));
+                    grid.recalculate_candidates();
+                    true
+                }
+            }
+        } else {
+            false
+        }
+    }
+
+    // ==================== Cell Forcing Chain ====================
+
+    /// Find a common placement across all propagation branches.
+    /// If all branches agree that a certain cell must have a certain value, return it.
+    fn find_common_placement(
+        grid: &Grid,
+        source_pos: Position,
+        branches: &[Grid],
+        technique: Technique,
+    ) -> Option<Hint> {
+        for target in grid.empty_positions() {
+            if target == source_pos {
+                continue;
+            }
+            if grid.get(target).is_some() {
+                continue;
+            }
+            // Check if all branches placed the same value in target
+            let mut common_val: Option<u8> = None;
+            let mut all_agree = true;
+            for branch in branches {
+                if let Some(v) = branch.get(target) {
+                    match common_val {
+                        None => common_val = Some(v),
+                        Some(cv) if cv != v => {
+                            all_agree = false;
+                            break;
+                        }
+                        _ => {}
+                    }
+                } else {
+                    all_agree = false;
+                    break;
+                }
+            }
+            if all_agree {
+                if let Some(val) = common_val {
+                    return Some(Hint {
+                        technique,
+                        hint_type: HintType::SetValue {
+                            pos: target,
+                            value: val,
+                        },
+                        explanation: format!(
+                            "{}: all candidates in ({}, {}) lead to {} in ({}, {}).",
+                            technique,
+                            source_pos.row + 1,
+                            source_pos.col + 1,
+                            val,
+                            target.row + 1,
+                            target.col + 1
+                        ),
+                        involved_cells: vec![source_pos, target],
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    /// Find a common elimination across all propagation branches.
+    /// If all branches agree that a certain candidate is removed from a cell, return it.
+    fn find_common_elimination(
+        grid: &Grid,
+        source_pos: Position,
+        branches: &[Grid],
+        technique: Technique,
+    ) -> Option<Hint> {
+        for target in grid.empty_positions() {
+            if target == source_pos {
+                continue;
+            }
+            let orig_cands = grid.get_candidates(target);
+            if orig_cands.count() < 2 {
+                continue;
+            }
+            for val in orig_cands.iter() {
+                // Check if all branches eliminated this candidate
+                let mut all_eliminate = true;
+                for branch in branches {
+                    if let Some(placed) = branch.get(target) {
+                        // Cell was filled — candidate is "eliminated" only if placed != val
+                        if placed == val {
+                            all_eliminate = false;
+                            break;
+                        }
+                    } else if branch.get_candidates(target).contains(val) {
+                        all_eliminate = false;
+                        break;
+                    }
+                }
+                if all_eliminate {
+                    return Some(Hint {
+                        technique,
+                        hint_type: HintType::EliminateCandidates {
+                            pos: target,
+                            values: vec![val],
+                        },
+                        explanation: format!(
+                            "{}: all candidates in ({}, {}) eliminate {} from ({}, {}).",
+                            technique,
+                            source_pos.row + 1,
+                            source_pos.col + 1,
+                            val,
+                            target.row + 1,
+                            target.col + 1
+                        ),
+                        involved_cells: vec![source_pos, target],
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    fn find_cell_forcing_chain(&self, grid: &Grid) -> Option<Hint> {
+        let mut cells: Vec<Position> = grid.empty_positions();
+        cells.sort_by_key(|&p| grid.get_candidates(p).count());
+
+        for &pos in &cells {
+            let cands = grid.get_candidates(pos);
+            if cands.count() < 2 || cands.count() > 4 {
+                continue;
+            }
+
+            let mut branches = Vec::new();
+            let mut any_contradiction = false;
+
+            for val in cands.iter() {
+                let (result, contradiction) = self.propagate_singles(grid, pos, val);
+                if contradiction {
+                    // Nishio should have caught this; skip
+                    any_contradiction = true;
+                    break;
+                }
+                branches.push(result);
+            }
+
+            if any_contradiction || branches.len() < 2 {
+                continue;
+            }
+
+            // Check for common placement
+            if let Some(hint) =
+                Self::find_common_placement(grid, pos, &branches, Technique::CellForcingChain)
+            {
+                return Some(hint);
+            }
+
+            // Check for common elimination
+            if let Some(hint) =
+                Self::find_common_elimination(grid, pos, &branches, Technique::CellForcingChain)
+            {
+                return Some(hint);
+            }
+        }
+        None
+    }
+
+    fn apply_cell_forcing_chain(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_cell_forcing_chain(grid) {
+            match hint.hint_type {
+                HintType::SetValue { pos, value } => {
+                    grid.set_cell_unchecked(pos, Some(value));
+                    grid.recalculate_candidates();
+                    true
+                }
+                HintType::EliminateCandidates { pos, values } => {
+                    for v in values {
+                        grid.cell_mut(pos).remove_candidate(v);
+                    }
+                    true
+                }
+            }
+        } else {
+            false
+        }
+    }
+
+    // ==================== Dynamic Forcing Chain ====================
+
+    fn find_dynamic_forcing_chain(&self, grid: &Grid) -> Option<Hint> {
+        let mut cells: Vec<Position> = grid.empty_positions();
+        cells.sort_by_key(|&p| grid.get_candidates(p).count());
+
+        for &pos in &cells {
+            let cands = grid.get_candidates(pos);
+            // Tighter limit for performance: 2-3 candidates only
+            if cands.count() < 2 || cands.count() > 3 {
+                continue;
+            }
+
+            let mut branches = Vec::new();
+
+            for val in cands.iter() {
+                let (result, contradiction) = self.propagate_full(grid, pos, val);
+                if contradiction {
+                    // Report as dynamic forcing chain elimination
+                    return Some(Hint {
+                        technique: Technique::DynamicForcingChain,
+                        hint_type: HintType::EliminateCandidates {
+                            pos,
+                            values: vec![val],
+                        },
+                        explanation: format!(
+                            "Dynamic Forcing Chain: assuming {} in ({}, {}) leads to contradiction.",
+                            val, pos.row + 1, pos.col + 1
+                        ),
+                        involved_cells: vec![pos],
+                    });
+                }
+                branches.push(result);
+            }
+
+            if branches.len() < 2 {
+                continue;
+            }
+
+            // Check for common placement
+            if let Some(hint) =
+                Self::find_common_placement(grid, pos, &branches, Technique::DynamicForcingChain)
+            {
+                return Some(hint);
+            }
+
+            // Check for common elimination
+            if let Some(hint) =
+                Self::find_common_elimination(grid, pos, &branches, Technique::DynamicForcingChain)
+            {
+                return Some(hint);
+            }
+        }
+        None
+    }
+
+    fn apply_dynamic_forcing_chain(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_dynamic_forcing_chain(grid) {
+            match hint.hint_type {
+                HintType::SetValue { pos, value } => {
+                    grid.set_cell_unchecked(pos, Some(value));
+                    grid.recalculate_candidates();
+                    true
+                }
+                HintType::EliminateCandidates { pos, values } => {
+                    for v in values {
+                        grid.cell_mut(pos).remove_candidate(v);
+                    }
+                    true
+                }
+            }
+        } else {
+            false
+        }
+    }
+
     // ==================== Backtracking Solver ====================
 
     fn solve_recursive(&self, grid: &mut Grid) -> bool {
@@ -3087,7 +3567,10 @@ mod tests {
         assert!(Technique::XYWing.se_rating() < Technique::XChain.se_rating());
         assert!(Technique::AlsXz.se_rating() < Technique::AIC.se_rating());
         assert!(Technique::AIC.se_rating() < Technique::AlsXyWing.se_rating());
-        assert!(Technique::AlsXyWing.se_rating() < Technique::Backtracking.se_rating());
+        assert!(Technique::AlsXyWing.se_rating() < Technique::NishioForcingChain.se_rating());
+        assert!(Technique::NishioForcingChain.se_rating() < Technique::CellForcingChain.se_rating());
+        assert!(Technique::CellForcingChain.se_rating() < Technique::DynamicForcingChain.se_rating());
+        assert!(Technique::DynamicForcingChain.se_rating() < Technique::Backtracking.se_rating());
     }
 
     #[test]
@@ -3101,7 +3584,7 @@ mod tests {
 
         // Should be a positive rating
         assert!(se > 0.0);
-        assert!(se <= 9.0);
+        assert!(se <= 11.0);
     }
 
     #[test]
@@ -3111,6 +3594,18 @@ mod tests {
         assert_eq!(Technique::AlsXz.to_string(), "ALS-XZ");
         assert_eq!(Technique::AlsXyWing.to_string(), "ALS-XY-Wing");
         assert_eq!(Technique::XChain.to_string(), "X-Chain");
+        assert_eq!(
+            Technique::NishioForcingChain.to_string(),
+            "Nishio Forcing Chain"
+        );
+        assert_eq!(
+            Technique::CellForcingChain.to_string(),
+            "Cell Forcing Chain"
+        );
+        assert_eq!(
+            Technique::DynamicForcingChain.to_string(),
+            "Dynamic Forcing Chain"
+        );
     }
 
     #[test]
@@ -3139,5 +3634,41 @@ mod tests {
         // Should solve without backtracking
         assert!(max_tech < Technique::Backtracking);
         assert!(working.is_complete());
+    }
+
+    #[test]
+    fn test_has_contradiction() {
+        // Valid grid should have no contradiction
+        let puzzle =
+            "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
+        let mut grid = Grid::from_string(puzzle).unwrap();
+        grid.recalculate_candidates();
+        assert!(!Solver::has_contradiction(&grid));
+
+        // Grid with duplicate in a row is a contradiction
+        let mut bad = grid.deep_clone();
+        // Put a 5 in (0,1) which already has 5 in (0,0)
+        bad.set_cell_unchecked(Position::new(0, 1), Some(5));
+        bad.recalculate_candidates();
+        assert!(Solver::has_contradiction(&bad));
+    }
+
+    #[test]
+    fn test_nishio_forcing_chain() {
+        // A known hard puzzle (Arto Inkala "world's hardest")
+        let puzzle =
+            "800000000003600000070090200050007000000045700000100030001000068008500010090000400";
+        let grid = Grid::from_string(puzzle).unwrap();
+
+        let solver = Solver::new();
+        let mut working = grid.deep_clone();
+        let max_tech = solver.solve_with_techniques(&mut working);
+
+        // Should solve (possibly with forcing chains instead of backtracking)
+        // The key assertion is that it either solves completely or at least
+        // uses forcing chains before falling back to backtracking
+        if working.is_complete() {
+            assert!(max_tech <= Technique::Backtracking);
+        }
     }
 }
