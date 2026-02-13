@@ -7,8 +7,6 @@ struct GridView: View {
     var forceShowErrors: Bool = false  // When true, forces errors to show even if setting is off
 
     private var cellSize: CGFloat { size / 9 }
-    private var thickLineWidth: CGFloat { 2 }
-    private var thinLineWidth: CGFloat { 0.5 }
 
     // Track wiggle animation state per cell
     @State private var wiggleProgress: [String: CGFloat] = [:]
@@ -56,7 +54,11 @@ struct GridView: View {
             }
 
             // Grid lines (allow touches to pass through)
-            GridLines(size: size, cellSize: cellSize)
+            GridLines(
+                size: size,
+                cellSize: cellSize,
+                highContrast: gameManager.settings.theme == .highContrast
+            )
                 .allowsHitTesting(false)
         }
         .frame(width: size, height: size)
@@ -111,46 +113,65 @@ struct WiggleEffect: GeometryEffect {
 struct GridLines: View {
     let size: CGFloat
     let cellSize: CGFloat
+    let highContrast: Bool
+
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         Canvas { context, size in
-            let lineColor = Color.secondary.opacity(0.3)
-            let thickColor = Color.primary.opacity(0.6)
+            // Use `primary` instead of `secondary` for grid lines: `secondary` + low opacity
+            // becomes too faint on iOS, especially on bright screens.
+            // Prefer a runtime accessibility signal over SwiftUI's `accessibilityContrast` env key
+            // to keep compatibility with the project's current iOS deployment target.
+            let isHighContrast = highContrast || UIAccessibility.isDarkerSystemColorsEnabled
+
+            let thinLineWidth: CGFloat = isHighContrast ? 1.0 : 0.75
+            let thickLineWidth: CGFloat = isHighContrast ? 3.0 : 2.0
+
+            let thinColor = Color.primary.opacity(isHighContrast ? 0.32 : 0.22)
+            let thickColor = Color.primary.opacity(isHighContrast ? 0.80 : 0.60)
+
+            let thinStyle = StrokeStyle(lineWidth: thinLineWidth, lineCap: .square, lineJoin: .miter)
+            let thickStyle = StrokeStyle(lineWidth: thickLineWidth, lineCap: .square, lineJoin: .miter)
+
+            func alignToPixel(_ value: CGFloat) -> CGFloat {
+                (value * displayScale).rounded() / displayScale
+            }
 
             // Thin lines
             for i in 1..<9 {
                 if i % 3 != 0 {
-                    let pos = CGFloat(i) * cellSize
+                    let pos = alignToPixel(CGFloat(i) * cellSize)
 
                     // Vertical
                     var vPath = Path()
                     vPath.move(to: CGPoint(x: pos, y: 0))
                     vPath.addLine(to: CGPoint(x: pos, y: size.height))
-                    context.stroke(vPath, with: .color(lineColor), lineWidth: 0.5)
+                    context.stroke(vPath, with: .color(thinColor), style: thinStyle)
 
                     // Horizontal
                     var hPath = Path()
                     hPath.move(to: CGPoint(x: 0, y: pos))
                     hPath.addLine(to: CGPoint(x: size.width, y: pos))
-                    context.stroke(hPath, with: .color(lineColor), lineWidth: 0.5)
+                    context.stroke(hPath, with: .color(thinColor), style: thinStyle)
                 }
             }
 
             // Thick lines (3x3 boxes)
             for i in 0...3 {
-                let pos = CGFloat(i) * cellSize * 3
+                let pos = alignToPixel(CGFloat(i) * cellSize * 3)
 
                 // Vertical
                 var vPath = Path()
                 vPath.move(to: CGPoint(x: pos, y: 0))
                 vPath.addLine(to: CGPoint(x: pos, y: size.height))
-                context.stroke(vPath, with: .color(thickColor), lineWidth: 2)
+                context.stroke(vPath, with: .color(thickColor), style: thickStyle)
 
                 // Horizontal
                 var hPath = Path()
                 hPath.move(to: CGPoint(x: 0, y: pos))
                 hPath.addLine(to: CGPoint(x: size.width, y: pos))
-                context.stroke(hPath, with: .color(thickColor), lineWidth: 2)
+                context.stroke(hPath, with: .color(thickColor), style: thickStyle)
             }
         }
     }

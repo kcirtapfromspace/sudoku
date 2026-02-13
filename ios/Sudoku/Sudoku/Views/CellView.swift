@@ -17,7 +17,8 @@ struct CellView: View {
         } else if hasSameValue && !cell.isEmpty {
             return Color.accentColor.opacity(0.15)
         } else if isRelated {
-            return Color.secondary.opacity(0.08)
+            // Slightly stronger to make row/col/box helper shading easier to see on iOS.
+            return Color.secondary.opacity(0.12)
         } else {
             return .clear
         }
