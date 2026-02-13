@@ -22,4 +22,4 @@ pub use diversity::{DifficultyStats, DiversityAnalyzer, DiversityReport, Theoret
 pub use generator::{Generator, GeneratorConfig, SymmetryType};
 pub use grid::{Grid, MoveError, ValidationResult};
 pub use position::Position;
-pub use solver::{Difficulty, Hint, HintType, Solver, SolverConfig, Technique};
+pub use solver::{Difficulty, Hint, HintType, Solver, Technique};

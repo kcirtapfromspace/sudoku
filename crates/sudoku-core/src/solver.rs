@@ -265,20 +265,8 @@ pub struct Hint {
     pub involved_cells: Vec<Position>,
 }
 
-/// Configuration for the solver
-#[derive(Debug, Clone, Default)]
-pub struct SolverConfig {
-    /// Maximum technique level to use (None = use all including backtracking)
-    pub max_technique: Option<Technique>,
-    /// Whether to track techniques used
-    pub track_techniques: bool,
-}
-
 /// Sudoku solver with human-like techniques and backtracking fallback
-pub struct Solver {
-    #[allow(dead_code)]
-    config: SolverConfig,
-}
+pub struct Solver;
 
 impl Default for Solver {
     fn default() -> Self {
@@ -287,16 +275,9 @@ impl Default for Solver {
 }
 
 impl Solver {
-    /// Create a new solver with default configuration
+    /// Create a new solver
     pub fn new() -> Self {
-        Self {
-            config: SolverConfig::default(),
-        }
-    }
-
-    /// Create a solver with custom configuration
-    pub fn with_config(config: SolverConfig) -> Self {
-        Self { config }
+        Self
     }
 
     /// Solve the puzzle, returning the solved grid if successful
@@ -330,112 +311,57 @@ impl Solver {
         let mut working = grid.deep_clone();
         working.recalculate_candidates();
 
-        // Try techniques in order of difficulty
-        if let Some(hint) = self.find_naked_single(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_hidden_single(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_naked_pair(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_hidden_pair(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_naked_triple(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_pointing_pair(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_box_line_reduction(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_x_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_finned_x_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_swordfish(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_finned_swordfish(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_jellyfish(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_finned_jellyfish(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_naked_quad(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_empty_rectangle(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_avoidable_rectangle(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_xy_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_xyz_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_wxyz_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_w_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_x_chain(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_three_d_medusa(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_sue_de_coq(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_aic(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_franken_fish(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_siamese_fish(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_als_xz(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_als_xy_wing(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_als_chain(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_hidden_rectangle(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_extended_unique_rectangle(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_bug(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_nishio_forcing_chain(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_cell_forcing_chain(&working) {
-            return Some(hint);
-        }
-        if let Some(hint) = self.find_dynamic_forcing_chain(&working) {
-            return Some(hint);
-        }
+        // Try techniques in order of difficulty (matches solve_with_techniques order)
+        // Basic
+        if let Some(hint) = self.find_naked_single(&working) { return Some(hint); }
+        if let Some(hint) = self.find_hidden_single(&working) { return Some(hint); }
+        // Intermediate
+        if let Some(hint) = self.find_naked_pair(&working) { return Some(hint); }
+        if let Some(hint) = self.find_hidden_pair(&working) { return Some(hint); }
+        if let Some(hint) = self.find_naked_triple(&working) { return Some(hint); }
+        if let Some(hint) = self.find_hidden_triple(&working) { return Some(hint); }
+        // Hard
+        if let Some(hint) = self.find_pointing_pair(&working) { return Some(hint); }
+        if let Some(hint) = self.find_box_line_reduction(&working) { return Some(hint); }
+        // Expert
+        if let Some(hint) = self.find_x_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_finned_x_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_swordfish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_finned_swordfish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_jellyfish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_finned_jellyfish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_naked_quad(&working) { return Some(hint); }
+        if let Some(hint) = self.find_hidden_quad(&working) { return Some(hint); }
+        if let Some(hint) = self.find_empty_rectangle(&working) { return Some(hint); }
+        if let Some(hint) = self.find_avoidable_rectangle(&working) { return Some(hint); }
+        if let Some(hint) = self.find_unique_rectangle(&working) { return Some(hint); }
+        if let Some(hint) = self.find_hidden_rectangle(&working) { return Some(hint); }
+        // Master
+        if let Some(hint) = self.find_xy_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_xyz_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_wxyz_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_w_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_x_chain(&working) { return Some(hint); }
+        if let Some(hint) = self.find_three_d_medusa(&working) { return Some(hint); }
+        if let Some(hint) = self.find_sue_de_coq(&working) { return Some(hint); }
+        if let Some(hint) = self.find_aic(&working) { return Some(hint); }
+        if let Some(hint) = self.find_franken_fish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_siamese_fish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_als_xz(&working) { return Some(hint); }
+        if let Some(hint) = self.find_extended_unique_rectangle(&working) { return Some(hint); }
+        if let Some(hint) = self.find_bug(&working) { return Some(hint); }
+        // Extreme
+        if let Some(hint) = self.find_als_xy_wing(&working) { return Some(hint); }
+        if let Some(hint) = self.find_als_chain(&working) { return Some(hint); }
+        if let Some(hint) = self.find_mutant_fish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_aligned_pair_exclusion(&working) { return Some(hint); }
+        if let Some(hint) = self.find_aligned_triplet_exclusion(&working) { return Some(hint); }
+        if let Some(hint) = self.find_death_blossom(&working) { return Some(hint); }
+        if let Some(hint) = self.find_nishio_forcing_chain(&working) { return Some(hint); }
+        if let Some(hint) = self.find_kraken_fish(&working) { return Some(hint); }
+        if let Some(hint) = self.find_region_forcing_chain(&working) { return Some(hint); }
+        if let Some(hint) = self.find_cell_forcing_chain(&working) { return Some(hint); }
+        if let Some(hint) = self.find_dynamic_forcing_chain(&working) { return Some(hint); }
 
         // If no human technique found, give backtracking hint
         if let Some(solution) = self.solve(&working) {
@@ -511,6 +437,9 @@ impl Solver {
             try_technique!(apply_hidden_quads, Technique::HiddenQuad);
             try_technique!(apply_empty_rectangle, Technique::EmptyRectangle);
             try_technique!(apply_avoidable_rectangle, Technique::AvoidableRectangle);
+            try_technique!(apply_unique_rectangle, Technique::UniqueRectangle);
+            try_technique!(apply_hidden_rectangle, Technique::HiddenRectangle);
+            // Master
             try_technique!(apply_xy_wing, Technique::XYWing);
             try_technique!(apply_xyz_wing, Technique::XYZWing);
             try_technique!(apply_wxyz_wing, Technique::WXYZWing);
@@ -522,15 +451,14 @@ impl Solver {
             try_technique!(apply_franken_fish, Technique::FrankenFish);
             try_technique!(apply_siamese_fish, Technique::SiameseFish);
             try_technique!(apply_als_xz, Technique::AlsXz);
+            try_technique!(apply_extended_unique_rectangle, Technique::ExtendedUniqueRectangle);
+            try_technique!(apply_bug, Technique::BivalueUniversalGrave);
+            // Extreme
             try_technique!(apply_als_xy_wing, Technique::AlsXyWing);
             try_technique!(apply_als_chain, Technique::AlsChain);
-            try_technique!(apply_unique_rectangle, Technique::UniqueRectangle);
-            try_technique!(apply_hidden_rectangle, Technique::HiddenRectangle);
-            try_technique!(apply_extended_unique_rectangle, Technique::ExtendedUniqueRectangle);
             try_technique!(apply_mutant_fish, Technique::MutantFish);
             try_technique!(apply_aligned_pair_exclusion, Technique::AlignedPairExclusion);
             try_technique!(apply_aligned_triplet_exclusion, Technique::AlignedTripletExclusion);
-            try_technique!(apply_bug, Technique::BivalueUniversalGrave);
             try_technique!(apply_death_blossom, Technique::DeathBlossom);
             try_technique!(apply_nishio_forcing_chain, Technique::NishioForcingChain);
             try_technique!(apply_kraken_fish, Technique::KrakenFish);
@@ -1061,7 +989,7 @@ impl Solver {
 
     // ==================== Hidden Triple ====================
 
-    fn apply_hidden_triples(&self, grid: &mut Grid) -> bool {
+    fn find_hidden_triple(&self, grid: &Grid) -> Option<Hint> {
         for unit_type in 0..3 {
             for unit_idx in 0..9 {
                 let positions = match unit_type {
@@ -1069,18 +997,45 @@ impl Solver {
                     1 => Self::col_positions(unit_idx),
                     _ => Self::box_positions(unit_idx),
                 };
+                let unit_name = match unit_type {
+                    0 => format!("row {}", unit_idx + 1),
+                    1 => format!("column {}", unit_idx + 1),
+                    _ => format!("box {}", unit_idx + 1),
+                };
 
                 let empty_cells = self.empty_cells(grid, &positions);
                 if empty_cells.len() < 4 {
                     continue;
                 }
 
-                // Find three values that appear in exactly 3 cells
                 for v1 in 1..=7u8 {
                     for v2 in (v1 + 1)..=8u8 {
                         for v3 in (v2 + 1)..=9u8 {
-                            let mut cells_with_values: Vec<Position> = Vec::new();
+                            // Collect cells containing each digit
+                            let cells_v1: Vec<&Position> = empty_cells
+                                .iter()
+                                .filter(|&&pos| grid.get_candidates(pos).contains(v1))
+                                .collect();
+                            let cells_v2: Vec<&Position> = empty_cells
+                                .iter()
+                                .filter(|&&pos| grid.get_candidates(pos).contains(v2))
+                                .collect();
+                            let cells_v3: Vec<&Position> = empty_cells
+                                .iter()
+                                .filter(|&&pos| grid.get_candidates(pos).contains(v3))
+                                .collect();
 
+                            // Each digit must appear in at most 3 cells
+                            if cells_v1.len() > 3 || cells_v2.len() > 3 || cells_v3.len() > 3 {
+                                continue;
+                            }
+                            // Each digit must appear in at least 1 cell
+                            if cells_v1.is_empty() || cells_v2.is_empty() || cells_v3.is_empty() {
+                                continue;
+                            }
+
+                            // Union of cells containing any of the three digits
+                            let mut cells_with_values: Vec<Position> = Vec::new();
                             for &pos in &empty_cells {
                                 let cand = grid.get_candidates(pos);
                                 if cand.contains(v1) || cand.contains(v2) || cand.contains(v3) {
@@ -1088,25 +1043,50 @@ impl Solver {
                                 }
                             }
 
-                            if cells_with_values.len() == 3 {
-                                // Found a hidden triple
-                                let mut eliminated = false;
-                                for &pos in &cells_with_values {
-                                    let cand = grid.get_candidates(pos);
-                                    for v in cand.iter() {
-                                        if v != v1 && v != v2 && v != v3 {
-                                            grid.cell_mut(pos).remove_candidate(v);
-                                            eliminated = true;
-                                        }
-                                    }
-                                }
-                                if eliminated {
-                                    return true;
+                            if cells_with_values.len() != 3 {
+                                continue;
+                            }
+
+                            // Check for eliminable candidates
+                            for &pos in &cells_with_values {
+                                let cand = grid.get_candidates(pos);
+                                let to_remove: Vec<u8> = cand
+                                    .iter()
+                                    .filter(|&v| v != v1 && v != v2 && v != v3)
+                                    .collect();
+                                if !to_remove.is_empty() {
+                                    return Some(Hint {
+                                        technique: Technique::HiddenTriple,
+                                        hint_type: HintType::EliminateCandidates {
+                                            pos,
+                                            values: to_remove,
+                                        },
+                                        explanation: format!(
+                                            "Hidden triple {{{}, {}, {}}} in {} at ({},{}), ({},{}), ({},{}).",
+                                            v1, v2, v3, unit_name,
+                                            cells_with_values[0].row + 1, cells_with_values[0].col + 1,
+                                            cells_with_values[1].row + 1, cells_with_values[1].col + 1,
+                                            cells_with_values[2].row + 1, cells_with_values[2].col + 1,
+                                        ),
+                                        involved_cells: cells_with_values.clone(),
+                                    });
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_hidden_triples(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_hidden_triple(grid) {
+            if let HintType::EliminateCandidates { pos, values } = hint.hint_type {
+                for value in values {
+                    grid.cell_mut(pos).remove_candidate(value);
+                }
+                return true;
             }
         }
         false
@@ -1213,7 +1193,7 @@ impl Solver {
 
     // ==================== Hidden Quad ====================
 
-    fn apply_hidden_quads(&self, grid: &mut Grid) -> bool {
+    fn find_hidden_quad(&self, grid: &Grid) -> Option<Hint> {
         for unit_type in 0..3 {
             for unit_idx in 0..9 {
                 let positions = match unit_type {
@@ -1221,19 +1201,40 @@ impl Solver {
                     1 => Self::col_positions(unit_idx),
                     _ => Self::box_positions(unit_idx),
                 };
+                let unit_name = match unit_type {
+                    0 => format!("row {}", unit_idx + 1),
+                    1 => format!("column {}", unit_idx + 1),
+                    _ => format!("box {}", unit_idx + 1),
+                };
 
                 let empty_cells = self.empty_cells(grid, &positions);
                 if empty_cells.len() < 5 {
                     continue;
                 }
 
-                // Find four values that appear in exactly 4 cells
                 let values: Vec<u8> = (1..=9).collect();
                 for combo in Self::combinations(&values, 4) {
                     let v1 = combo[0];
                     let v2 = combo[1];
                     let v3 = combo[2];
                     let v4 = combo[3];
+
+                    // Each digit must appear in at most 4 cells and at least 1
+                    let hidden_vals = [v1, v2, v3, v4];
+                    let mut valid = true;
+                    for &v in &hidden_vals {
+                        let count = empty_cells
+                            .iter()
+                            .filter(|&&pos| grid.get_candidates(pos).contains(v))
+                            .count();
+                        if count == 0 || count > 4 {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if !valid {
+                        continue;
+                    }
 
                     let mut cells_with_values: Vec<Position> = Vec::new();
                     for &pos in &empty_cells {
@@ -1247,22 +1248,48 @@ impl Solver {
                         }
                     }
 
-                    if cells_with_values.len() == 4 {
-                        let mut eliminated = false;
-                        for &pos in &cells_with_values {
-                            let cand = grid.get_candidates(pos);
-                            for v in cand.iter() {
-                                if v != v1 && v != v2 && v != v3 && v != v4 {
-                                    grid.cell_mut(pos).remove_candidate(v);
-                                    eliminated = true;
-                                }
-                            }
-                        }
-                        if eliminated {
-                            return true;
+                    if cells_with_values.len() != 4 {
+                        continue;
+                    }
+
+                    for &pos in &cells_with_values {
+                        let cand = grid.get_candidates(pos);
+                        let to_remove: Vec<u8> = cand
+                            .iter()
+                            .filter(|&v| v != v1 && v != v2 && v != v3 && v != v4)
+                            .collect();
+                        if !to_remove.is_empty() {
+                            return Some(Hint {
+                                technique: Technique::HiddenQuad,
+                                hint_type: HintType::EliminateCandidates {
+                                    pos,
+                                    values: to_remove,
+                                },
+                                explanation: format!(
+                                    "Hidden quad {{{}, {}, {}, {}}} in {} at ({},{}), ({},{}), ({},{}), ({},{}).",
+                                    v1, v2, v3, v4, unit_name,
+                                    cells_with_values[0].row + 1, cells_with_values[0].col + 1,
+                                    cells_with_values[1].row + 1, cells_with_values[1].col + 1,
+                                    cells_with_values[2].row + 1, cells_with_values[2].col + 1,
+                                    cells_with_values[3].row + 1, cells_with_values[3].col + 1,
+                                ),
+                                involved_cells: cells_with_values.clone(),
+                            });
                         }
                     }
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_hidden_quads(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_hidden_quad(grid) {
+            if let HintType::EliminateCandidates { pos, values } = hint.hint_type {
+                for value in values {
+                    grid.cell_mut(pos).remove_candidate(value);
+                }
+                return true;
             }
         }
         false
@@ -4285,39 +4312,63 @@ impl Solver {
     /// Try UR eliminations on a specific rectangle configuration.
     /// pos1, pos2 are bivalue {a,b} corners on the same line.
     /// corner3, corner4 are the opposite corners.
-    fn try_ur_types(
+    fn try_ur_hint(
         &self,
-        grid: &mut Grid,
+        grid: &Grid,
         pos1: Position,
         pos2: Position,
         corner3: Position,
         corner4: Position,
         a: u8,
         b: u8,
-    ) -> bool {
+    ) -> Option<Hint> {
         let cand3 = grid.get_candidates(corner3);
         let cand4 = grid.get_candidates(corner4);
 
-        // Both corners must be empty and contain both UR digits
         if !grid.cell(corner3).is_empty() || !grid.cell(corner4).is_empty() {
-            return false;
+            return None;
         }
         if !cand3.contains(a) || !cand3.contains(b) || !cand4.contains(a) || !cand4.contains(b) {
-            return false;
+            return None;
         }
+
+        let corners = vec![pos1, pos2, corner3, corner4];
+        let make_explanation = |ur_type: &str, detail: &str| -> String {
+            format!(
+                "Unique Rectangle {} {{{}, {}}} at ({},{}), ({},{}), ({},{}), ({},{}). {}",
+                ur_type, a, b,
+                pos1.row + 1, pos1.col + 1, pos2.row + 1, pos2.col + 1,
+                corner3.row + 1, corner3.col + 1, corner4.row + 1, corner4.col + 1,
+                detail
+            )
+        };
 
         // Type 1: Three bivalue corners, fourth has extras → eliminate a,b from fourth
         if cand3.count() == 2 && cand4.count() > 2 {
-            // corner3 is bivalue {a,b}, corner4 has extras
-            // To avoid deadly pattern, corner4 must not be {a,b}, so eliminate a and b
-            grid.cell_mut(corner4).remove_candidate(a);
-            grid.cell_mut(corner4).remove_candidate(b);
-            return true;
+            return Some(Hint {
+                technique: Technique::UniqueRectangle,
+                hint_type: HintType::EliminateCandidates {
+                    pos: corner4,
+                    values: vec![a, b],
+                },
+                explanation: make_explanation("Type 1", &format!(
+                    "Eliminate {},{} from ({},{}).", a, b, corner4.row + 1, corner4.col + 1
+                )),
+                involved_cells: corners,
+            });
         }
         if cand4.count() == 2 && cand3.count() > 2 {
-            grid.cell_mut(corner3).remove_candidate(a);
-            grid.cell_mut(corner3).remove_candidate(b);
-            return true;
+            return Some(Hint {
+                technique: Technique::UniqueRectangle,
+                hint_type: HintType::EliminateCandidates {
+                    pos: corner3,
+                    values: vec![a, b],
+                },
+                explanation: make_explanation("Type 1", &format!(
+                    "Eliminate {},{} from ({},{}).", a, b, corner3.row + 1, corner3.col + 1
+                )),
+                involved_cells: corners,
+            });
         }
 
         // Type 2: Both non-bivalue corners have same single extra candidate
@@ -4334,22 +4385,31 @@ impl Solver {
                         && self.sees(pos, corner4)
                         && grid.get_candidates(pos).contains(extra)
                     {
-                        grid.cell_mut(pos).remove_candidate(extra);
-                        return true;
+                        let mut involved = corners.clone();
+                        involved.push(pos);
+                        return Some(Hint {
+                            technique: Technique::UniqueRectangle,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![extra],
+                            },
+                            explanation: make_explanation("Type 2", &format!(
+                                "Eliminate {} from ({},{}).", extra, pos.row + 1, pos.col + 1
+                            )),
+                            involved_cells: involved,
+                        });
                     }
                 }
             }
         }
 
-        // Type 3: Non-bivalue corners' extras form a naked subset with peers in the shared unit
-        // If corners are in the same row or column, the extras + some peers form a naked pair/triple
+        // Type 3: Non-bivalue corners' extras form a naked subset with peers
         if cand3.count() > 2 || cand4.count() > 2 {
             let extra3 = cand3.difference(&crate::BitSet::from_slice(&[a, b]));
             let extra4 = cand4.difference(&crate::BitSet::from_slice(&[a, b]));
             let combined_extras = extra3.union(&extra4);
 
             if combined_extras.count() >= 2 && combined_extras.count() <= 3 {
-                // Check if corners share a unit (row, col, or box)
                 let shared_units: Vec<Vec<Position>> = {
                     let mut units = Vec::new();
                     if corner3.row == corner4.row {
@@ -4377,19 +4437,26 @@ impl Solver {
                         .copied()
                         .collect();
 
-                    // The extras act as a virtual naked pair/triple with the unit
-                    // Eliminate combined_extras from other cells in the unit that aren't involved
                     let subset_size = combined_extras.count() as usize;
                     if subset_size == 2 {
-                        // Virtual naked pair: eliminate combined_extras from other cells
                         for &pos in &other_cells {
                             let cell_cands = grid.get_candidates(pos);
                             let overlap = cell_cands.intersection(&combined_extras);
                             if !overlap.is_empty() && cell_cands != combined_extras {
-                                for v in overlap.iter() {
-                                    grid.cell_mut(pos).remove_candidate(v);
-                                }
-                                return true;
+                                let mut involved = corners.clone();
+                                involved.push(pos);
+                                return Some(Hint {
+                                    technique: Technique::UniqueRectangle,
+                                    hint_type: HintType::EliminateCandidates {
+                                        pos,
+                                        values: overlap.iter().collect(),
+                                    },
+                                    explanation: make_explanation("Type 3", &format!(
+                                        "Eliminate {:?} from ({},{}).",
+                                        overlap.to_vec(), pos.row + 1, pos.col + 1
+                                    )),
+                                    involved_cells: involved,
+                                });
                             }
                         }
                     }
@@ -4398,12 +4465,9 @@ impl Solver {
         }
 
         // Type 4: Strong link on one UR digit forces the other out
-        // If digit 'a' has a strong link (only 2 positions in a shared unit) through
-        // both non-bivalue corners, then 'b' can be eliminated from those corners
         for &digit in &[a, b] {
             let other = if digit == a { b } else { a };
 
-            // Check if the two non-bivalue corners form a strong link for 'digit' in some unit
             let in_same_row = corner3.row == corner4.row;
             let in_same_col = corner3.col == corner4.col;
             let in_same_box = corner3.box_index() == corner4.box_index();
@@ -4427,28 +4491,39 @@ impl Solver {
             };
 
             if strong {
-                // The strong link means one of the corners must have 'digit'.
-                // So we can eliminate 'other' from both corners.
-                let mut applied = false;
-                if grid.get_candidates(corner3).contains(other) && cand3.count() > 2 {
-                    grid.cell_mut(corner3).remove_candidate(other);
-                    applied = true;
+                let mut elim_pos = None;
+                let mut elim_vals = Vec::new();
+                if cand3.contains(other) && cand3.count() > 2 {
+                    elim_pos = Some(corner3);
+                    elim_vals.push(other);
                 }
-                if grid.get_candidates(corner4).contains(other) && cand4.count() > 2 {
-                    grid.cell_mut(corner4).remove_candidate(other);
-                    applied = true;
+                if cand4.contains(other) && cand4.count() > 2 {
+                    if elim_pos.is_none() {
+                        elim_pos = Some(corner4);
+                        elim_vals.push(other);
+                    }
                 }
-                if applied {
-                    return true;
+                if let Some(pos) = elim_pos {
+                    return Some(Hint {
+                        technique: Technique::UniqueRectangle,
+                        hint_type: HintType::EliminateCandidates {
+                            pos,
+                            values: elim_vals,
+                        },
+                        explanation: make_explanation("Type 4", &format!(
+                            "Strong link on {} forces elimination of {} from ({},{}).",
+                            digit, other, pos.row + 1, pos.col + 1
+                        )),
+                        involved_cells: corners,
+                    });
                 }
             }
         }
 
-        false
+        None
     }
 
-    fn apply_unique_rectangle(&self, grid: &mut Grid) -> bool {
-        // Find bi-value cells with exactly 2 candidates
+    fn find_unique_rectangle(&self, grid: &Grid) -> Option<Hint> {
         let bivalues: Vec<(Position, u8, u8)> = grid
             .empty_positions()
             .into_iter()
@@ -4486,7 +4561,6 @@ impl Solver {
                         let corner3 = Position::new(other_row, pos1.col);
                         let corner4 = Position::new(other_row, pos2.col);
 
-                        // Need exactly 2 boxes
                         let boxes: std::collections::HashSet<usize> = [pos1, pos2, corner3, corner4]
                             .iter()
                             .map(|p| p.box_index())
@@ -4495,8 +4569,8 @@ impl Solver {
                             continue;
                         }
 
-                        if self.try_ur_types(grid, pos1, pos2, corner3, corner4, a, b) {
-                            return true;
+                        if let Some(hint) = self.try_ur_hint(grid, pos1, pos2, corner3, corner4, a, b) {
+                            return Some(hint);
                         }
                     }
                 } else {
@@ -4515,11 +4589,23 @@ impl Solver {
                             continue;
                         }
 
-                        if self.try_ur_types(grid, pos1, pos2, corner3, corner4, a, b) {
-                            return true;
+                        if let Some(hint) = self.try_ur_hint(grid, pos1, pos2, corner3, corner4, a, b) {
+                            return Some(hint);
                         }
                     }
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_unique_rectangle(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_unique_rectangle(grid) {
+            if let HintType::EliminateCandidates { pos, values } = hint.hint_type {
+                for v in values {
+                    grid.cell_mut(pos).remove_candidate(v);
+                }
+                return true;
             }
         }
         false
@@ -5089,7 +5175,7 @@ impl Solver {
 
     /// Aligned Triplet Exclusion: Three mutually visible cells. If every valid
     /// value triple excludes a candidate from a common peer, eliminate it.
-    fn apply_aligned_triplet_exclusion(&self, grid: &mut Grid) -> bool {
+    fn find_aligned_triplet_exclusion(&self, grid: &Grid) -> Option<Hint> {
         let empty = grid.empty_positions();
 
         for i in 0..empty.len() {
@@ -5119,7 +5205,6 @@ impl Solver {
                         continue;
                     }
 
-                    // Enumerate valid triples
                     let mut valid_triples: Vec<(u8, u8, u8)> = Vec::new();
                     for v1 in c1.iter() {
                         for v2 in c2.iter() {
@@ -5141,7 +5226,6 @@ impl Solver {
                         continue;
                     }
 
-                    // Check common peers
                     for &pos in &empty {
                         if pos == p1 || pos == p2 || pos == p3 {
                             continue;
@@ -5156,12 +5240,35 @@ impl Solver {
                             });
 
                             if all_exclude {
-                                grid.cell_mut(pos).remove_candidate(val);
-                                return true;
+                                return Some(Hint {
+                                    technique: Technique::AlignedTripletExclusion,
+                                    hint_type: HintType::EliminateCandidates {
+                                        pos,
+                                        values: vec![val],
+                                    },
+                                    explanation: format!(
+                                        "Aligned Triplet Exclusion: cells ({},{}), ({},{}), ({},{}) exclude {} from ({},{}).",
+                                        p1.row + 1, p1.col + 1, p2.row + 1, p2.col + 1,
+                                        p3.row + 1, p3.col + 1, val, pos.row + 1, pos.col + 1
+                                    ),
+                                    involved_cells: vec![p1, p2, p3, pos],
+                                });
                             }
                         }
                     }
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_aligned_triplet_exclusion(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_aligned_triplet_exclusion(grid) {
+            if let HintType::EliminateCandidates { pos, values } = hint.hint_type {
+                for v in values {
+                    grid.cell_mut(pos).remove_candidate(v);
+                }
+                return true;
             }
         }
         false
@@ -5171,7 +5278,7 @@ impl Solver {
 
     /// Death Blossom: A "stem" cell with N candidates, each linking to a different ALS (petal).
     /// If all petals agree on eliminating a candidate from a cell, do it.
-    fn apply_death_blossom(&self, grid: &mut Grid) -> bool {
+    fn find_death_blossom(&self, grid: &Grid) -> Option<Hint> {
         let all_als = Self::find_all_als(grid);
         let small_als: Vec<&(Vec<Position>, crate::BitSet)> = all_als
             .iter()
@@ -5189,10 +5296,7 @@ impl Solver {
 
             let stem_vals: Vec<u8> = stem_cands.iter().collect();
 
-            // For each stem candidate, find an ALS that:
-            // 1. Doesn't contain the stem
-            // 2. Contains the stem candidate as a restricted common (all instances see the stem)
-            let mut petals: Vec<(u8, usize)> = Vec::new(); // (stem_val, als_idx)
+            let mut petals: Vec<(u8, usize)> = Vec::new();
             let mut used_als = std::collections::HashSet::new();
 
             for &val in &stem_vals {
@@ -5207,7 +5311,6 @@ impl Solver {
                     if !cands.contains(val) {
                         continue;
                     }
-                    // Check restricted common: all cells in ALS with 'val' must see stem
                     let val_cells: Vec<&Position> = cells
                         .iter()
                         .filter(|&&p| grid.get_candidates(p).contains(val))
@@ -5223,13 +5326,10 @@ impl Solver {
                 }
             }
 
-            // Need one petal per stem candidate
             if petals.len() != stem_vals.len() {
                 continue;
             }
 
-            // Find common eliminations: for each non-RCC digit in each ALS,
-            // if all petals' instances of that digit see a target cell, eliminate it
             for digit in 1..=9u8 {
                 if stem_cands.contains(digit) {
                     continue;
@@ -5256,7 +5356,6 @@ impl Solver {
                     continue;
                 }
 
-                // Find cells that see all digit cells across all petals
                 for &pos in &empty {
                     if pos == stem || petals.iter().any(|&(_, idx)| small_als[idx].0.contains(&pos)) {
                         continue;
@@ -5265,10 +5364,38 @@ impl Solver {
                         continue;
                     }
                     if all_digit_cells.iter().all(|&dc| self.sees(pos, dc)) {
-                        grid.cell_mut(pos).remove_candidate(digit);
-                        return true;
+                        let mut involved = vec![stem];
+                        for &(_, idx) in &petals {
+                            involved.extend(small_als[idx].0.iter());
+                        }
+                        involved.push(pos);
+                        return Some(Hint {
+                            technique: Technique::DeathBlossom,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![digit],
+                            },
+                            explanation: format!(
+                                "Death Blossom: stem ({},{}) with {} petals eliminates {} from ({},{}).",
+                                stem.row + 1, stem.col + 1, petals.len(),
+                                digit, pos.row + 1, pos.col + 1
+                            ),
+                            involved_cells: involved,
+                        });
                     }
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_death_blossom(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_death_blossom(grid) {
+            if let HintType::EliminateCandidates { pos, values } = hint.hint_type {
+                for v in values {
+                    grid.cell_mut(pos).remove_candidate(v);
+                }
+                return true;
             }
         }
         false
@@ -5278,9 +5405,8 @@ impl Solver {
 
     /// Kraken Fish: A finned fish where the fin's validity is verified via forcing chain.
     /// If assuming the fin leads to the same elimination as the fish, the elimination holds.
-    fn apply_kraken_fish(&self, grid: &mut Grid) -> bool {
+    fn find_kraken_fish(&self, grid: &Grid) -> Option<Hint> {
         for digit in 1..=9u8 {
-            // Try row-based X-Wing patterns with problematic fins
             for r1 in 0..9 {
                 for r2 in (r1 + 1)..9 {
                     let row1_cols: Vec<usize> = (0..9)
@@ -5306,7 +5432,6 @@ impl Solver {
                         continue;
                     }
 
-                    // Find fins
                     let fins: Vec<Position> = row1_cols
                         .iter()
                         .filter(|c| !common_cols.contains(c))
@@ -5323,7 +5448,6 @@ impl Solver {
                         continue;
                     }
 
-                    // Standard fish elimination targets (cells in cover cols, not in base rows)
                     let targets: Vec<Position> = common_cols
                         .iter()
                         .flat_map(|&c| {
@@ -5334,18 +5458,14 @@ impl Solver {
                         .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
                         .collect();
 
-                    // For each target, verify via forcing chain on each fin
                     for &target in &targets {
                         let mut all_fins_eliminate = true;
                         for &fin in &fins {
-                            // If fin has digit → propagate and check if target loses digit
                             let (result, contradiction) = self.propagate_singles(grid, fin, digit);
                             if contradiction {
-                                continue; // Contradiction means fin can't have digit, fish holds trivially
+                                continue;
                             }
-                            // Check if target lost the digit
                             if result.get(target).is_some() {
-                                // Target was filled → digit is "eliminated"
                                 if result.get(target) == Some(digit) {
                                     all_fins_eliminate = false;
                                     break;
@@ -5357,11 +5477,42 @@ impl Solver {
                         }
 
                         if all_fins_eliminate {
-                            grid.cell_mut(target).remove_candidate(digit);
-                            return true;
+                            let mut involved: Vec<Position> = vec![
+                                Position::new(r1, common_cols[0]),
+                                Position::new(r1, common_cols[1]),
+                                Position::new(r2, common_cols[0]),
+                                Position::new(r2, common_cols[1]),
+                            ];
+                            involved.extend(&fins);
+                            involved.push(target);
+                            return Some(Hint {
+                                technique: Technique::KrakenFish,
+                                hint_type: HintType::EliminateCandidates {
+                                    pos: target,
+                                    values: vec![digit],
+                                },
+                                explanation: format!(
+                                    "Kraken Fish: digit {} in rows {},{} with {} fin(s) eliminates {} from ({},{}).",
+                                    digit, r1 + 1, r2 + 1, fins.len(),
+                                    digit, target.row + 1, target.col + 1
+                                ),
+                                involved_cells: involved,
+                            });
                         }
                     }
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_kraken_fish(&self, grid: &mut Grid) -> bool {
+        if let Some(hint) = self.find_kraken_fish(grid) {
+            if let HintType::EliminateCandidates { pos, values } = hint.hint_type {
+                for v in values {
+                    grid.cell_mut(pos).remove_candidate(v);
+                }
+                return true;
             }
         }
         false
@@ -6214,6 +6365,82 @@ mod tests {
         // uses forcing chains before falling back to backtracking
         if working.is_complete() {
             assert!(max_tech <= Technique::Backtracking);
+        }
+    }
+
+    /// Soundness test: verify that every elimination/placement returned by hints
+    /// is consistent with the unique solution. This catches false-positive
+    /// eliminations that would leave the player stuck.
+    #[test]
+    fn test_hint_soundness() {
+        let puzzles = [
+            // Easy (naked/hidden singles)
+            "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+            // Medium
+            "020000600008020050500060020060000093003905100790000080050090004010070300006000010",
+            // Arto Inkala (requires advanced techniques)
+            "800000000003600000070090200050007000000045700000100030001000068008500010090000400",
+        ];
+
+        let solver = Solver::new();
+
+        for puzzle_str in &puzzles {
+            let grid = Grid::from_string(puzzle_str).unwrap();
+            let solution = match solver.solve(&grid) {
+                Some(s) if s.is_complete() => s,
+                _ => continue, // skip puzzles without unique solution
+            };
+
+            let mut working = grid.deep_clone();
+            working.recalculate_candidates();
+
+            // Repeatedly get hints and verify each one against the solution
+            let mut steps = 0;
+            while !working.is_complete() && steps < 300 {
+                let hint = match solver.get_hint(&working) {
+                    Some(h) => h,
+                    None => break,
+                };
+
+                match &hint.hint_type {
+                    HintType::SetValue { pos, value } => {
+                        // The placed value must match the unique solution
+                        let sol_val = solution.get(*pos);
+                        assert_eq!(
+                            sol_val,
+                            Some(*value),
+                            "Unsound placement by {:?}: ({},{}) = {}, but solution has {:?}. Puzzle: {}",
+                            hint.technique,
+                            pos.row + 1,
+                            pos.col + 1,
+                            value,
+                            sol_val,
+                            puzzle_str
+                        );
+                        working.set_cell_unchecked(*pos, Some(*value));
+                        working.recalculate_candidates();
+                    }
+                    HintType::EliminateCandidates { pos, values } => {
+                        // The eliminated candidates must NOT be the solution value
+                        let sol_val = solution.get(*pos).expect("Position should have solution");
+                        for &v in values {
+                            assert_ne!(
+                                v, sol_val,
+                                "Unsound elimination by {:?}: removing {} from ({},{}) but solution needs it. Puzzle: {}",
+                                hint.technique,
+                                v,
+                                pos.row + 1,
+                                pos.col + 1,
+                                puzzle_str
+                            );
+                        }
+                        for &v in values {
+                            working.cell_mut(*pos).remove_candidate(v);
+                        }
+                    }
+                }
+                steps += 1;
+            }
         }
     }
 }
