@@ -54,15 +54,21 @@ struct QRScannerView: View {
         }
     }
 
-    /// Extract the puzzle string from a URL or raw 81-char string
+    /// Extract the puzzle string from a URL, raw 81-char string, or 8-char short code
     private func extractPuzzle(from code: String) -> String? {
-        // Check if it's a raw 81-char puzzle string
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Check if it's a raw 81-char puzzle string
         if trimmed.count == 81 && trimmed.allSatisfy({ $0.isNumber || $0 == "." }) {
             return trimmed
         }
 
-        // Try to parse as URL
+        // Check if it's a raw 8-char short code (alphanumeric)
+        if trimmed.count == 8 && trimmed.allSatisfy({ $0.isLetter || $0.isNumber }) {
+            return trimmed
+        }
+
+        // Try to parse as URL (backward compat)
         guard let url = URL(string: code),
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return nil

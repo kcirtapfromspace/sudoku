@@ -311,16 +311,9 @@
 
                 // Set up share button
                 document.getElementById('share-btn').addEventListener('click', async () => {
-                    const shortCode = game.get_short_code();
-                    let shareUrl;
-                    if (shortCode) {
-                        shareUrl = window.location.origin + window.location.pathname + '?s=' + shortCode;
-                    } else {
-                        const puzzleStr = game.get_puzzle_string();
-                        shareUrl = window.location.origin + window.location.pathname + '?p=' + puzzleStr;
-                    }
+                    const shareCode = game.get_short_code() || game.get_puzzle_string();
                     try {
-                        await navigator.clipboard.writeText(shareUrl);
+                        await navigator.clipboard.writeText(shareCode);
                         const btn = document.getElementById('share-btn');
                         const original = btn.textContent;
                         btn.textContent = 'Copied!';
@@ -328,7 +321,7 @@
                     } catch (e) {
                         // Fallback: select text in a temporary input
                         const input = document.createElement('input');
-                        input.value = shareUrl;
+                        input.value = shareCode;
                         document.body.appendChild(input);
                         input.select();
                         document.execCommand('copy');

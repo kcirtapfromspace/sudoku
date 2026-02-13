@@ -826,21 +826,12 @@ impl App {
         }
     }
 
-    /// Write the puzzle share URL to a file
+    /// Write the puzzle share code to a file
     fn share_puzzle(&mut self) {
-        let (url, msg_suffix) = if let Some(code) = self.game.short_code() {
-            let url = format!(
-                "https://kcirtapfromspace.github.io/sudoku/?s={}",
-                code
-            );
-            (url, format!(" ({})", code))
+        let code = if let Some(short) = self.game.short_code() {
+            short
         } else {
-            let puzzle_str = self.game.original_puzzle();
-            let url = format!(
-                "https://kcirtapfromspace.github.io/sudoku/?p={}",
-                puzzle_str
-            );
-            (url, String::new())
+            self.game.original_puzzle().to_string()
         };
 
         let share_dir = dirs::data_local_dir()
@@ -849,9 +840,9 @@ impl App {
         let _ = fs::create_dir_all(&share_dir);
         let share_path = share_dir.join("share.txt");
 
-        match fs::write(&share_path, &url) {
-            Ok(_) => self.show_message(&format!("Share URL saved{}", msg_suffix)),
-            Err(_) => self.show_message("Failed to save share URL"),
+        match fs::write(&share_path, &code) {
+            Ok(_) => self.show_message(&format!("Puzzle code copied: {}", code)),
+            Err(_) => self.show_message("Failed to save puzzle code"),
         }
     }
 
