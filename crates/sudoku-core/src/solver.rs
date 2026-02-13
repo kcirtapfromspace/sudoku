@@ -1,3 +1,9 @@
+// Algorithm references:
+// - Hodoku (hobiger.org): technique definitions and classification
+// - Sudoku Explainer (SE): numerical difficulty rating scale (1.5–11.0)
+// - Andrew Stuart's sudokuwiki.org: technique tutorials
+// - Thomas Snyder's Crook algorithm: pencil-and-paper candidate elimination
+
 use crate::{Grid, Position};
 use serde::{Deserialize, Serialize};
 
@@ -3889,110 +3895,151 @@ impl Solver {
         false
     }
 
+    // ==================== Advanced Fish Helpers ====================
+
+    /// Build candidate sectors for a digit: rows (0-8), cols (9-17), boxes (18-26).
+    /// Only includes sectors with 2+ candidate cells.
+    fn build_digit_sectors(grid: &Grid, digit: u8) -> Vec<(usize, Vec<Position>)> {
+        let mut sectors = Vec::new();
+        for i in 0..9 {
+            let cells: Vec<Position> = Self::row_positions(i)
+                .into_iter()
+                .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                .collect();
+            if cells.len() >= 2 {
+                sectors.push((i, cells));
+            }
+        }
+        for i in 0..9 {
+            let cells: Vec<Position> = Self::col_positions(i)
+                .into_iter()
+                .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                .collect();
+            if cells.len() >= 2 {
+                sectors.push((9 + i, cells));
+            }
+        }
+        for i in 0..9 {
+            let cells: Vec<Position> = Self::box_positions(i)
+                .into_iter()
+                .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                .collect();
+            if cells.len() >= 2 {
+                sectors.push((18 + i, cells));
+            }
+        }
+        sectors
+    }
+
+    /// Human-readable name for a sector id (0-8=Row, 9-17=Col, 18-26=Box).
+    fn sector_name(id: usize) -> String {
+        match id / 9 {
+            0 => format!("Row {}", id + 1),
+            1 => format!("Col {}", id - 9 + 1),
+            _ => format!("Box {}", id - 18 + 1),
+        }
+    }
+
+    /// Union of position vectors without duplicates.
+    fn union_positions(sets: &[&Vec<Position>]) -> Vec<Position> {
+        let mut result = Vec::new();
+        for set in sets {
+            for &p in *set {
+                if !result.contains(&p) {
+                    result.push(p);
+                }
+            }
+        }
+        result
+    }
+
     // ==================== Franken Fish ====================
 
     /// Franken Fish: Like regular fish but base/cover sets can include box sectors.
-    /// A Franken X-Wing uses one row + one box as base, one col + one box as cover (or similar).
+    /// Sizes 2-4. At least one box in base or cover (but not all 3 sector types,
+    /// which would be Mutant Fish).
     fn find_franken_fish(&self, grid: &Grid) -> Option<Hint> {
-        // Collect all "sectors" (rows, cols, boxes) for each digit
         for digit in 1..=9u8 {
-            // Build sector position lists: 9 rows + 9 cols + 9 boxes = 27 sectors
-            let mut sectors: Vec<(usize, Vec<Position>)> = Vec::new();
-            for i in 0..9 {
-                let row_cells: Vec<Position> = Self::row_positions(i)
-                    .into_iter()
-                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
-                    .collect();
-                if row_cells.len() >= 2 {
-                    sectors.push((i, row_cells)); // 0-8: rows
+            let sectors = Self::build_digit_sectors(grid, digit);
+            let sector_indices: Vec<usize> = (0..sectors.len()).collect();
+
+            for size in 2..=4usize {
+                if sectors.len() < size * 2 {
+                    continue;
                 }
-            }
-            for i in 0..9 {
-                let col_cells: Vec<Position> = Self::col_positions(i)
-                    .into_iter()
-                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
-                    .collect();
-                if col_cells.len() >= 2 {
-                    sectors.push((9 + i, col_cells)); // 9-17: cols
-                }
-            }
-            for i in 0..9 {
-                let box_cells: Vec<Position> = Self::box_positions(i)
-                    .into_iter()
-                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
-                    .collect();
-                if box_cells.len() >= 2 {
-                    sectors.push((18 + i, box_cells)); // 18-26: boxes
-                }
-            }
 
-            // Try size-2 Franken fish (must mix types, not just rows+cols which is regular fish)
-            for i in 0..sectors.len() {
-                for j in (i + 1)..sectors.len() {
-                    let (id_a, ref cells_a) = sectors[i];
-                    let (id_b, ref cells_b) = sectors[j];
+                for base_combo in Self::combinations(&sector_indices, size) {
+                    let base_types: std::collections::HashSet<usize> =
+                        base_combo.iter().map(|&i| sectors[i].0 / 9).collect();
+                    let has_box_in_base = base_types.contains(&2);
 
-                    let type_a = id_a / 9; // 0=row, 1=col, 2=box
-                    let type_b = id_b / 9;
+                    // Build base cells (union)
+                    let base_refs: Vec<&Vec<Position>> =
+                        base_combo.iter().map(|&i| &sectors[i].1).collect();
+                    let base_cells = Self::union_positions(&base_refs);
 
-                    // Must include at least one box sector to be "Franken"
-                    if type_a != 2 && type_b != 2 {
-                        continue;
-                    }
+                    // Cover candidates: sectors not in base
+                    let remaining: Vec<usize> = sector_indices
+                        .iter()
+                        .filter(|i| !base_combo.contains(i))
+                        .copied()
+                        .collect();
 
-                    // Base set: union of cells in sectors a and b
-                    let mut base_cells: Vec<Position> = cells_a.clone();
-                    for &p in cells_b {
-                        if !base_cells.contains(&p) {
-                            base_cells.push(p);
-                        }
-                    }
+                    for cover_combo in Self::combinations(&remaining, size) {
+                        let cover_types: std::collections::HashSet<usize> =
+                            cover_combo.iter().map(|&i| sectors[i].0 / 9).collect();
+                        let has_box_in_cover = cover_types.contains(&2);
 
-                    // Find cover sectors: other sectors that contain all base cells
-                    for ci in 0..sectors.len() {
-                        if ci == i || ci == j {
+                        // Franken: at least one box in base or cover
+                        if !has_box_in_base && !has_box_in_cover {
                             continue;
                         }
-                        for cj in (ci + 1)..sectors.len() {
-                            if cj == i || cj == j {
-                                continue;
-                            }
 
-                            let (id_ci, ref cells_ci) = sectors[ci];
-                            let (id_cj, ref cells_cj) = sectors[cj];
+                        // Exclude Mutant (all 3 sector types across base+cover)
+                        let all_types: std::collections::HashSet<usize> =
+                            base_types.union(&cover_types).copied().collect();
+                        if all_types.len() >= 3 {
+                            continue;
+                        }
 
-                            // Cover must contain all base cells
-                            let mut cover_cells: Vec<Position> = cells_ci.clone();
-                            for &p in cells_cj {
-                                if !cover_cells.contains(&p) {
-                                    cover_cells.push(p);
-                                }
-                            }
+                        // Build cover cells (union)
+                        let cover_refs: Vec<&Vec<Position>> =
+                            cover_combo.iter().map(|&i| &sectors[i].1).collect();
+                        let cover_cells = Self::union_positions(&cover_refs);
 
-                            let all_covered = base_cells.iter().all(|p| cover_cells.contains(p));
-                            if !all_covered {
-                                continue;
-                            }
+                        // Cover must contain all base cells
+                        if !base_cells.iter().all(|p| cover_cells.contains(p)) {
+                            continue;
+                        }
 
-                            // Eliminate digit from cover cells that are NOT in base cells
-                            for &pos in &cover_cells {
-                                if !base_cells.contains(&pos)
-                                    && grid.get_candidates(pos).contains(digit)
-                                {
-                                    let _ = (id_ci, id_cj); // suppress warning
-                                    return Some(Hint {
-                                        technique: Technique::FrankenFish,
-                                        hint_type: HintType::EliminateCandidates {
-                                            pos,
-                                            values: vec![digit],
-                                        },
-                                        explanation: format!(
-                                            "Franken Fish: {} using base sectors {},{} and cover sectors {},{}. Eliminate from ({}, {}).",
-                                            digit, id_a, id_b, id_ci, id_cj, pos.row + 1, pos.col + 1
-                                        ),
-                                        involved_cells: base_cells.clone(),
-                                    });
-                                }
+                        // Eliminate from cover cells NOT in base
+                        for &pos in &cover_cells {
+                            if !base_cells.contains(&pos)
+                                && grid.get_candidates(pos).contains(digit)
+                            {
+                                let base_names: Vec<String> = base_combo
+                                    .iter()
+                                    .map(|&i| Self::sector_name(sectors[i].0))
+                                    .collect();
+                                let cover_names: Vec<String> = cover_combo
+                                    .iter()
+                                    .map(|&i| Self::sector_name(sectors[i].0))
+                                    .collect();
+                                return Some(Hint {
+                                    technique: Technique::FrankenFish,
+                                    hint_type: HintType::EliminateCandidates {
+                                        pos,
+                                        values: vec![digit],
+                                    },
+                                    explanation: format!(
+                                        "Franken Fish (size {}): {} with base [{}] and cover [{}]. Eliminate from ({}, {}).",
+                                        size, digit,
+                                        base_names.join(", "),
+                                        cover_names.join(", "),
+                                        pos.row + 1, pos.col + 1
+                                    ),
+                                    involved_cells: base_cells.clone(),
+                                });
                             }
                         }
                     }
@@ -4016,98 +4063,176 @@ impl Solver {
 
     // ==================== Siamese Fish ====================
 
-    /// Siamese Fish: Two finned fish patterns that share the same base rows/cols
-    /// but have fins in different boxes, producing complementary eliminations.
+    /// Siamese Fish: Two finned fish sharing the same base lines but with fins
+    /// in different boxes, producing complementary eliminations. Sizes 2-4,
+    /// both row-based and column-based.
     fn find_siamese_fish(&self, grid: &Grid) -> Option<Hint> {
-        // Siamese fish are essentially two finned fish sharing base sets.
-        // We look for fish patterns where there are exactly 2 extra cells (fins)
-        // in different boxes, giving two elimination sets.
         for digit in 1..=9u8 {
-            // Try row-based size-2 (Siamese X-Wing)
-            for r1 in 0..9 {
-                for r2 in (r1 + 1)..9 {
-                    let row1_cols: Vec<usize> = (0..9)
-                        .filter(|&c| {
-                            let p = Position::new(r1, c);
-                            grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit)
-                        })
-                        .collect();
-                    let row2_cols: Vec<usize> = (0..9)
-                        .filter(|&c| {
-                            let p = Position::new(r2, c);
-                            grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit)
-                        })
-                        .collect();
+            for size in 2..=4usize {
+                // Row-based
+                if let Some(hint) = self.find_siamese_fish_oriented(grid, digit, size, true) {
+                    return Some(hint);
+                }
+                // Column-based
+                if let Some(hint) = self.find_siamese_fish_oriented(grid, digit, size, false) {
+                    return Some(hint);
+                }
+            }
+        }
+        None
+    }
 
-                    if row1_cols.len() < 2 || row2_cols.len() < 2 {
-                        continue;
+    /// Search for Siamese fish in one orientation (row-based or column-based).
+    fn find_siamese_fish_oriented(
+        &self,
+        grid: &Grid,
+        digit: u8,
+        size: usize,
+        row_based: bool,
+    ) -> Option<Hint> {
+        // Collect line data: for each line, the cross-positions where the digit appears
+        let mut line_data: Vec<(usize, Vec<usize>)> = Vec::new();
+        for i in 0..9 {
+            let positions: Vec<usize> = (0..9)
+                .filter(|&j| {
+                    let pos = if row_based {
+                        Position::new(i, j)
+                    } else {
+                        Position::new(j, i)
+                    };
+                    grid.cell(pos).is_empty() && grid.get_candidates(pos).contains(digit)
+                })
+                .collect();
+            if positions.len() >= 2 {
+                line_data.push((i, positions));
+            }
+        }
+
+        if line_data.len() < size {
+            return None;
+        }
+
+        let indices: Vec<usize> = (0..line_data.len()).collect();
+        for combo in Self::combinations(&indices, size) {
+            // Collect all cross-positions across the combo lines
+            let mut all_cross: Vec<usize> = Vec::new();
+            for &idx in &combo {
+                for &j in &line_data[idx].1 {
+                    if !all_cross.contains(&j) {
+                        all_cross.push(j);
                     }
+                }
+            }
+            all_cross.sort();
 
-                    // Find common columns
-                    let common_cols: Vec<usize> = row1_cols
-                        .iter()
-                        .filter(|c| row2_cols.contains(c))
-                        .copied()
-                        .collect();
+            // Need more cross-positions than size (extras become fins)
+            if all_cross.len() <= size {
+                continue;
+            }
 
-                    if common_cols.len() != 2 {
-                        continue;
-                    }
+            // Try each subset of `size` cross-positions as the cover
+            let cross_indices: Vec<usize> = (0..all_cross.len()).collect();
+            for cover_combo in Self::combinations(&cross_indices, size) {
+                let cover: Vec<usize> = cover_combo.iter().map(|&i| all_cross[i]).collect();
 
-                    // Fins are columns in row1 or row2 but not in common
-                    let fins1: Vec<usize> = row1_cols.iter().filter(|c| !common_cols.contains(c)).copied().collect();
-                    let fins2: Vec<usize> = row2_cols.iter().filter(|c| !common_cols.contains(c)).copied().collect();
+                // Every base line must have at least one candidate in the cover
+                let all_have_cover = combo.iter().all(|&idx| {
+                    line_data[idx].1.iter().any(|j| cover.contains(j))
+                });
+                if !all_have_cover {
+                    continue;
+                }
 
-                    // Need fins in exactly one row, in different boxes from the common cols
-                    let all_fins: Vec<Position> = fins1
-                        .iter()
-                        .map(|&c| Position::new(r1, c))
-                        .chain(fins2.iter().map(|&c| Position::new(r2, c)))
-                        .collect();
-
-                    if all_fins.is_empty() || all_fins.len() > 2 {
-                        continue;
-                    }
-
-                    for &fin in &all_fins {
-                        let fin_box = fin.box_index();
-                        // Eliminate from cells in the cover column that see the fin (same box)
-                        for &cover_col in &common_cols {
-                            let cover_pos = if fin.row == r1 {
-                                Position::new(r2, cover_col)
+                // Find fin positions: candidates in base lines NOT in cover
+                let mut fin_positions: Vec<Position> = Vec::new();
+                for &idx in &combo {
+                    let line = line_data[idx].0;
+                    for &j in &line_data[idx].1 {
+                        if !cover.contains(&j) {
+                            let pos = if row_based {
+                                Position::new(line, j)
                             } else {
-                                Position::new(r1, cover_col)
+                                Position::new(j, line)
                             };
-                            if cover_pos.box_index() == fin_box {
-                                // Can eliminate from cells in this box/col intersection
-                                for dr in 0..3 {
-                                    let box_row = (fin_box / 3) * 3 + dr;
-                                    let pos = Position::new(box_row, cover_col);
-                                    if pos != cover_pos
-                                        && pos.row != r1
-                                        && pos.row != r2
-                                        && grid.cell(pos).is_empty()
-                                        && grid.get_candidates(pos).contains(digit)
-                                    {
-                                        let mut involved: Vec<Position> = common_cols
-                                            .iter()
-                                            .flat_map(|&c| vec![Position::new(r1, c), Position::new(r2, c)])
-                                            .collect();
-                                        involved.extend(all_fins.iter());
-                                        return Some(Hint {
-                                            technique: Technique::SiameseFish,
-                                            hint_type: HintType::EliminateCandidates {
-                                                pos,
-                                                values: vec![digit],
-                                            },
-                                            explanation: format!(
-                                                "Siamese Fish: {} in rows {},{} cols {:?} with fin. Eliminate from ({}, {}).",
-                                                digit, r1 + 1, r2 + 1, common_cols, pos.row + 1, pos.col + 1
-                                            ),
-                                            involved_cells: involved,
-                                        });
+                            fin_positions.push(pos);
+                        }
+                    }
+                }
+
+                if fin_positions.is_empty() {
+                    continue; // No fins = regular fish, not siamese
+                }
+
+                // Siamese: fins must be in at least 2 different boxes
+                let fin_boxes: std::collections::HashSet<usize> =
+                    fin_positions.iter().map(|p| p.box_index()).collect();
+                if fin_boxes.len() < 2 {
+                    continue; // Single box = regular finned, not siamese
+                }
+
+                // For each fin box, look for eliminations
+                let base_lines: Vec<usize> = combo.iter().map(|&i| line_data[i].0).collect();
+                for &fin_box in &fin_boxes {
+                    for &cov in &cover {
+                        for other in 0..9 {
+                            let pos = if row_based {
+                                Position::new(other, cov)
+                            } else {
+                                Position::new(cov, other)
+                            };
+
+                            let in_base = if row_based {
+                                base_lines.contains(&pos.row)
+                            } else {
+                                base_lines.contains(&pos.col)
+                            };
+
+                            if !in_base
+                                && pos.box_index() == fin_box
+                                && grid.cell(pos).is_empty()
+                                && grid.get_candidates(pos).contains(digit)
+                            {
+                                // Build involved cells
+                                let mut involved: Vec<Position> = Vec::new();
+                                for &idx in &combo {
+                                    let line = line_data[idx].0;
+                                    for &j in &line_data[idx].1 {
+                                        let p = if row_based {
+                                            Position::new(line, j)
+                                        } else {
+                                            Position::new(j, line)
+                                        };
+                                        if !involved.contains(&p) {
+                                            involved.push(p);
+                                        }
                                     }
                                 }
+
+                                let orient = if row_based { "rows" } else { "cols" };
+                                let base_str: Vec<String> = base_lines
+                                    .iter()
+                                    .map(|l| (l + 1).to_string())
+                                    .collect();
+                                let cover_str: Vec<String> = cover
+                                    .iter()
+                                    .map(|c| (c + 1).to_string())
+                                    .collect();
+                                return Some(Hint {
+                                    technique: Technique::SiameseFish,
+                                    hint_type: HintType::EliminateCandidates {
+                                        pos,
+                                        values: vec![digit],
+                                    },
+                                    explanation: format!(
+                                        "Siamese Fish (size {}): {} in {} [{}], cover [{}], fins in {} boxes. Eliminate from ({}, {}).",
+                                        size, digit, orient,
+                                        base_str.join(","),
+                                        cover_str.join(","),
+                                        fin_boxes.len(),
+                                        pos.row + 1, pos.col + 1
+                                    ),
+                                    involved_cells: involved,
+                                });
                             }
                         }
                     }
@@ -4403,13 +4528,15 @@ impl Solver {
             }
         }
 
-        // Type 3: Non-bivalue corners' extras form a naked subset with peers
+        // Type 3: Non-bivalue corners' extras form a naked subset with peers.
+        // Supports subset sizes 2-4 (was previously limited to size 2).
         if cand3.count() > 2 || cand4.count() > 2 {
-            let extra3 = cand3.difference(&crate::BitSet::from_slice(&[a, b]));
-            let extra4 = cand4.difference(&crate::BitSet::from_slice(&[a, b]));
+            let ur_pair = crate::BitSet::from_slice(&[a, b]);
+            let extra3 = cand3.difference(&ur_pair);
+            let extra4 = cand4.difference(&ur_pair);
             let combined_extras = extra3.union(&extra4);
 
-            if combined_extras.count() >= 2 && combined_extras.count() <= 3 {
+            if combined_extras.count() >= 1 && combined_extras.count() <= 4 {
                 let shared_units: Vec<Vec<Position>> = {
                     let mut units = Vec::new();
                     if corner3.row == corner4.row {
@@ -4424,6 +4551,8 @@ impl Solver {
                     units
                 };
 
+                let subset_size = combined_extras.count() as usize;
+
                 for unit in &shared_units {
                     let other_cells: Vec<Position> = unit
                         .iter()
@@ -4437,26 +4566,73 @@ impl Solver {
                         .copied()
                         .collect();
 
-                    let subset_size = combined_extras.count() as usize;
-                    if subset_size == 2 {
-                        for &pos in &other_cells {
-                            let cell_cands = grid.get_candidates(pos);
-                            let overlap = cell_cands.intersection(&combined_extras);
-                            if !overlap.is_empty() && cell_cands != combined_extras {
-                                let mut involved = corners.clone();
-                                involved.push(pos);
-                                return Some(Hint {
-                                    technique: Technique::UniqueRectangle,
-                                    hint_type: HintType::EliminateCandidates {
-                                        pos,
-                                        values: overlap.iter().collect(),
-                                    },
-                                    explanation: make_explanation("Type 3", &format!(
-                                        "Eliminate {:?} from ({},{}).",
-                                        overlap.to_vec(), pos.row + 1, pos.col + 1
-                                    )),
-                                    involved_cells: involved,
-                                });
+                    // The UR corners act as a "virtual" cell with candidates = combined_extras.
+                    // Together with (subset_size - 1) other cells, they form a naked subset
+                    // of size subset_size. Eliminate combined_extras from peers not in the subset.
+                    if subset_size >= 2 && other_cells.len() >= subset_size - 1 {
+                        let cell_indices: Vec<usize> = (0..other_cells.len()).collect();
+                        for combo in Self::combinations(&cell_indices, subset_size - 1) {
+                            let subset_cells: Vec<Position> =
+                                combo.iter().map(|&i| other_cells[i]).collect();
+
+                            // Union of candidates in the subset cells + combined_extras
+                            let mut subset_cands = combined_extras;
+                            let mut valid = true;
+                            for &sc in &subset_cells {
+                                let sc_cands = grid.get_candidates(sc);
+                                if !sc_cands.difference(&combined_extras).is_empty()
+                                    && sc_cands.intersection(&combined_extras).is_empty()
+                                {
+                                    valid = false;
+                                    break;
+                                }
+                                subset_cands = subset_cands.union(&sc_cands);
+                            }
+                            if !valid {
+                                continue;
+                            }
+
+                            // The naked subset should have exactly subset_size candidates
+                            if subset_cands.count() as usize != subset_size {
+                                continue;
+                            }
+
+                            // Check that each subset cell's candidates are a subset of subset_cands
+                            let all_subset = subset_cells.iter().all(|&sc| {
+                                grid.get_candidates(sc).difference(&subset_cands).is_empty()
+                            });
+                            if !all_subset {
+                                continue;
+                            }
+
+                            // Eliminate subset_cands from other cells in the unit
+                            for &pos in &other_cells {
+                                if subset_cells.contains(&pos) {
+                                    continue;
+                                }
+                                let overlap = grid.get_candidates(pos).intersection(&subset_cands);
+                                if !overlap.is_empty() {
+                                    let mut involved = corners.clone();
+                                    involved.extend(subset_cells.iter());
+                                    return Some(Hint {
+                                        technique: Technique::UniqueRectangle,
+                                        hint_type: HintType::EliminateCandidates {
+                                            pos,
+                                            values: overlap.iter().collect(),
+                                        },
+                                        explanation: make_explanation(
+                                            "Type 3",
+                                            &format!(
+                                                "Naked subset {:?} eliminates {:?} from ({},{}).",
+                                                subset_cands.to_vec(),
+                                                overlap.to_vec(),
+                                                pos.row + 1,
+                                                pos.col + 1
+                                            ),
+                                        ),
+                                        involved_cells: involved,
+                                    });
+                                }
                             }
                         }
                     }
@@ -4516,6 +4692,133 @@ impl Solver {
                         )),
                         involved_cells: corners,
                     });
+                }
+            }
+        }
+
+        // Type 5: Two diagonally opposite non-bivalue corners each have the same
+        // single extra candidate X. X must be true in at least one, so eliminate
+        // X from cells that see both diagonal corners.
+        {
+            let diagonal_pairs = [(corner3, corner4)];
+            for &(c_a, c_b) in &diagonal_pairs {
+                let cand_a = grid.get_candidates(c_a);
+                let cand_b = grid.get_candidates(c_b);
+
+                if cand_a.count() != 3 || cand_b.count() != 3 {
+                    continue;
+                }
+
+                let extra_a: Vec<u8> = cand_a.iter().filter(|&v| v != a && v != b).collect();
+                let extra_b: Vec<u8> = cand_b.iter().filter(|&v| v != a && v != b).collect();
+
+                if extra_a.len() != 1 || extra_b.len() != 1 || extra_a[0] != extra_b[0] {
+                    continue;
+                }
+
+                // Type 5 requires the two non-bivalue corners to be diagonal
+                // (not sharing a row or column)
+                if c_a.row == c_b.row || c_a.col == c_b.col {
+                    continue; // Same row or col = Type 2, not Type 5
+                }
+
+                let extra = extra_a[0];
+                // Eliminate extra from cells that see both diagonal corners
+                for pos in grid.empty_positions() {
+                    if pos != c_a
+                        && pos != c_b
+                        && pos != pos1
+                        && pos != pos2
+                        && self.sees(pos, c_a)
+                        && self.sees(pos, c_b)
+                        && grid.get_candidates(pos).contains(extra)
+                    {
+                        let mut involved = corners.clone();
+                        involved.push(pos);
+                        return Some(Hint {
+                            technique: Technique::UniqueRectangle,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![extra],
+                            },
+                            explanation: make_explanation(
+                                "Type 5",
+                                &format!(
+                                    "Diagonal corners share extra {}. Eliminate from ({},{}).",
+                                    extra, pos.row + 1, pos.col + 1
+                                ),
+                            ),
+                            involved_cells: involved,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Type 6: Two diagonal non-bivalue corners where one UR digit has strong
+        // links in both rows and columns. This forces that digit into the diagonal,
+        // so the other UR digit can be eliminated from both diagonal corners.
+        if cand3.count() > 2 && cand4.count() > 2 && corner3.row != corner4.row && corner3.col != corner4.col {
+            for &digit in &[a, b] {
+                let other = if digit == a { b } else { a };
+
+                // Check strong link on `digit` in the row of corner3
+                let strong_row3 = Self::row_positions(corner3.row)
+                    .iter()
+                    .filter(|&&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                    .count()
+                    == 2;
+
+                // Check strong link on `digit` in the row of corner4
+                let strong_row4 = Self::row_positions(corner4.row)
+                    .iter()
+                    .filter(|&&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                    .count()
+                    == 2;
+
+                // Check strong link on `digit` in the col of corner3
+                let strong_col3 = Self::col_positions(corner3.col)
+                    .iter()
+                    .filter(|&&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                    .count()
+                    == 2;
+
+                // Check strong link on `digit` in the col of corner4
+                let strong_col4 = Self::col_positions(corner4.col)
+                    .iter()
+                    .filter(|&&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                    .count()
+                    == 2;
+
+                // Need strong links in both units connecting the diagonal
+                if (strong_row3 && strong_col4) || (strong_col3 && strong_row4)
+                    || (strong_row3 && strong_row4) || (strong_col3 && strong_col4)
+                {
+                    // digit must be in one of the diagonal corners → other can be eliminated
+                    let mut elim = Vec::new();
+                    if cand3.contains(other) && cand3.count() > 2 {
+                        elim.push(corner3);
+                    }
+                    if cand4.contains(other) && cand4.count() > 2 {
+                        elim.push(corner4);
+                    }
+                    if let Some(&pos) = elim.first() {
+                        return Some(Hint {
+                            technique: Technique::UniqueRectangle,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![other],
+                            },
+                            explanation: make_explanation(
+                                "Type 6",
+                                &format!(
+                                    "Strong links on {} force it into diagonal. Eliminate {} from ({},{}).",
+                                    digit, other, pos.row + 1, pos.col + 1
+                                ),
+                            ),
+                            involved_cells: corners,
+                        });
+                    }
                 }
             }
         }
@@ -4611,88 +4914,253 @@ impl Solver {
         false
     }
 
-    // ==================== BUG+1 (Bivalue Universal Grave) ====================
+    // ==================== BUG (Bivalue Universal Grave) ====================
 
-    /// Detect BUG+1: if every empty cell has exactly 2 candidates except one cell
-    /// with exactly 3 candidates, the extra candidate in that cell must be its value.
-    /// A BUG state (all bivalue) has multiple solutions, violating uniqueness.
+    /// Detect BUG+n: if almost every empty cell has exactly 2 candidates,
+    /// the "extra" candidates in non-bivalue cells must include the solution.
+    ///
+    /// BUG+1: One cell with 3 candidates → place the extra candidate.
+    /// BUG+n: Multiple non-bivalue cells. If a digit is extra in cells that
+    /// share a unit, it can be eliminated from other cells in that unit.
     fn find_bug(&self, grid: &Grid) -> Option<Hint> {
         let empty = grid.empty_positions();
         if empty.is_empty() {
             return None;
         }
 
-        let mut trivalue_cell: Option<Position> = None;
-
+        // Find all non-bivalue cells
+        let mut non_bivalue: Vec<Position> = Vec::new();
         for &pos in &empty {
             let count = grid.get_candidates(pos).count();
-            if count == 2 {
+            if count < 2 {
+                return None; // Invalid state
+            }
+            if count > 2 {
+                non_bivalue.push(pos);
+            }
+        }
+
+        if non_bivalue.is_empty() {
+            return None;
+        }
+
+        // Limit: total extra candidates (sum of count-2) must be small
+        let total_extra: u32 = non_bivalue
+            .iter()
+            .map(|&pos| grid.get_candidates(pos).count() - 2)
+            .sum();
+        if total_extra > 6 {
+            return None;
+        }
+
+        // BUG+1: exactly one non-bivalue cell with exactly 1 extra candidate
+        if non_bivalue.len() == 1 && total_extra == 1 {
+            let tri_pos = non_bivalue[0];
+            let cands = grid.get_candidates(tri_pos);
+
+            // Find the extra candidate: appears odd times (including this cell) in some unit
+            for val in cands.iter() {
+                let row_count = (0..9)
+                    .filter(|&c| {
+                        let p = Position::new(tri_pos.row, c);
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
+                    })
+                    .count();
+                let col_count = (0..9)
+                    .filter(|&r| {
+                        let p = Position::new(r, tri_pos.col);
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
+                    })
+                    .count();
+                let box_count = Self::box_positions(tri_pos.box_index())
+                    .iter()
+                    .filter(|&&p| {
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
+                    })
+                    .count();
+
+                // In BUG state, each value appears exactly 2 times per unit.
+                // The extra value appears an odd number of times in at least one unit.
+                if row_count % 2 == 1 || col_count % 2 == 1 || box_count % 2 == 1 {
+                    return Some(Hint {
+                        technique: Technique::BivalueUniversalGrave,
+                        hint_type: HintType::SetValue {
+                            pos: tri_pos,
+                            value: val,
+                        },
+                        explanation: format!(
+                            "BUG+1: all cells are bivalue except ({}, {}). {} must be {} to avoid a deadly pattern.",
+                            tri_pos.row + 1, tri_pos.col + 1, val, val
+                        ),
+                        involved_cells: vec![tri_pos],
+                    });
+                }
+            }
+            return None;
+        }
+
+        // BUG+n (n > 1): identify extra candidates per cell, then look for eliminations.
+        // Extra candidates are those that appear an odd number of times in some unit.
+        let mut cell_extras: Vec<(Position, Vec<u8>)> = Vec::new();
+        for &pos in &non_bivalue {
+            let cands = grid.get_candidates(pos);
+            let mut extras = Vec::new();
+            for val in cands.iter() {
+                let row_count = (0..9)
+                    .filter(|&c| {
+                        let p = Position::new(pos.row, c);
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
+                    })
+                    .count();
+                let col_count = (0..9)
+                    .filter(|&r| {
+                        let p = Position::new(r, pos.col);
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
+                    })
+                    .count();
+                let box_count = Self::box_positions(pos.box_index())
+                    .iter()
+                    .filter(|&&p| {
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
+                    })
+                    .count();
+
+                if row_count % 2 == 1 || col_count % 2 == 1 || box_count % 2 == 1 {
+                    extras.push(val);
+                }
+            }
+            cell_extras.push((pos, extras));
+        }
+
+        // BUG+n elimination: if digit X is extra in cells that all share a unit,
+        // X must be true in at least one of them → eliminate X from other cells in that unit.
+        for digit in 1..=9u8 {
+            let cells_with_digit: Vec<Position> = cell_extras
+                .iter()
+                .filter(|(_, exts)| exts.contains(&digit))
+                .map(|(pos, _)| *pos)
+                .collect();
+
+            if cells_with_digit.len() < 2 {
                 continue;
             }
-            if count == 3 && trivalue_cell.is_none() {
-                trivalue_cell = Some(pos);
-            } else {
-                // More than one non-bivalue cell, or a cell with 4+ candidates — not BUG+1
-                return None;
-            }
-        }
 
-        let tri_pos = trivalue_cell?;
-        let cands = grid.get_candidates(tri_pos);
-
-        // Find the "extra" candidate: the one that appears 3 times in its row/col/box
-        // In a BUG state, each candidate appears exactly twice per unit.
-        // The extra candidate appears 3 times in at least one unit.
-        for val in cands.iter() {
-            let row_count = (0..9)
-                .filter(|&c| {
-                    let p = Position::new(tri_pos.row, c);
-                    p != tri_pos && grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
-                })
-                .count();
-            let col_count = (0..9)
-                .filter(|&r| {
-                    let p = Position::new(r, tri_pos.col);
-                    p != tri_pos && grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
-                })
-                .count();
-            let box_positions = Self::box_positions(tri_pos.box_index());
-            let box_count = box_positions
+            // Check if all these cells share a row
+            if cells_with_digit
                 .iter()
-                .filter(|&&p| {
-                    p != tri_pos && grid.cell(p).is_empty() && grid.get_candidates(p).contains(val)
-                })
-                .count();
+                .all(|p| p.row == cells_with_digit[0].row)
+            {
+                let row = cells_with_digit[0].row;
+                for col in 0..9 {
+                    let pos = Position::new(row, col);
+                    if !cells_with_digit.contains(&pos)
+                        && grid.cell(pos).is_empty()
+                        && grid.get_candidates(pos).contains(digit)
+                    {
+                        let cell_strs: Vec<String> = cells_with_digit
+                            .iter()
+                            .map(|p| format!("({},{})", p.row + 1, p.col + 1))
+                            .collect();
+                        return Some(Hint {
+                            technique: Technique::BivalueUniversalGrave,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![digit],
+                            },
+                            explanation: format!(
+                                "BUG+{}: {} is extra in [{}] (shared row). Eliminate from ({}, {}).",
+                                total_extra, digit, cell_strs.join(", "),
+                                pos.row + 1, pos.col + 1
+                            ),
+                            involved_cells: non_bivalue.clone(),
+                        });
+                    }
+                }
+            }
 
-            // In BUG state, each value appears exactly 2 times per unit.
-            // The extra value has an odd count (appears 2+1=3 times including tri_pos) in some unit.
-            // So the count excluding tri_pos would be 2 (making total 3, odd) for the extra value.
-            let is_extra = row_count == 2 || col_count == 2 || box_count == 2;
+            // Check if all share a column
+            if cells_with_digit
+                .iter()
+                .all(|p| p.col == cells_with_digit[0].col)
+            {
+                let col = cells_with_digit[0].col;
+                for row in 0..9 {
+                    let pos = Position::new(row, col);
+                    if !cells_with_digit.contains(&pos)
+                        && grid.cell(pos).is_empty()
+                        && grid.get_candidates(pos).contains(digit)
+                    {
+                        let cell_strs: Vec<String> = cells_with_digit
+                            .iter()
+                            .map(|p| format!("({},{})", p.row + 1, p.col + 1))
+                            .collect();
+                        return Some(Hint {
+                            technique: Technique::BivalueUniversalGrave,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![digit],
+                            },
+                            explanation: format!(
+                                "BUG+{}: {} is extra in [{}] (shared col). Eliminate from ({}, {}).",
+                                total_extra, digit, cell_strs.join(", "),
+                                pos.row + 1, pos.col + 1
+                            ),
+                            involved_cells: non_bivalue.clone(),
+                        });
+                    }
+                }
+            }
 
-            if is_extra {
-                return Some(Hint {
-                    technique: Technique::BivalueUniversalGrave,
-                    hint_type: HintType::SetValue {
-                        pos: tri_pos,
-                        value: val,
-                    },
-                    explanation: format!(
-                        "BUG+1: all cells are bivalue except ({}, {}). {} must be {} to avoid a deadly pattern.",
-                        tri_pos.row + 1, tri_pos.col + 1, val, val
-                    ),
-                    involved_cells: vec![tri_pos],
-                });
+            // Check if all share a box
+            if cells_with_digit
+                .iter()
+                .all(|p| p.box_index() == cells_with_digit[0].box_index())
+            {
+                let box_idx = cells_with_digit[0].box_index();
+                for &pos in &Self::box_positions(box_idx) {
+                    if !cells_with_digit.contains(&pos)
+                        && grid.cell(pos).is_empty()
+                        && grid.get_candidates(pos).contains(digit)
+                    {
+                        let cell_strs: Vec<String> = cells_with_digit
+                            .iter()
+                            .map(|p| format!("({},{})", p.row + 1, p.col + 1))
+                            .collect();
+                        return Some(Hint {
+                            technique: Technique::BivalueUniversalGrave,
+                            hint_type: HintType::EliminateCandidates {
+                                pos,
+                                values: vec![digit],
+                            },
+                            explanation: format!(
+                                "BUG+{}: {} is extra in [{}] (shared box). Eliminate from ({}, {}).",
+                                total_extra, digit, cell_strs.join(", "),
+                                pos.row + 1, pos.col + 1
+                            ),
+                            involved_cells: non_bivalue.clone(),
+                        });
+                    }
+                }
             }
         }
+
         None
     }
 
     fn apply_bug(&self, grid: &mut Grid) -> bool {
         if let Some(hint) = self.find_bug(grid) {
-            if let HintType::SetValue { pos, value } = hint.hint_type {
-                grid.set_cell_unchecked(pos, Some(value));
-                grid.recalculate_candidates();
-                return true;
+            match hint.hint_type {
+                HintType::SetValue { pos, value } => {
+                    grid.set_cell_unchecked(pos, Some(value));
+                    grid.recalculate_candidates();
+                    return true;
+                }
+                HintType::EliminateCandidates { pos, ref values } => {
+                    for &v in values {
+                        grid.cell_mut(pos).remove_candidate(v);
+                    }
+                    return true;
+                }
             }
         }
         false
@@ -4853,6 +5321,81 @@ impl Solver {
     /// A 6-cell pattern in 2 rows x 3 cols (or 3 rows x 2 cols) with 2 digits
     /// forming a deadly pattern. Extra candidates can be eliminated.
     fn find_extended_unique_rectangle(&self, grid: &Grid) -> Option<Hint> {
+        // Helper: check an extended UR pattern given a set of corner positions
+        let try_extended_ur = |corners: &[Position], shape: &str, grid: &Grid| -> Option<Hint> {
+            if corners.iter().any(|&p| !grid.cell(p).is_empty()) {
+                return None;
+            }
+
+            // Must span at least 2 boxes
+            let boxes: std::collections::HashSet<usize> =
+                corners.iter().map(|p| p.box_index()).collect();
+            if boxes.len() < 2 {
+                return None;
+            }
+
+            // Find pair of digits that appears in all cells
+            let mut common = grid.get_candidates(corners[0]);
+            for &c in &corners[1..] {
+                common = common.intersection(&grid.get_candidates(c));
+            }
+
+            if common.count() < 2 {
+                return None;
+            }
+
+            let common_vec: Vec<u8> = common.iter().collect();
+            for di in 0..common_vec.len() {
+                for dj in (di + 1)..common_vec.len() {
+                    let a = common_vec[di];
+                    let b = common_vec[dj];
+
+                    // Count bivalue corners (with exactly {a,b})
+                    let bivalue_count = corners
+                        .iter()
+                        .filter(|&&p| {
+                            let c = grid.get_candidates(p);
+                            c.count() == 2 && c.contains(a) && c.contains(b)
+                        })
+                        .count();
+
+                    // Need at least 4 bivalue corners for the pattern to be dangerous
+                    if bivalue_count < 4 {
+                        continue;
+                    }
+
+                    // Eliminate a and/or b from non-bivalue corners
+                    for &corner in corners {
+                        let cands = grid.get_candidates(corner);
+                        if cands.count() > 2 {
+                            let mut elim = Vec::new();
+                            if cands.contains(a) {
+                                elim.push(a);
+                            }
+                            if cands.contains(b) {
+                                elim.push(b);
+                            }
+                            if !elim.is_empty() {
+                                return Some(Hint {
+                                    technique: Technique::ExtendedUniqueRectangle,
+                                    hint_type: HintType::EliminateCandidates {
+                                        pos: corner,
+                                        values: elim,
+                                    },
+                                    explanation: format!(
+                                        "Extended Unique Rectangle: {},{} pattern in {} grid. Eliminate from ({}, {}).",
+                                        a, b, shape, corner.row + 1, corner.col + 1
+                                    ),
+                                    involved_cells: corners.to_vec(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            None
+        };
+
         // Try 2 rows x 3 cols patterns
         for r1 in 0..9 {
             for r2 in (r1 + 1)..9 {
@@ -4863,84 +5406,35 @@ impl Solver {
                                 Position::new(r1, c1), Position::new(r1, c2), Position::new(r1, c3),
                                 Position::new(r2, c1), Position::new(r2, c2), Position::new(r2, c3),
                             ];
-
-                            if corners.iter().any(|&p| !grid.cell(p).is_empty()) {
-                                continue;
-                            }
-
-                            // Must span exactly 3 boxes
-                            let boxes: std::collections::HashSet<usize> =
-                                corners.iter().map(|p| p.box_index()).collect();
-                            if boxes.len() < 2 {
-                                continue;
-                            }
-
-                            // Find pair of digits that appears in all 6 cells
-                            let mut common = grid.get_candidates(corners[0]);
-                            for &c in &corners[1..] {
-                                common = common.intersection(&grid.get_candidates(c));
-                            }
-
-                            if common.count() < 2 {
-                                continue;
-                            }
-
-                            let common_vec: Vec<u8> = common.iter().collect();
-                            for di in 0..common_vec.len() {
-                                for dj in (di + 1)..common_vec.len() {
-                                    let a = common_vec[di];
-                                    let b = common_vec[dj];
-
-                                    // Count bivalue corners (with exactly {a,b})
-                                    let bivalue_count = corners
-                                        .iter()
-                                        .filter(|&&p| {
-                                            let c = grid.get_candidates(p);
-                                            c.count() == 2 && c.contains(a) && c.contains(b)
-                                        })
-                                        .count();
-
-                                    // Need at least 4 bivalue corners for the pattern to be dangerous
-                                    if bivalue_count < 4 {
-                                        continue;
-                                    }
-
-                                    // Eliminate a and b from non-bivalue corners
-                                    for &corner in &corners {
-                                        let cands = grid.get_candidates(corner);
-                                        if cands.count() > 2 {
-                                            let mut elim = Vec::new();
-                                            if cands.contains(a) && cands.count() == 3 {
-                                                elim.push(a);
-                                            }
-                                            if cands.contains(b) && cands.count() == 3 {
-                                                elim.push(b);
-                                            }
-                                            // For Extended UR: eliminate UR digits from non-bivalue
-                                            // corners to break the pattern, but only if it's safe
-                                            if !elim.is_empty() {
-                                                return Some(Hint {
-                                                    technique: Technique::ExtendedUniqueRectangle,
-                                                    hint_type: HintType::EliminateCandidates {
-                                                        pos: corner,
-                                                        values: elim,
-                                                    },
-                                                    explanation: format!(
-                                                        "Extended Unique Rectangle: {},{} pattern in 2x3 grid. Eliminate from ({}, {}).",
-                                                        a, b, corner.row + 1, corner.col + 1
-                                                    ),
-                                                    involved_cells: corners.to_vec(),
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
+                            if let Some(hint) = try_extended_ur(&corners, "2x3", grid) {
+                                return Some(hint);
                             }
                         }
                     }
                 }
             }
         }
+
+        // Try 3 rows x 2 cols patterns
+        for r1 in 0..9 {
+            for r2 in (r1 + 1)..9 {
+                for r3 in (r2 + 1)..9 {
+                    for c1 in 0..9 {
+                        for c2 in (c1 + 1)..9 {
+                            let corners = [
+                                Position::new(r1, c1), Position::new(r1, c2),
+                                Position::new(r2, c1), Position::new(r2, c2),
+                                Position::new(r3, c1), Position::new(r3, c2),
+                            ];
+                            if let Some(hint) = try_extended_ur(&corners, "3x2", grid) {
+                                return Some(hint);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         None
     }
 
@@ -4959,107 +5453,83 @@ impl Solver {
     // ==================== Mutant Fish ====================
 
     /// Mutant Fish: Generalized fish where base and cover sets can be any mix of
-    /// rows, columns, and boxes. Size 2 (Mutant X-Wing).
+    /// rows, columns, and boxes. Requires all 3 sector types across base+cover.
+    /// Sizes 2-4.
     fn find_mutant_fish(&self, grid: &Grid) -> Option<Hint> {
         for digit in 1..=9u8 {
-            // Build all sectors
-            let mut sectors: Vec<(usize, Vec<Position>)> = Vec::new();
-            for i in 0..9 {
-                let cells: Vec<Position> = Self::row_positions(i)
-                    .into_iter()
-                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
-                    .collect();
-                if cells.len() >= 2 && cells.len() <= 4 {
-                    sectors.push((i, cells));
-                }
-            }
-            for i in 0..9 {
-                let cells: Vec<Position> = Self::col_positions(i)
-                    .into_iter()
-                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
-                    .collect();
-                if cells.len() >= 2 && cells.len() <= 4 {
-                    sectors.push((9 + i, cells));
-                }
-            }
-            for i in 0..9 {
-                let cells: Vec<Position> = Self::box_positions(i)
-                    .into_iter()
-                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
-                    .collect();
-                if cells.len() >= 2 && cells.len() <= 4 {
-                    sectors.push((18 + i, cells));
-                }
-            }
+            let sectors = Self::build_digit_sectors(grid, digit);
+            let sector_indices: Vec<usize> = (0..sectors.len()).collect();
 
-            // Size-2 mutant fish: base has 2 sectors, cover has 2 sectors
-            // Must use all 3 types (row+col+box mix) — otherwise it's regular or Franken
-            for bi in 0..sectors.len() {
-                for bj in (bi + 1)..sectors.len() {
-                    let (id_bi, ref cells_bi) = sectors[bi];
-                    let (id_bj, ref cells_bj) = sectors[bj];
-                    let type_bi = id_bi / 9;
-                    let type_bj = id_bj / 9;
+            for size in 2..=4usize {
+                if sectors.len() < size * 2 {
+                    continue;
+                }
 
-                    let mut base_cells: Vec<Position> = cells_bi.clone();
-                    for &p in cells_bj {
-                        if !base_cells.contains(&p) {
-                            base_cells.push(p);
-                        }
-                    }
+                for base_combo in Self::combinations(&sector_indices, size) {
+                    let base_types: std::collections::HashSet<usize> =
+                        base_combo.iter().map(|&i| sectors[i].0 / 9).collect();
 
-                    for ci in 0..sectors.len() {
-                        if ci == bi || ci == bj {
+                    // Build base cells (union)
+                    let base_refs: Vec<&Vec<Position>> =
+                        base_combo.iter().map(|&i| &sectors[i].1).collect();
+                    let base_cells = Self::union_positions(&base_refs);
+
+                    // Cover candidates: sectors not in base
+                    let remaining: Vec<usize> = sector_indices
+                        .iter()
+                        .filter(|i| !base_combo.contains(i))
+                        .copied()
+                        .collect();
+
+                    for cover_combo in Self::combinations(&remaining, size) {
+                        let cover_types: std::collections::HashSet<usize> =
+                            cover_combo.iter().map(|&i| sectors[i].0 / 9).collect();
+
+                        // Mutant: must use all 3 sector types across base+cover
+                        let all_types: std::collections::HashSet<usize> =
+                            base_types.union(&cover_types).copied().collect();
+                        if all_types.len() < 3 {
                             continue;
                         }
-                        for cj in (ci + 1)..sectors.len() {
-                            if cj == bi || cj == bj {
-                                continue;
-                            }
 
-                            let (id_ci, ref cells_ci) = sectors[ci];
-                            let (id_cj, ref cells_cj) = sectors[cj];
-                            let type_ci = id_ci / 9;
-                            let type_cj = id_cj / 9;
+                        // Build cover cells (union)
+                        let cover_refs: Vec<&Vec<Position>> =
+                            cover_combo.iter().map(|&i| &sectors[i].1).collect();
+                        let cover_cells = Self::union_positions(&cover_refs);
 
-                            // Must use all 3 types across base and cover
-                            let mut types = std::collections::HashSet::new();
-                            types.insert(type_bi);
-                            types.insert(type_bj);
-                            types.insert(type_ci);
-                            types.insert(type_cj);
-                            if types.len() < 3 {
-                                continue;
-                            }
+                        // Cover must contain all base cells
+                        if !base_cells.iter().all(|p| cover_cells.contains(p)) {
+                            continue;
+                        }
 
-                            let mut cover_cells: Vec<Position> = cells_ci.clone();
-                            for &p in cells_cj {
-                                if !cover_cells.contains(&p) {
-                                    cover_cells.push(p);
-                                }
-                            }
-
-                            if !base_cells.iter().all(|p| cover_cells.contains(p)) {
-                                continue;
-                            }
-
-                            for &pos in &cover_cells {
-                                if !base_cells.contains(&pos)
-                                    && grid.get_candidates(pos).contains(digit)
-                                {
-                                    return Some(Hint {
-                                        technique: Technique::MutantFish,
-                                        hint_type: HintType::EliminateCandidates {
-                                            pos,
-                                            values: vec![digit],
-                                        },
-                                        explanation: format!(
-                                            "Mutant Fish: {} with mixed sectors. Eliminate from ({}, {}).",
-                                            digit, pos.row + 1, pos.col + 1
-                                        ),
-                                        involved_cells: base_cells.clone(),
-                                    });
-                                }
+                        // Eliminate from cover cells NOT in base
+                        for &pos in &cover_cells {
+                            if !base_cells.contains(&pos)
+                                && grid.get_candidates(pos).contains(digit)
+                            {
+                                let base_names: Vec<String> = base_combo
+                                    .iter()
+                                    .map(|&i| Self::sector_name(sectors[i].0))
+                                    .collect();
+                                let cover_names: Vec<String> = cover_combo
+                                    .iter()
+                                    .map(|&i| Self::sector_name(sectors[i].0))
+                                    .collect();
+                                return Some(Hint {
+                                    technique: Technique::MutantFish,
+                                    hint_type: HintType::EliminateCandidates {
+                                        pos,
+                                        values: vec![digit],
+                                    },
+                                    explanation: format!(
+                                        "Mutant Fish (size {}): {} with base [{}] and cover [{}]. Eliminate from ({}, {}).",
+                                        size, digit,
+                                        base_names.join(", "),
+                                        cover_names.join(", "),
+                                        pos.row + 1, pos.col + 1
+                                    ),
+                                    involved_cells: base_cells.clone(),
+                                });
                             }
                         }
                     }
