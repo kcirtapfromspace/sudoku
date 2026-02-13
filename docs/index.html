@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Ukodus • Sudoku powered by a Rust engine</title>
+    <meta
+      name="description"
+      content="Ukodus is a clean Sudoku app powered by a shared Rust engine: unique puzzles, human-style difficulty, hints, and zero tracking. iOS + TUI + WASM."
+    />
+    <meta name="theme-color" content="#f6f1e7" />
+
+    <link rel="icon" type="image/png" href="assets/app-icon.png" />
+    <link rel="apple-touch-icon" href="assets/app-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=IBM+Plex+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="assets/site.css" />
+    <script src="assets/site.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand" href="./" aria-label="Ukodus home">
+          <img src="assets/app-icon.png" alt="" width="34" height="34" />
+          <div class="wordmark">
+            <strong>Ukodus</strong>
+            <span>Sudoku, engine-first.</span>
+          </div>
+        </a>
+
+        <nav aria-label="Primary">
+          <a class="navlink" href="https://apps.apple.com/us/app/sudoku/id6758485043">App Store</a>
+          <a class="navlink" href="#demos">Demos</a>
+          <a class="navlink" href="#engine">Engine</a>
+          <a class="navlink" href="privacy.html">Privacy</a>
+          <a class="navlink" href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="hero" id="top">
+        <div>
+          <div class="kicker float-in delay-1">Rust engine • iOS • TUI • WASM</div>
+          <h1 class="float-in delay-2">Sudoku with teeth.</h1>
+          <p class="subtitle float-in delay-3">
+            Ukodus is a Sudoku app built on a shared Rust core: unique puzzles,
+            human-style difficulty ratings, and fast hints. No trackers, no
+            analytics, no weird “engagement” math.
+          </p>
+
+          <div class="chips float-in delay-4">
+            <div class="chip"><b>Unique</b> solutions</div>
+            <div class="chip"><b>Human</b> difficulty model</div>
+            <div class="chip"><b>Local</b> data by default</div>
+            <div class="chip"><b>Same</b> engine everywhere</div>
+          </div>
+
+          <div class="cta float-in delay-4">
+            <a class="btn primary" href="https://apps.apple.com/us/app/sudoku/id6758485043">
+              <span class="dot" aria-hidden="true"></span>
+              Download on the App Store
+            </a>
+            <a class="btn" href="#demos">Watch demos</a>
+            <a class="btn" href="https://github.com/kcirtapfromspace/sudoku">Source + builds</a>
+            <a
+              class="btn"
+              href="https://github.com/kcirtapfromspace/sudoku/blob/main/crates/sudoku-core/README.md"
+              >How difficulty works</a
+            >
+          </div>
+        </div>
+
+        <div class="phone float-in delay-2" aria-label="Ukodus iOS demo video">
+          <div class="notch" aria-hidden="true"></div>
+          <video
+            src="demos/ios-demo.mp4"
+            poster="demos/ios-demo-poster.jpg"
+            playsinline
+            muted
+            loop
+            autoplay
+            controls
+          >
+            Your browser does not support video. Download the demo:
+            <a href="demos/ios-demo.mp4">ios-demo.mp4</a>.
+          </video>
+        </div>
+      </section>
+
+      <section class="section" id="why">
+        <h2>Built like a tool, not a trap.</h2>
+        <p>
+          Fast, readable, and honest: if a puzzle is ambiguous, the generator
+          throws it away and tries again.
+        </p>
+
+        <div class="grid">
+          <div class="card">
+            <h3>Local-first</h3>
+            <p>
+              No analytics. No trackers. Your progress stays on-device (optional
+              Game Center / iCloud).
+            </p>
+          </div>
+          <div class="card">
+            <h3>Difficulty you can feel</h3>
+            <p>
+              The Rust solver simulates human techniques to assign a rating.
+              Generation retries until it matches the requested level.
+            </p>
+          </div>
+          <div class="card">
+            <h3>One engine, many shells</h3>
+            <p>
+              The same core powers iOS, a terminal UI, and a WASM build. Same
+              puzzles. Same rules. Same difficulty model.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="demos">
+        <h2>Demos</h2>
+        <p>More builds that share the same generator and solver.</p>
+
+        <div class="demo-tabs" role="tablist" aria-label="Demo selector">
+          <button
+            class="tab"
+            type="button"
+            role="tab"
+            data-tab="demo-tui"
+            aria-selected="true"
+          >
+            TUI
+          </button>
+          <button
+            class="tab"
+            type="button"
+            role="tab"
+            data-tab="demo-wasm"
+            aria-selected="false"
+          >
+            WASM
+          </button>
+        </div>
+
+        <div class="demos">
+          <div class="demo-pane" id="demo-tui" role="tabpanel" aria-hidden="false">
+            <div class="media">
+              <img src="demos/tui.gif" alt="Terminal UI demo of Ukodus Sudoku" />
+              <div class="caption">
+                Terminal UI: keyboard-driven, instant feedback, same Rust core.
+              </div>
+            </div>
+          </div>
+
+          <div class="demo-pane" id="demo-wasm" role="tabpanel" aria-hidden="true">
+            <div class="media">
+              <img src="demos/wasm.gif" alt="WebAssembly demo of Ukodus Sudoku" />
+              <div class="caption">
+                WASM build: runs the generator and solver in the browser.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <pre><code>cargo run -p sudoku-tui --bin sudoku
+
+wasm-pack build crates/sudoku-wasm --target web --out-dir crates/sudoku-wasm/www/pkg --release
+cd crates/sudoku-wasm/www
+python3 serve.py 8080</code></pre>
+      </section>
+
+      <section class="section" id="engine">
+        <h2>Engine Notes (Rust)</h2>
+        <p>
+          Puzzle generation starts with a full solution, removes givens while
+          preserving uniqueness, then rates the result using a technique-based
+          solver. If the rating is wrong, generation retries.
+        </p>
+
+        <pre><code>Generate
+  1) Create a fully solved grid
+  2) Remove givens (often in symmetric pairs)
+  3) After each removal: verify exactly one solution exists
+  4) Run the human-style solver to rate difficulty
+  5) If the rating doesn't match the requested level: retry</code></pre>
+
+        <div class="cta">
+          <a
+            class="btn"
+            href="https://github.com/kcirtapfromspace/sudoku/blob/main/crates/sudoku-core/README.md"
+            >Difficulty system</a
+          >
+          <a
+            class="btn"
+            href="https://github.com/kcirtapfromspace/sudoku/blob/main/crates/sudoku-core/src/generator.rs"
+            >Generator source</a
+          >
+          <a
+            class="btn"
+            href="https://github.com/kcirtapfromspace/sudoku/blob/main/crates/sudoku-core/src/solver.rs"
+            >Solver source</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      <div class="fineprint">
+        <div class="pill">© <span data-year></span> Ukodus</div>
+        <div class="links">
+          <a href="privacy.html">Privacy</a>
+          <a href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
