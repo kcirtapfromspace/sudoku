@@ -3,7 +3,7 @@
 `sudoku-core` is the shared Rust engine used by the TUI, WASM, and iOS targets. It provides:
 
 - A `Grid` model with constraint-aware candidate tracking
-- A solver with 29 human-style techniques plus backtracking
+- A solver with 45 human-style techniques plus backtracking
 - A hint system (returns an explanation + affected cells)
 - A puzzle generator that targets a requested difficulty with SE rating bounds
 - Dual rating: technique-based difficulty tiers and Sudoku Explainer (SE) numerical ratings
@@ -36,9 +36,9 @@ The solver, validator, and candidate updates all operate through the active cons
 
 `Solver` (`src/solver.rs`) has two layers:
 
-1. **Human-style techniques** (29 techniques, ordered by complexity)
+1. **Human-style techniques** (45 techniques, ordered by complexity)
    - The solver can search for a concrete next step (a `Hint`) by trying techniques in increasing complexity.
-   - Techniques: Naked/Hidden Singles, Naked/Hidden Pairs/Triples, Pointing Pairs, Box-Line Reduction, X-Wing, Finned X-Wing, Swordfish, Finned Swordfish, Jellyfish, Finned Jellyfish, Naked/Hidden Quads, XY-Wing, XYZ-Wing, W-Wing, X-Chain, AIC, ALS-XZ, ALS-XY-Wing, Unique Rectangle, BUG+1, Nishio Forcing Chain, Cell Forcing Chain, Dynamic Forcing Chain.
+   - Techniques: Naked/Hidden Singles, Naked/Hidden Pairs/Triples, Pointing Pairs, Box-Line Reduction, X-Wing, Finned X-Wing, Swordfish, Finned Swordfish, Jellyfish, Finned Jellyfish, Naked/Hidden Quads, Empty Rectangle, Avoidable Rectangle, XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing, X-Chain, 3D Medusa, Sue de Coq, AIC, Franken Fish, Siamese Fish, ALS-XZ, ALS-XY-Wing, ALS Chain, Unique Rectangle (Types 1-4), Hidden Rectangle, Extended Unique Rectangle, Mutant Fish, Aligned Pair Exclusion, Aligned Triplet Exclusion, BUG+1, Death Blossom, Nishio Forcing Chain, Kraken Fish, Region Forcing Chain, Cell Forcing Chain, Dynamic Forcing Chain.
 2. **Backtracking fallback**
    - `solve()` uses recursion with the MRV heuristic (choose the empty cell with the fewest candidates).
    - It tries each candidate, validates the grid, and recurses until solved.
@@ -73,9 +73,9 @@ Final mapping is based on the hardest technique needed:
 | **Medium** | Hidden Singles |
 | **Intermediate** | Naked/Hidden Pairs/Triples |
 | **Hard** | Pointing Pair / Box-Line Reduction |
-| **Expert** | Fish (X-Wing, Swordfish, Jellyfish, Finned variants), Naked/Hidden Quads |
-| **Master** | Wings + Chains (XY-Wing, XYZ-Wing, W-Wing, X-Chain, AIC) |
-| **Extreme** | ALS / Unique Rectangle / BUG+1 / Forcing Chains / Backtracking |
+| **Expert** | Fish (X-Wing, Swordfish, Jellyfish, Finned variants), Naked/Hidden Quads, Empty Rectangle, Avoidable Rectangle |
+| **Master** | Wings (XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing), Chains (X-Chain, AIC), 3D Medusa, Sue de Coq, Franken/Siamese Fish |
+| **Extreme** | ALS (XZ, XY-Wing, Chain), UR variants, Mutant Fish, Aligned Pair/Triplet Exclusion, BUG+1, Death Blossom, Forcing Chains (Nishio, Kraken, Region, Cell, Dynamic), Backtracking |
 
 This is intentionally technique-based, not purely "clue count" based (although clue count is used as a generation constraint).
 
@@ -98,16 +98,21 @@ This is intentionally technique-based, not purely "clue count" based (although c
 | XY-Wing | 4.2 |
 | XYZ-Wing / W-Wing | 4.4 |
 | X-Chain | 4.5 |
-| Unique Rectangle | 4.6 |
-| Naked Quad | 5.0 |
+| Empty Rectangle / Avoidable Rectangle / Unique Rectangle / WXYZ-Wing | 4.6 |
+| Hidden Rectangle | 4.7 |
+| Naked Quad / 3D Medusa / Sue de Coq | 5.0 |
 | Jellyfish | 5.2 |
 | Finned Jellyfish / Hidden Quad | 5.4 |
-| ALS-XZ | 5.5 |
+| ALS-XZ / Franken Fish / Siamese Fish / Extended UR | 5.5 |
 | BUG+1 | 5.6 |
 | AIC | 6.0 |
+| Aligned Pair Exclusion | 6.2 |
+| Mutant Fish | 6.5 |
 | ALS-XY-Wing | 7.0 |
-| Nishio Forcing Chain | 7.5 |
+| ALS Chain / Aligned Triplet Exclusion / Nishio Forcing Chain | 7.5 |
+| Kraken Fish | 8.0 |
 | Cell Forcing Chain | 8.3 |
+| Death Blossom / Region Forcing Chain | 8.5 |
 | Dynamic Forcing Chain | 9.3 |
 | Backtracking | 11.0 |
 
