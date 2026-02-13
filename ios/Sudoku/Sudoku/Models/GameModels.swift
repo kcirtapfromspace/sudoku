@@ -69,6 +69,7 @@ struct HintModel {
     let eliminate: [Int] // Candidates to eliminate
     let explanation: String
     let technique: String
+    let seRating: Float
 }
 
 // Note: MoveResult is provided by the Rust engine (SudokuEngine.swift)

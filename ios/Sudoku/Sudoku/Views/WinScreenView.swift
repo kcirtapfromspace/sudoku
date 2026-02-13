@@ -37,6 +37,7 @@ struct WinScreenView: View {
     let difficulty: Difficulty
     let hintsUsed: Int
     let mistakes: Int
+    let seRating: Float
     let onDismiss: () -> Void
 
     @State private var message: String = winMessages.randomElement()!
@@ -78,7 +79,7 @@ struct WinScreenView: View {
 
                 // Stats card
                 if showStats {
-                    StatsCard(time: time, difficulty: difficulty, hintsUsed: hintsUsed, mistakes: mistakes)
+                    StatsCard(time: time, difficulty: difficulty, hintsUsed: hintsUsed, mistakes: mistakes, seRating: seRating)
                         .transition(.scale.combined(with: .opacity))
                 }
 
@@ -140,6 +141,7 @@ private struct StatsCard: View {
     let difficulty: Difficulty
     let hintsUsed: Int
     let mistakes: Int
+    let seRating: Float
 
     var body: some View {
         VStack(spacing: 16) {
@@ -155,6 +157,10 @@ private struct StatsCard: View {
             HStack(spacing: 30) {
                 WinStatItem(icon: "lightbulb", label: "Hints", value: "\(hintsUsed)")
                 WinStatItem(icon: "xmark.circle", label: "Mistakes", value: "\(mistakes)")
+            }
+
+            HStack(spacing: 30) {
+                WinStatItem(icon: "gauge.medium", label: "SE Rating", value: String(format: "%.1f", seRating))
             }
         }
         .padding(24)
@@ -393,6 +399,7 @@ class WinParticleScene: SKScene {
         difficulty: .medium,
         hintsUsed: 2,
         mistakes: 1,
+        seRating: 3.4,
         onDismiss: {}
     )
 }

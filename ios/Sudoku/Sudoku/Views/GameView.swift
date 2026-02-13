@@ -245,10 +245,15 @@ struct GameView: View {
 
             Spacer()
 
-            // Difficulty
-            Text(game.difficulty.displayName)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            // Difficulty + SE rating
+            VStack(spacing: 2) {
+                Text(game.difficulty.displayName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(String(format: "SE %.1f", game.seRating))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
 
             Spacer()
 

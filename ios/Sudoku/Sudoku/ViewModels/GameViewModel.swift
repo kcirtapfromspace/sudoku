@@ -16,6 +16,7 @@ class GameViewModel: ObservableObject {
     @Published private(set) var currentHint: HintModel?
     @Published private(set) var canUndo: Bool = false
     @Published private(set) var canRedo: Bool = false
+    @Published private(set) var seRating: Float = 0.0
     @Published private(set) var lastCelebration: CelebrationEvent?
 
     /// Cells currently celebrating (for wiggle animation)
@@ -168,6 +169,7 @@ class GameViewModel: ObservableObject {
         mistakes = Int(game.getMistakes())
         hintsUsed = Int(game.getHintsUsed())
         isComplete = game.isComplete()
+        seRating = game.getSeRating()
         canUndo = game.canUndo()
         canRedo = game.canRedo()
     }
@@ -491,7 +493,8 @@ class GameViewModel: ObservableObject {
             value: engineHint.value.map { Int($0) },
             eliminate: engineHint.eliminate.map { Int($0) },
             explanation: engineHint.explanation,
-            technique: engineHint.technique
+            technique: engineHint.technique,
+            seRating: engineHint.seRating
         )
         selectedCell = (Int(engineHint.row), Int(engineHint.col))
         syncFromEngine()

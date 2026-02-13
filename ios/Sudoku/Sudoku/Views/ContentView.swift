@@ -29,6 +29,7 @@ struct ContentView: View {
                         difficulty: game.difficulty,
                         hintsUsed: game.hintsUsed,
                         mistakes: game.mistakes,
+                        seRating: game.seRating,
                         onDismiss: {
                             gameManager.quitGame()
                         }
