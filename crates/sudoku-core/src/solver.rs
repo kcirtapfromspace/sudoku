@@ -23,8 +23,8 @@ impl Difficulty {
             Difficulty::Medium => Technique::HiddenSingle,
             Difficulty::Intermediate => Technique::HiddenTriple,
             Difficulty::Hard => Technique::BoxLineReduction,
-            Difficulty::Expert => Technique::AvoidableRectangle,
-            Difficulty::Master => Technique::SiameseFish,
+            Difficulty::Expert => Technique::HiddenRectangle,
+            Difficulty::Master => Technique::BivalueUniversalGrave,
             Difficulty::Extreme => Technique::Backtracking,
         }
     }
@@ -93,7 +93,7 @@ pub enum Technique {
     PointingPair,
     BoxLineReduction,
 
-    // Expert (fish family + quads + basic rectangles)
+    // Expert (fish family + quads + rectangles)
     XWing,
     FinnedXWing,
     Swordfish,
@@ -104,8 +104,10 @@ pub enum Technique {
     HiddenQuad,
     EmptyRectangle,
     AvoidableRectangle,
+    UniqueRectangle,
+    HiddenRectangle,
 
-    // Master (wings + chains + advanced patterns)
+    // Master (wings + chains + ALS-XZ + advanced patterns)
     XYWing,
     XYZWing,
     WXYZWing,
@@ -116,18 +118,16 @@ pub enum Technique {
     AIC,
     FrankenFish,
     SiameseFish,
-
-    // Extreme (ALS + UR + advanced + forcing chains)
     AlsXz,
+    ExtendedUniqueRectangle,
+    BivalueUniversalGrave,
+
+    // Extreme (ALS chains + advanced fish + forcing chains)
     AlsXyWing,
     AlsChain,
-    UniqueRectangle,
-    HiddenRectangle,
-    ExtendedUniqueRectangle,
     MutantFish,
     AlignedPairExclusion,
     AlignedTripletExclusion,
-    BivalueUniversalGrave,
     DeathBlossom,
     NishioForcingChain,
     KrakenFish,
@@ -568,7 +568,9 @@ impl Solver {
             | Technique::NakedQuad
             | Technique::HiddenQuad
             | Technique::EmptyRectangle
-            | Technique::AvoidableRectangle => Difficulty::Expert,
+            | Technique::AvoidableRectangle
+            | Technique::UniqueRectangle
+            | Technique::HiddenRectangle => Difficulty::Expert,
             Technique::XYWing
             | Technique::XYZWing
             | Technique::WXYZWing
@@ -578,17 +580,15 @@ impl Solver {
             | Technique::SueDeCoq
             | Technique::AIC
             | Technique::FrankenFish
-            | Technique::SiameseFish => Difficulty::Master,
-            Technique::AlsXz
-            | Technique::AlsXyWing
-            | Technique::AlsChain
-            | Technique::UniqueRectangle
-            | Technique::HiddenRectangle
+            | Technique::SiameseFish
+            | Technique::AlsXz
             | Technique::ExtendedUniqueRectangle
+            | Technique::BivalueUniversalGrave => Difficulty::Master,
+            Technique::AlsXyWing
+            | Technique::AlsChain
             | Technique::MutantFish
             | Technique::AlignedPairExclusion
             | Technique::AlignedTripletExclusion
-            | Technique::BivalueUniversalGrave
             | Technique::DeathBlossom
             | Technique::NishioForcingChain
             | Technique::KrakenFish

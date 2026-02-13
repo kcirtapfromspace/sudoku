@@ -73,9 +73,9 @@ Final mapping is based on the hardest technique needed:
 | **Medium** | Hidden Singles |
 | **Intermediate** | Naked/Hidden Pairs/Triples |
 | **Hard** | Pointing Pair / Box-Line Reduction |
-| **Expert** | Fish (X-Wing, Swordfish, Jellyfish, Finned variants), Naked/Hidden Quads, Empty Rectangle, Avoidable Rectangle |
-| **Master** | Wings (XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing), Chains (X-Chain, AIC), 3D Medusa, Sue de Coq, Franken/Siamese Fish |
-| **Extreme** | ALS (XZ, XY-Wing, Chain), UR variants, Mutant Fish, Aligned Pair/Triplet Exclusion, BUG+1, Death Blossom, Forcing Chains (Nishio, Kraken, Region, Cell, Dynamic), Backtracking |
+| **Expert** | Fish (X-Wing, Swordfish, Jellyfish, Finned variants), Naked/Hidden Quads, Empty Rectangle, Avoidable Rectangle, Unique Rectangle, Hidden Rectangle |
+| **Master** | Wings (XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing), Chains (X-Chain, AIC), 3D Medusa, Sue de Coq, Franken/Siamese Fish, ALS-XZ, Extended UR, BUG+1 |
+| **Extreme** | ALS (XY-Wing, Chain), Mutant Fish, Aligned Pair/Triplet Exclusion, Death Blossom, Forcing Chains (Nishio, Kraken, Region, Cell, Dynamic), Backtracking |
 
 This is intentionally technique-based, not purely "clue count" based (although clue count is used as a generation constraint).
 
