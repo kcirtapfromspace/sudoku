@@ -128,6 +128,7 @@ pub struct SudokuGame {
     grid: Mutex<Grid>,
     solution: Mutex<Grid>,
     difficulty: Mutex<Difficulty>,
+    rated_difficulty: Mutex<Difficulty>,
     undo_stack: Mutex<Vec<(usize, usize, Option<u8>)>>,
     redo_stack: Mutex<Vec<(usize, usize, Option<u8>)>>,
     hints_used: Mutex<usize>,
@@ -144,6 +145,7 @@ impl SudokuGame {
         let grid = generator.generate(diff);
 
         let solver = Solver::new();
+        let rated = solver.rate_difficulty(&grid);
         let solution = solver
             .solve(&grid)
             .expect("Generated puzzle should be solvable");
@@ -152,6 +154,7 @@ impl SudokuGame {
             grid: Mutex::new(grid),
             solution: Mutex::new(solution),
             difficulty: Mutex::new(diff),
+            rated_difficulty: Mutex::new(rated),
             undo_stack: Mutex::new(Vec::new()),
             redo_stack: Mutex::new(Vec::new()),
             hints_used: Mutex::new(0),
@@ -356,9 +359,15 @@ impl SudokuGame {
         cells
     }
 
-    /// Get the difficulty level
+    /// Get the requested difficulty level
     pub fn get_difficulty(&self) -> GameDifficulty {
         (*self.difficulty.lock().unwrap()).into()
+    }
+
+    /// Get the actual rated difficulty of the generated puzzle.
+    /// This may differ from the requested difficulty (one tier easier is accepted).
+    pub fn get_rated_difficulty(&self) -> GameDifficulty {
+        (*self.rated_difficulty.lock().unwrap()).into()
     }
 
     /// Get the Sudoku Explainer (SE) numerical rating for this puzzle
@@ -389,11 +398,13 @@ impl SudokuGame {
         let grid = self.grid.lock().unwrap();
         let solution = self.solution.lock().unwrap();
         let difficulty = self.difficulty.lock().unwrap();
+        let rated_difficulty = self.rated_difficulty.lock().unwrap();
 
         serde_json::json!({
             "puzzle": grid.to_string_compact(),
             "solution": solution.to_string_compact(),
             "difficulty": format!("{:?}", *difficulty),
+            "rated_difficulty": format!("{:?}", *rated_difficulty),
             "hints_used": *self.hints_used.lock().unwrap(),
             "mistakes": *self.mistakes.lock().unwrap(),
         })
@@ -619,14 +630,30 @@ pub fn game_from_string(puzzle: String) -> Option<Arc<SudokuGame>> {
     let difficulty = solver.rate_difficulty(&grid);
 
     Some(Arc::new(SudokuGame {
-        grid: Mutex::new(grid),
+        grid: Mutex::new(grid.clone()),
         solution: Mutex::new(solution),
         difficulty: Mutex::new(difficulty),
+        rated_difficulty: Mutex::new(solver.rate_difficulty(&grid)),
         undo_stack: Mutex::new(Vec::new()),
         redo_stack: Mutex::new(Vec::new()),
         hints_used: Mutex::new(0),
         mistakes: Mutex::new(0),
     }))
+}
+
+/// Helper to parse a difficulty string
+fn parse_difficulty(s: &str) -> Difficulty {
+    match s {
+        "Beginner" => Difficulty::Beginner,
+        "Easy" => Difficulty::Easy,
+        "Medium" => Difficulty::Medium,
+        "Intermediate" => Difficulty::Intermediate,
+        "Hard" => Difficulty::Hard,
+        "Expert" => Difficulty::Expert,
+        "Master" => Difficulty::Master,
+        "Extreme" => Difficulty::Extreme,
+        _ => Difficulty::Medium,
+    }
 }
 
 /// Deserialize a saved game state
@@ -640,17 +667,16 @@ pub fn game_deserialize(json: String) -> Option<Arc<SudokuGame>> {
     let grid = Grid::from_string(puzzle_str)?;
     let solution = Grid::from_string(solution_str)?;
 
-    let difficulty = match data["difficulty"].as_str()? {
-        "Beginner" => Difficulty::Beginner,
-        "Easy" => Difficulty::Easy,
-        "Medium" => Difficulty::Medium,
-        "Intermediate" => Difficulty::Intermediate,
-        "Hard" => Difficulty::Hard,
-        "Expert" => Difficulty::Expert,
-        "Master" => Difficulty::Master,
-        "Extreme" => Difficulty::Extreme,
-        _ => Difficulty::Medium,
-    };
+    let difficulty = parse_difficulty(data["difficulty"].as_str()?);
+
+    // Deserialize rated_difficulty if present, otherwise re-rate the puzzle
+    let rated_difficulty = data["rated_difficulty"]
+        .as_str()
+        .map(parse_difficulty)
+        .unwrap_or_else(|| {
+            let solver = Solver::new();
+            solver.rate_difficulty(&grid)
+        });
 
     let hints_used = data["hints_used"].as_u64().unwrap_or(0) as usize;
     let mistakes = data["mistakes"].as_u64().unwrap_or(0) as usize;
@@ -659,6 +685,7 @@ pub fn game_deserialize(json: String) -> Option<Arc<SudokuGame>> {
         grid: Mutex::new(grid),
         solution: Mutex::new(solution),
         difficulty: Mutex::new(difficulty),
+        rated_difficulty: Mutex::new(rated_difficulty),
         undo_stack: Mutex::new(Vec::new()),
         redo_stack: Mutex::new(Vec::new()),
         hints_used: Mutex::new(hints_used),
