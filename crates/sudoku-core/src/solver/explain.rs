@@ -74,9 +74,7 @@ pub struct AlsProofDescriptor {
 #[derive(Debug, Clone)]
 pub enum ProofCertificate {
     /// Direct deduction from cell/sector constraints (singles, locked sets).
-    Basic {
-        kind: &'static str,
-    },
+    Basic { kind: &'static str },
     /// Rank deficiency in the sector-candidate incidence matrix.
     Fish {
         digit: u8,
@@ -120,7 +118,11 @@ pub enum ExplanationData {
     /// Naked single: cell has only one candidate
     NakedSingle { cell: usize, value: u8 },
     /// Hidden single: digit can only go in one cell in a sector
-    HiddenSingle { cell: usize, value: u8, sector_name: String },
+    HiddenSingle {
+        cell: usize,
+        value: u8,
+        sector_name: String,
+    },
     /// Locked set (naked/hidden pair/triple/quad)
     LockedSet {
         kind: &'static str, // "Naked" or "Hidden"
@@ -158,14 +160,9 @@ pub enum ExplanationData {
         values: Vec<u8>,
     },
     /// Uniqueness-based pattern
-    Uniqueness {
-        variant: String,
-    },
+    Uniqueness { variant: String },
     /// Forcing chain
-    ForcingChain {
-        variant: String,
-        source_cell: usize,
-    },
+    ForcingChain { variant: String, source_cell: usize },
     /// Backtracking (last resort)
     Backtracking { cell: usize, value: u8 },
     /// Generic explanation string (for techniques being ported)
@@ -220,35 +217,59 @@ impl Finding {
                 let pos = idx_to_pos(*cell);
                 format!(
                     "Cell ({}, {}) can only be {} - it's the only candidate left.",
-                    pos.row + 1, pos.col + 1, value
+                    pos.row + 1,
+                    pos.col + 1,
+                    value
                 )
             }
-            ExplanationData::HiddenSingle { cell, value, sector_name } => {
+            ExplanationData::HiddenSingle {
+                cell,
+                value,
+                sector_name,
+            } => {
                 let pos = idx_to_pos(*cell);
                 format!(
                     "{} can only go in cell ({}, {}) in {}.",
-                    value, pos.row + 1, pos.col + 1, sector_name
+                    value,
+                    pos.row + 1,
+                    pos.col + 1,
+                    sector_name
                 )
             }
-            ExplanationData::LockedSet { kind, size, cells: _, values, sector_name } => {
+            ExplanationData::LockedSet {
+                kind,
+                size,
+                cells: _,
+                values,
+                sector_name,
+            } => {
                 let size_name = match size {
                     2 => "Pair",
                     3 => "Triple",
                     4 => "Quad",
                     _ => "Set",
                 };
-                format!(
-                    "{} {} on {:?} in {}.",
-                    kind, size_name, values, sector_name
-                )
+                format!("{} {} on {:?} in {}.", kind, size_name, values, sector_name)
             }
-            ExplanationData::Intersection { kind, digit, from_sector, to_sector } => {
+            ExplanationData::Intersection {
+                kind,
+                digit,
+                from_sector,
+                to_sector,
+            } => {
                 format!(
                     "{}: {} is confined to {} in {}, eliminating from rest of {}.",
                     kind, digit, from_sector, to_sector, to_sector
                 )
             }
-            ExplanationData::Fish { size, digit, base_sectors, cover_sectors, fins, variant } => {
+            ExplanationData::Fish {
+                size,
+                digit,
+                base_sectors,
+                cover_sectors,
+                fins,
+                variant,
+            } => {
                 let name = match (*size, variant.as_str()) {
                     (2, "Basic") => "X-Wing",
                     (3, "Basic") => "Swordfish",
@@ -273,31 +294,49 @@ impl Finding {
                     )
                 }
             }
-            ExplanationData::Als { variant, chain_length, shared_value } => {
+            ExplanationData::Als {
+                variant,
+                chain_length,
+                shared_value,
+            } => {
                 if let Some(z) = shared_value {
-                    format!("{}: chain of {} ALS linked by shared value {}.", variant, chain_length, z)
+                    format!(
+                        "{}: chain of {} ALS linked by shared value {}.",
+                        variant, chain_length, z
+                    )
                 } else {
                     format!("{}: chain of {} ALS.", variant, chain_length)
                 }
             }
-            ExplanationData::Chain { variant, chain_length, values: _ } => {
+            ExplanationData::Chain {
+                variant,
+                chain_length,
+                values: _,
+            } => {
                 format!("{}: chain of length {}.", variant, chain_length)
             }
             ExplanationData::Uniqueness { variant } => {
                 format!("{} found.", variant)
             }
-            ExplanationData::ForcingChain { variant, source_cell } => {
+            ExplanationData::ForcingChain {
+                variant,
+                source_cell,
+            } => {
                 let pos = idx_to_pos(*source_cell);
                 format!(
                     "{}: all candidates of ({}, {}) lead to same conclusion.",
-                    variant, pos.row + 1, pos.col + 1
+                    variant,
+                    pos.row + 1,
+                    pos.col + 1
                 )
             }
             ExplanationData::Backtracking { cell, value } => {
                 let pos = idx_to_pos(*cell);
                 format!(
                     "The cell at ({}, {}) must be {}.",
-                    pos.row + 1, pos.col + 1, value
+                    pos.row + 1,
+                    pos.col + 1,
+                    value
                 )
             }
             ExplanationData::Raw(s) => s.clone(),

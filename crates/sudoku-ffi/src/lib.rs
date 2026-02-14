@@ -724,7 +724,13 @@ impl SudokuGame {
     pub fn get_short_code(&self) -> Option<String> {
         let seed = self.seed.lock().unwrap();
         let difficulty = *self.difficulty.lock().unwrap();
-        seed.map(|s| PuzzleId { difficulty, seed: s }.to_short_code())
+        seed.map(|s| {
+            PuzzleId {
+                difficulty,
+                seed: s,
+            }
+            .to_short_code()
+        })
     }
 }
 
@@ -832,9 +838,7 @@ impl SudokuGame {
                     ProofCertificate::Als { als_chain, .. } => {
                         for als in als_chain {
                             for &idx in &als.cells {
-                                if idx < 81
-                                    && !matches!(roles[idx], HintCellRole::Target)
-                                {
+                                if idx < 81 && !matches!(roles[idx], HintCellRole::Target) {
                                     roles[idx] = HintCellRole::AlsGroup;
                                 }
                             }

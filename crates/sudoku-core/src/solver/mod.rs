@@ -3,24 +3,22 @@
 //! Dispatches to three abstract engines (Fish, ALS, AIC) plus basic techniques,
 //! uniqueness patterns, and backtracking.
 
-mod types;
-pub(crate) mod fabric;
-pub(crate) mod explain;
-mod basic;
-mod fish_engine;
-mod als_engine;
 mod aic_engine;
-mod uniqueness;
+mod als_engine;
 pub(crate) mod backtrack;
+mod basic;
+pub(crate) mod explain;
+pub(crate) mod fabric;
+mod fish_engine;
+mod types;
+mod uniqueness;
 
 use crate::{Grid, Position};
 use explain::{Finding, InferenceResult};
 use fabric::{idx_to_pos, CandidateFabric};
 
+pub use explain::{AlsProofDescriptor, ForcingSource, LinkType, Polarity, ProofCertificate};
 pub use types::{Difficulty, Hint, HintType, Technique};
-pub use explain::{
-    AlsProofDescriptor, ForcingSource, LinkType, Polarity, ProofCertificate,
-};
 
 /// Unit struct solver — stateless, all state is per-call.
 pub struct Solver;
@@ -141,73 +139,160 @@ impl Solver {
         let fab = CandidateFabric::from_grid(grid);
 
         // Phase 1: Basic
-        if let Some(f) = basic::find_naked_single(&fab) { return Some(f); }
-        if let Some(f) = basic::find_hidden_single(&fab) { return Some(f); }
+        if let Some(f) = basic::find_naked_single(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = basic::find_hidden_single(&fab) {
+            return Some(f);
+        }
 
         // Phase 2: Subsets
-        if let Some(f) = basic::find_naked_subset(&fab, 2) { return Some(f); }
-        if let Some(f) = basic::find_hidden_subset(&fab, 2) { return Some(f); }
-        if let Some(f) = basic::find_naked_subset(&fab, 3) { return Some(f); }
-        if let Some(f) = basic::find_hidden_subset(&fab, 3) { return Some(f); }
+        if let Some(f) = basic::find_naked_subset(&fab, 2) {
+            return Some(f);
+        }
+        if let Some(f) = basic::find_hidden_subset(&fab, 2) {
+            return Some(f);
+        }
+        if let Some(f) = basic::find_naked_subset(&fab, 3) {
+            return Some(f);
+        }
+        if let Some(f) = basic::find_hidden_subset(&fab, 3) {
+            return Some(f);
+        }
 
         // Phase 3: Intersections (size-1 fish)
-        if let Some(f) = fish_engine::find_pointing_pair(&fab) { return Some(f); }
-        if let Some(f) = fish_engine::find_box_line_reduction(&fab) { return Some(f); }
+        if let Some(f) = fish_engine::find_pointing_pair(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_box_line_reduction(&fab) {
+            return Some(f);
+        }
 
         // Phase 4: Fish (size 2+) + quads
-        if let Some(f) = fish_engine::find_basic_fish(&fab, 2) { return Some(f); }
-        if let Some(f) = fish_engine::find_finned_fish(&fab, 2) { return Some(f); }
-        if let Some(f) = fish_engine::find_basic_fish(&fab, 3) { return Some(f); }
-        if let Some(f) = fish_engine::find_finned_fish(&fab, 3) { return Some(f); }
-        if let Some(f) = fish_engine::find_basic_fish(&fab, 4) { return Some(f); }
-        if let Some(f) = fish_engine::find_finned_fish(&fab, 4) { return Some(f); }
-        if let Some(f) = basic::find_naked_subset(&fab, 4) { return Some(f); }
-        if let Some(f) = basic::find_hidden_subset(&fab, 4) { return Some(f); }
+        if let Some(f) = fish_engine::find_basic_fish(&fab, 2) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_finned_fish(&fab, 2) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_basic_fish(&fab, 3) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_finned_fish(&fab, 3) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_basic_fish(&fab, 4) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_finned_fish(&fab, 4) {
+            return Some(f);
+        }
+        if let Some(f) = basic::find_naked_subset(&fab, 4) {
+            return Some(f);
+        }
+        if let Some(f) = basic::find_hidden_subset(&fab, 4) {
+            return Some(f);
+        }
 
         // Phase 5: Uniqueness
-        if let Some(f) = uniqueness::find_empty_rectangle(&fab) { return Some(f); }
-        if let Some(f) = uniqueness::find_avoidable_rectangle(&fab) { return Some(f); }
-        if let Some(f) = uniqueness::find_unique_rectangle(&fab) { return Some(f); }
-        if let Some(f) = uniqueness::find_hidden_rectangle(&fab) { return Some(f); }
+        if let Some(f) = uniqueness::find_empty_rectangle(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = uniqueness::find_avoidable_rectangle(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = uniqueness::find_unique_rectangle(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = uniqueness::find_hidden_rectangle(&fab) {
+            return Some(f);
+        }
 
         // Phase 6: Master
-        if let Some(f) = als_engine::find_xy_wing(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_xyz_wing(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_wxyz_wing(&fab) { return Some(f); }
-        if let Some(f) = aic_engine::find_w_wing(&fab) { return Some(f); }
+        if let Some(f) = als_engine::find_xy_wing(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_xyz_wing(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_wxyz_wing(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = aic_engine::find_w_wing(&fab) {
+            return Some(f);
+        }
         // AIC family: shared link graph for X-Chain, 3D Medusa, AIC
         let graph = aic_engine::build_link_graph(&fab);
-        if let Some(f) = aic_engine::find_x_chain(&fab, &graph) { return Some(f); }
-        if let Some(f) = aic_engine::find_medusa(&fab, &graph) { return Some(f); }
-        if let Some(f) = als_engine::find_sue_de_coq(&fab) { return Some(f); }
-        if let Some(f) = aic_engine::find_aic(&fab, &graph) { return Some(f); }
-        if let Some(f) = fish_engine::find_franken_fish(&fab) { return Some(f); }
-        if let Some(f) = fish_engine::find_siamese_fish(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_als_xz(&fab) { return Some(f); }
-        if let Some(f) = uniqueness::find_extended_unique_rectangle(&fab) { return Some(f); }
-        if let Some(f) = uniqueness::find_bug(&fab) { return Some(f); }
+        if let Some(f) = aic_engine::find_x_chain(&fab, &graph) {
+            return Some(f);
+        }
+        if let Some(f) = aic_engine::find_medusa(&fab, &graph) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_sue_de_coq(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = aic_engine::find_aic(&fab, &graph) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_franken_fish(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_siamese_fish(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_als_xz(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = uniqueness::find_extended_unique_rectangle(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = uniqueness::find_bug(&fab) {
+            return Some(f);
+        }
 
         // Phase 7: Extreme
-        if let Some(f) = als_engine::find_als_xy_wing(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_als_chain(&fab) { return Some(f); }
-        if let Some(f) = fish_engine::find_mutant_fish(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_aligned_pair_exclusion(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_aligned_triplet_exclusion(&fab) { return Some(f); }
-        if let Some(f) = als_engine::find_death_blossom(&fab) { return Some(f); }
+        if let Some(f) = als_engine::find_als_xy_wing(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_als_chain(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = fish_engine::find_mutant_fish(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_aligned_pair_exclusion(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_aligned_triplet_exclusion(&fab) {
+            return Some(f);
+        }
+        if let Some(f) = als_engine::find_death_blossom(&fab) {
+            return Some(f);
+        }
 
         // Forcing chains need the Grid for propagation
         let propagate_singles = |g: &Grid, pos: Position, val: u8| -> (Grid, bool) {
             backtrack::propagate_singles(g, pos, val)
         };
-        if let Some(f) = aic_engine::find_nishio_fc(grid, &propagate_singles) { return Some(f); }
-        if let Some(f) = aic_engine::find_kraken_fish(grid, &propagate_singles) { return Some(f); }
-        if let Some(f) = aic_engine::find_region_fc(grid, &propagate_singles) { return Some(f); }
-        if let Some(f) = aic_engine::find_cell_fc(grid, &propagate_singles) { return Some(f); }
+        if let Some(f) = aic_engine::find_nishio_fc(grid, &propagate_singles) {
+            return Some(f);
+        }
+        if let Some(f) = aic_engine::find_kraken_fish(grid, &propagate_singles) {
+            return Some(f);
+        }
+        if let Some(f) = aic_engine::find_region_fc(grid, &propagate_singles) {
+            return Some(f);
+        }
+        if let Some(f) = aic_engine::find_cell_fc(grid, &propagate_singles) {
+            return Some(f);
+        }
         // Dynamic FC uses full technique propagation
-        let prop_full = |g: &Grid, pos: Position, val: u8| -> (Grid, bool) {
-            propagate_full(g, pos, val)
-        };
-        if let Some(f) = aic_engine::find_dynamic_fc(grid, &prop_full) { return Some(f); }
+        let prop_full =
+            |g: &Grid, pos: Position, val: u8| -> (Grid, bool) { propagate_full(g, pos, val) };
+        if let Some(f) = aic_engine::find_dynamic_fc(grid, &prop_full) {
+            return Some(f);
+        }
 
         None
     }
@@ -255,8 +340,7 @@ impl Solver {
                 // AIC family: shared link graph for X-Chain, 3D Medusa, AIC
                 .or_else(|| {
                     let graph = aic_engine::build_link_graph(&fab);
-                    None
-                        .or_else(|| aic_engine::find_x_chain(&fab, &graph))
+                    None.or_else(|| aic_engine::find_x_chain(&fab, &graph))
                         .or_else(|| aic_engine::find_medusa(&fab, &graph))
                         .or_else(|| als_engine::find_sue_de_coq(&fab))
                         .or_else(|| aic_engine::find_aic(&fab, &graph))
@@ -278,8 +362,7 @@ impl Solver {
                     let prop = |g: &Grid, pos: Position, val: u8| -> (Grid, bool) {
                         backtrack::propagate_singles(g, pos, val)
                     };
-                    None
-                        .or_else(|| aic_engine::find_nishio_fc(grid, &prop))
+                    None.or_else(|| aic_engine::find_nishio_fc(grid, &prop))
                         .or_else(|| aic_engine::find_kraken_fish(grid, &prop))
                         .or_else(|| aic_engine::find_region_fc(grid, &prop))
                         .or_else(|| aic_engine::find_cell_fc(grid, &prop))
@@ -431,8 +514,7 @@ fn propagate_full(grid: &Grid, pos: Position, val: u8) -> (Grid, bool) {
             .or_else(|| aic_engine::find_w_wing(&fab))
             .or_else(|| {
                 let graph = aic_engine::build_link_graph(&fab);
-                None
-                    .or_else(|| aic_engine::find_x_chain(&fab, &graph))
+                None.or_else(|| aic_engine::find_x_chain(&fab, &graph))
                     .or_else(|| aic_engine::find_medusa(&fab, &graph))
                     .or_else(|| als_engine::find_sue_de_coq(&fab))
                     .or_else(|| aic_engine::find_aic(&fab, &graph))
@@ -585,7 +667,8 @@ mod tests {
         let solver = Solver::new();
 
         // Expert puzzle that requires UR / fish — should produce proof certificates
-        let puzzle = "000704005020010070000080002090006250600070008053200010400090000030060090200301000";
+        let puzzle =
+            "000704005020010070000080002090006250600070008053200010400090000030060090200301000";
         let grid = Grid::from_string(puzzle).unwrap();
         let mut working = grid.deep_clone();
         working.recalculate_candidates();
@@ -616,7 +699,10 @@ mod tests {
             steps += 1;
         }
 
-        assert!(found_proof, "Expected at least one hint with a ProofCertificate on an Expert puzzle");
+        assert!(
+            found_proof,
+            "Expected at least one hint with a ProofCertificate on an Expert puzzle"
+        );
     }
 
     /// Regression test: pin SE ratings for known puzzles so engine changes
@@ -625,11 +711,23 @@ mod tests {
     fn test_se_rating_regression() {
         let cases: &[(&str, f32, Difficulty)] = &[
             // Naked singles only
-            ("530070000600195000098000060800060003400803001700020006060000280000419005000080079", 2.3, Difficulty::Easy),
+            (
+                "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+                2.3,
+                Difficulty::Easy,
+            ),
             // Hidden singles only
-            ("000000010400000000020000000000050407008000300001090000300400200050100000000806000", 1.5, Difficulty::Medium),
+            (
+                "000000010400000000020000000000050407008000300001090000300400200050100000000806000",
+                1.5,
+                Difficulty::Medium,
+            ),
             // Expert tier (UR / empty rectangle)
-            ("000704005020010070000080002090006250600070008053200010400090000030060090200301000", 4.6, Difficulty::Expert),
+            (
+                "000704005020010070000080002090006250600070008053200010400090000030060090200301000",
+                4.6,
+                Difficulty::Expert,
+            ),
         ];
 
         let solver = Solver::new();
@@ -640,7 +738,9 @@ mod tests {
             assert!(
                 (se - expected_se).abs() < 0.01,
                 "SE regression: expected {:.1} got {:.1} for puzzle {}",
-                expected_se, se, puzzle_str
+                expected_se,
+                se,
+                puzzle_str
             );
             assert_eq!(
                 diff, *expected_diff,
@@ -658,21 +758,31 @@ mod tests {
 
         // This puzzle needs only naked singles (SE 2.3)
         let grid = Grid::from_string(
-            "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
-        ).unwrap();
+            "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+        )
+        .unwrap();
         let mut w = grid.deep_clone();
         let tech = solver.solve_with_techniques(&mut w);
         assert!(w.is_complete(), "Puzzle should be fully solved");
-        assert!(tech <= Technique::NakedSingle, "Expected NakedSingle, got {:?}", tech);
+        assert!(
+            tech <= Technique::NakedSingle,
+            "Expected NakedSingle, got {:?}",
+            tech
+        );
 
         // This puzzle needs hidden singles (SE 1.5)
         let grid = Grid::from_string(
-            "000000010400000000020000000000050407008000300001090000300400200050100000000806000"
-        ).unwrap();
+            "000000010400000000020000000000050407008000300001090000300400200050100000000806000",
+        )
+        .unwrap();
         let mut w = grid.deep_clone();
         let tech = solver.solve_with_techniques(&mut w);
         assert!(w.is_complete(), "Puzzle should be fully solved");
-        assert!(tech <= Technique::HiddenSingle, "Expected ≤HiddenSingle, got {:?}", tech);
+        assert!(
+            tech <= Technique::HiddenSingle,
+            "Expected ≤HiddenSingle, got {:?}",
+            tech
+        );
     }
 
     /// Technique coverage: verify each engine can find its expected technique
@@ -686,20 +796,28 @@ mod tests {
         // Here we verify the engine can solve all three reference puzzles
         // to completion using human techniques.
         let easy = Grid::from_string(
-            "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
-        ).unwrap();
+            "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+        )
+        .unwrap();
         let mut w = easy.deep_clone();
         let tech = solver.solve_with_techniques(&mut w);
         assert!(w.is_complete());
-        assert!(tech < Technique::Backtracking, "Easy puzzle should not need backtracking");
+        assert!(
+            tech < Technique::Backtracking,
+            "Easy puzzle should not need backtracking"
+        );
 
         let medium = Grid::from_string(
-            "000000010400000000020000000000050407008000300001090000300400200050100000000806000"
-        ).unwrap();
+            "000000010400000000020000000000050407008000300001090000300400200050100000000806000",
+        )
+        .unwrap();
         let mut w = medium.deep_clone();
         let tech = solver.solve_with_techniques(&mut w);
         assert!(w.is_complete());
-        assert!(tech < Technique::Backtracking, "Medium puzzle should not need backtracking");
+        assert!(
+            tech < Technique::Backtracking,
+            "Medium puzzle should not need backtracking"
+        );
     }
 
     /// Verify every technique in the dispatch chain is reachable by collecting
@@ -754,8 +872,14 @@ mod tests {
         }
 
         // At minimum, the basic techniques should be exercised
-        assert!(seen_techniques.contains(&Technique::NakedSingle), "NakedSingle never fired");
-        assert!(seen_techniques.contains(&Technique::HiddenSingle), "HiddenSingle never fired");
+        assert!(
+            seen_techniques.contains(&Technique::NakedSingle),
+            "NakedSingle never fired"
+        );
+        assert!(
+            seen_techniques.contains(&Technique::HiddenSingle),
+            "HiddenSingle never fired"
+        );
 
         // Print coverage for diagnostics
         let mut sorted: Vec<_> = seen_techniques.iter().collect();

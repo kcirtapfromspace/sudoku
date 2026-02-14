@@ -8,7 +8,9 @@
 //! (size, has_fins, sector_types) -> Technique variant.
 
 use super::explain::{ExplanationData, Finding, InferenceResult, ProofCertificate};
-use super::fabric::{idx_to_pos, sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE};
+use super::fabric::{
+    idx_to_pos, sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE,
+};
 use super::types::Technique;
 
 /// Controls which sector types are allowed in base/cover sets.
@@ -33,9 +35,17 @@ fn sector_name(sector: usize) -> String {
 }
 
 fn sector_type(sector: usize) -> u8 {
-    if sector < 9 { 0 } // row
-    else if sector < 18 { 1 } // col
-    else { 2 } // box
+    if sector < 9 {
+        0
+    }
+    // row
+    else if sector < 18 {
+        1
+    }
+    // col
+    else {
+        2
+    } // box
 }
 
 /// Get a bitmask of cells (linear indices) that are in a given sector and have a candidate.
@@ -116,8 +126,7 @@ fn search_fish_oriented(
         let eligible_covers: Vec<usize> = cover_pool
             .iter()
             .filter(|&&s| {
-                !base_combo.contains(&s)
-                    && (sector_candidate_mask(fab, s, digit) & base_cells) != 0
+                !base_combo.contains(&s) && (sector_candidate_mask(fab, s, digit) & base_cells) != 0
             })
             .copied()
             .collect();
@@ -145,7 +154,14 @@ fn search_fish_oriented(
             if fins.count_ones() == 0 {
                 // Basic fish (no fins) - eliminate from cover_cells \ base_cells
                 if let Some(f) = make_fish_finding(
-                    fab, digit, size, &base_combo, &cover_combo, &[], eliminations, constraint,
+                    fab,
+                    digit,
+                    size,
+                    &base_combo,
+                    &cover_combo,
+                    &[],
+                    eliminations,
+                    constraint,
                 ) {
                     return Some(f);
                 }
@@ -153,12 +169,22 @@ fn search_fish_oriented(
                 // Finned fish: all fins must share one box
                 let fin_cells: Vec<usize> = (0..81).filter(|&i| fins & (1u128 << i) != 0).collect();
                 let fin_box = idx_to_pos(fin_cells[0]).box_index();
-                if fin_cells.iter().all(|&c| idx_to_pos(c).box_index() == fin_box) {
+                if fin_cells
+                    .iter()
+                    .all(|&c| idx_to_pos(c).box_index() == fin_box)
+                {
                     // Eliminations restricted to cells in cover that are also in fin box
                     let fin_box_mask = sector_candidate_mask(fab, SECTOR_BOX_BASE + fin_box, digit);
                     let restricted_elims = eliminations & fin_box_mask;
                     if let Some(f) = make_fish_finding(
-                        fab, digit, size, &base_combo, &cover_combo, &fin_cells, restricted_elims, constraint,
+                        fab,
+                        digit,
+                        size,
+                        &base_combo,
+                        &cover_combo,
+                        &fin_cells,
+                        restricted_elims,
+                        constraint,
                     ) {
                         return Some(f);
                     }
@@ -193,7 +219,12 @@ fn validate_fish_types(bases: &[usize], covers: &[usize], constraint: SectorCons
             for &s in bases.iter().chain(covers.iter()) {
                 types.insert(sector_type(s));
             }
-            types.len() >= 3 || (types.len() >= 2 && bases.iter().chain(covers.iter()).any(|&s| sector_type(s) == 2))
+            types.len() >= 3
+                || (types.len() >= 2
+                    && bases
+                        .iter()
+                        .chain(covers.iter())
+                        .any(|&s| sector_type(s) == 2))
         }
     }
 }
@@ -243,7 +274,13 @@ fn make_fish_finding(
 
             let technique = classify_fish(size, !fins.is_empty(), constraint);
             let variant: String = match constraint {
-                SectorConstraint::Basic => if fins.is_empty() { "Basic".into() } else { "Finned".into() },
+                SectorConstraint::Basic => {
+                    if fins.is_empty() {
+                        "Basic".into()
+                    } else {
+                        "Finned".into()
+                    }
+                }
                 SectorConstraint::Franken => "Franken".into(),
                 SectorConstraint::Mutant => "Mutant".into(),
             };
@@ -255,7 +292,10 @@ fn make_fish_finding(
             let mut involved = Vec::new();
             for &bs in bases {
                 for &c in &sector_cells(bs) {
-                    if fab.values[c].is_none() && fab.cell_cands[c].contains(digit) && !involved.contains(&c) {
+                    if fab.values[c].is_none()
+                        && fab.cell_cands[c].contains(digit)
+                        && !involved.contains(&c)
+                    {
                         involved.push(c);
                     }
                 }
@@ -315,7 +355,9 @@ pub fn find_siamese_fish(fab: &CandidateFabric) -> Option<Finding> {
                     let combo_b = &all_combos[j];
 
                     // Check if these produce valid finned fish with shared fin box
-                    if let Some(finding) = check_siamese_pair(fab, digit, size, combo_a, combo_b, &cols) {
+                    if let Some(finding) =
+                        check_siamese_pair(fab, digit, size, combo_a, combo_b, &cols)
+                    {
                         return Some(finding);
                     }
                 }
@@ -334,7 +376,14 @@ pub fn find_siamese_fish(fab: &CandidateFabric) -> Option<Finding> {
             let all_col_combos = combinations(&eligible_cols, size);
             for i in 0..all_col_combos.len() {
                 for j in (i + 1)..all_col_combos.len() {
-                    if let Some(finding) = check_siamese_pair(fab, digit, size, &all_col_combos[i], &all_col_combos[j], &row_covers) {
+                    if let Some(finding) = check_siamese_pair(
+                        fab,
+                        digit,
+                        size,
+                        &all_col_combos[i],
+                        &all_col_combos[j],
+                        &row_covers,
+                    ) {
                         return Some(finding);
                     }
                 }
@@ -392,10 +441,16 @@ fn check_siamese_pair(
         if box_a != box_b {
             continue;
         }
-        if !fin_cells_a.iter().all(|&c| idx_to_pos(c).box_index() == box_a) {
+        if !fin_cells_a
+            .iter()
+            .all(|&c| idx_to_pos(c).box_index() == box_a)
+        {
             continue;
         }
-        if !fin_cells_b.iter().all(|&c| idx_to_pos(c).box_index() == box_a) {
+        if !fin_cells_b
+            .iter()
+            .all(|&c| idx_to_pos(c).box_index() == box_a)
+        {
             continue;
         }
 
@@ -406,11 +461,17 @@ fn check_siamese_pair(
         let combined = elim_a & elim_b;
 
         for cell in 0..81 {
-            if combined & (1u128 << cell) != 0 && fab.values[cell].is_none() && fab.cell_cands[cell].contains(digit) {
+            if combined & (1u128 << cell) != 0
+                && fab.values[cell].is_none()
+                && fab.cell_cands[cell].contains(digit)
+            {
                 let mut involved = Vec::new();
                 for &bs in combo_a.iter().chain(combo_b.iter()) {
                     for &c in &sector_cells(bs) {
-                        if fab.values[c].is_none() && fab.cell_cands[c].contains(digit) && !involved.contains(&c) {
+                        if fab.values[c].is_none()
+                            && fab.cell_cands[c].contains(digit)
+                            && !involved.contains(&c)
+                        {
                             involved.push(c);
                         }
                     }
@@ -425,16 +486,28 @@ fn check_siamese_pair(
                     explanation: ExplanationData::Fish {
                         size,
                         digit,
-                        base_sectors: combo_a.iter().chain(combo_b.iter()).map(|&s| sector_name(s)).collect(),
+                        base_sectors: combo_a
+                            .iter()
+                            .chain(combo_b.iter())
+                            .map(|&s| sector_name(s))
+                            .collect(),
                         cover_sectors: cover_combo.iter().map(|&s| sector_name(s)).collect(),
-                        fins: fin_cells_a.iter().chain(fin_cells_b.iter()).copied().collect(),
+                        fins: fin_cells_a
+                            .iter()
+                            .chain(fin_cells_b.iter())
+                            .copied()
+                            .collect(),
                         variant: "Siamese".into(),
                     },
                     proof: Some(ProofCertificate::Fish {
                         digit,
                         base_sectors: combo_a.iter().chain(combo_b.iter()).copied().collect(),
                         cover_sectors: cover_combo.clone(),
-                        fins: fin_cells_a.iter().chain(fin_cells_b.iter()).copied().collect(),
+                        fins: fin_cells_a
+                            .iter()
+                            .chain(fin_cells_b.iter())
+                            .copied()
+                            .collect(),
                     }),
                 });
             }
@@ -484,9 +557,8 @@ pub fn find_pointing_pair(fab: &CandidateFabric) -> Option<Finding> {
                 }
                 for cell in 0..81usize {
                     if elim_mask & (1u128 << cell) != 0 {
-                        let involved: Vec<usize> = (0..81)
-                            .filter(|&c| base_mask & (1u128 << c) != 0)
-                            .collect();
+                        let involved: Vec<usize> =
+                            (0..81).filter(|&c| base_mask & (1u128 << c) != 0).collect();
                         return Some(Finding {
                             technique: Technique::PointingPair,
                             inference: InferenceResult::Elimination {
@@ -542,9 +614,8 @@ pub fn find_box_line_reduction(fab: &CandidateFabric) -> Option<Finding> {
                 }
                 for cell in 0..81usize {
                     if elim_mask & (1u128 << cell) != 0 {
-                        let involved: Vec<usize> = (0..81)
-                            .filter(|&c| base_mask & (1u128 << c) != 0)
-                            .collect();
+                        let involved: Vec<usize> =
+                            (0..81).filter(|&c| base_mask & (1u128 << c) != 0).collect();
                         return Some(Finding {
                             technique: Technique::BoxLineReduction,
                             inference: InferenceResult::Elimination {
@@ -593,7 +664,9 @@ pub fn find_finned_fish(fab: &CandidateFabric, size: usize) -> Option<Finding> {
         if let Some(f) = search_fish_for_digit(fab, digit, size, SectorConstraint::Basic) {
             // Check if it's actually finned (the technique classification tells us)
             match f.technique {
-                Technique::FinnedXWing | Technique::FinnedSwordfish | Technique::FinnedJellyfish => {
+                Technique::FinnedXWing
+                | Technique::FinnedSwordfish
+                | Technique::FinnedJellyfish => {
                     return Some(f);
                 }
                 _ => {}

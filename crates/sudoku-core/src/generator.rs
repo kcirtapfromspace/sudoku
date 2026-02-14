@@ -302,23 +302,13 @@ impl Generator {
                     if let Some(min) = self.config.min_se_rating {
                         if se < min {
                             // Still a valid difficulty match — track as candidate
-                            Self::update_best(
-                                &mut best_candidate,
-                                grid,
-                                actual_difficulty,
-                                target,
-                            );
+                            Self::update_best(&mut best_candidate, grid, actual_difficulty, target);
                             continue;
                         }
                     }
                     if let Some(max) = self.config.max_se_rating {
                         if se > max {
-                            Self::update_best(
-                                &mut best_candidate,
-                                grid,
-                                actual_difficulty,
-                                target,
-                            );
+                            Self::update_best(&mut best_candidate, grid, actual_difficulty, target);
                             continue;
                         }
                     }

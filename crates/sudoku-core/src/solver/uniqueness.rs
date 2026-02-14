@@ -5,7 +5,9 @@
 //! find_hidden_rectangle, find_extended_unique_rectangle, find_bug.
 
 use super::explain::{ExplanationData, Finding, InferenceResult, ProofCertificate};
-use super::fabric::{idx_to_pos, sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE};
+use super::fabric::{
+    idx_to_pos, sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE,
+};
 use super::types::Technique;
 use crate::BitSet;
 
@@ -45,8 +47,10 @@ pub fn find_empty_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                 continue;
             }
 
-            let rows: std::collections::HashSet<usize> = digit_cells.iter().map(|&c| c / 9).collect();
-            let cols: std::collections::HashSet<usize> = digit_cells.iter().map(|&c| c % 9).collect();
+            let rows: std::collections::HashSet<usize> =
+                digit_cells.iter().map(|&c| c / 9).collect();
+            let cols: std::collections::HashSet<usize> =
+                digit_cells.iter().map(|&c| c % 9).collect();
 
             if rows.len() < 2 || cols.len() < 2 {
                 continue;
@@ -116,7 +120,11 @@ pub fn find_empty_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                             proof: Some(ProofCertificate::Uniqueness {
                                 pattern: "Empty Rectangle".into(),
                                 floor_cells: vec![cells_in_row[0], conjugate],
-                                roof_cells: digit_cells.iter().filter(|&&c| c / 9 != er_row).copied().collect(),
+                                roof_cells: digit_cells
+                                    .iter()
+                                    .filter(|&&c| c / 9 != er_row)
+                                    .copied()
+                                    .collect(),
                             }),
                         });
                     }
@@ -184,7 +192,11 @@ pub fn find_empty_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                             proof: Some(ProofCertificate::Uniqueness {
                                 pattern: "Empty Rectangle".into(),
                                 floor_cells: vec![cells_in_col[0], conjugate],
-                                roof_cells: digit_cells.iter().filter(|&&c| c % 9 != er_col).copied().collect(),
+                                roof_cells: digit_cells
+                                    .iter()
+                                    .filter(|&&c| c % 9 != er_col)
+                                    .copied()
+                                    .collect(),
                             }),
                         });
                     }
@@ -211,10 +223,8 @@ pub fn find_avoidable_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                     ];
 
                     // Need corners in exactly 2 boxes
-                    let boxes: std::collections::HashSet<usize> = corners
-                        .iter()
-                        .map(|&c| idx_to_pos(c).box_index())
-                        .collect();
+                    let boxes: std::collections::HashSet<usize> =
+                        corners.iter().map(|&c| idx_to_pos(c).box_index()).collect();
                     if boxes.len() != 2 {
                         continue;
                     }
@@ -253,7 +263,8 @@ pub fn find_avoidable_rectangle(fab: &CandidateFabric) -> Option<Finding> {
 
                     for &d in &digit_vec {
                         if cands.contains(d) {
-                            let ar_floor: Vec<usize> = corners.iter().filter(|&&c| c != empty).copied().collect();
+                            let ar_floor: Vec<usize> =
+                                corners.iter().filter(|&&c| c != empty).copied().collect();
                             return Some(Finding {
                                 technique: Technique::AvoidableRectangle,
                                 inference: InferenceResult::Elimination {
@@ -393,7 +404,9 @@ fn try_ur_hint(
                 values: vec![a, b],
             },
             involved_cells: corners,
-            explanation: ExplanationData::Uniqueness { variant: "Unique Rectangle Type 1".into() },
+            explanation: ExplanationData::Uniqueness {
+                variant: "Unique Rectangle Type 1".into(),
+            },
             proof: Some(ProofCertificate::Uniqueness {
                 pattern: "UR Type 1".into(),
                 floor_cells: vec![pos1, pos2, corner3],
@@ -409,7 +422,9 @@ fn try_ur_hint(
                 values: vec![a, b],
             },
             involved_cells: corners,
-            explanation: ExplanationData::Uniqueness { variant: "Unique Rectangle Type 1".into() },
+            explanation: ExplanationData::Uniqueness {
+                variant: "Unique Rectangle Type 1".into(),
+            },
             proof: Some(ProofCertificate::Uniqueness {
                 pattern: "UR Type 1".into(),
                 floor_cells: vec![pos1, pos2, corner4],
@@ -485,7 +500,10 @@ fn try_ur_hint(
                 let other_cells: Vec<usize> = sec_cells
                     .iter()
                     .filter(|&&c| {
-                        c != corner3 && c != corner4 && c != pos1 && c != pos2
+                        c != corner3
+                            && c != corner4
+                            && c != pos1
+                            && c != pos2
                             && fab.values[c].is_none()
                     })
                     .copied()
@@ -509,9 +527,9 @@ fn try_ur_hint(
                         if !valid || subset_cands.count() as usize != subset_size {
                             continue;
                         }
-                        let all_subset = combo.iter().all(|&sc| {
-                            fab.cell_cands[sc].difference(&subset_cands).is_empty()
-                        });
+                        let all_subset = combo
+                            .iter()
+                            .all(|&sc| fab.cell_cands[sc].difference(&subset_cands).is_empty());
                         if !all_subset {
                             continue;
                         }
@@ -672,8 +690,10 @@ fn try_ur_hint(
                 let strong_col3 = fab.sector_digit_cells[9 + c3_col][di].count_ones() == 2;
                 let strong_col4 = fab.sector_digit_cells[9 + c4_col][di].count_ones() == 2;
 
-                if (strong_row3 && strong_col4) || (strong_col3 && strong_row4)
-                    || (strong_row3 && strong_row4) || (strong_col3 && strong_col4)
+                if (strong_row3 && strong_col4)
+                    || (strong_col3 && strong_row4)
+                    || (strong_row3 && strong_row4)
+                    || (strong_col3 && strong_col4)
                 {
                     if cand3.contains(other) && cand3.count() > 2 {
                         return Some(Finding {
@@ -737,10 +757,8 @@ pub fn find_hidden_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                         continue;
                     }
 
-                    let boxes: std::collections::HashSet<usize> = corners
-                        .iter()
-                        .map(|&c| idx_to_pos(c).box_index())
-                        .collect();
+                    let boxes: std::collections::HashSet<usize> =
+                        corners.iter().map(|&c| idx_to_pos(c).box_index()).collect();
                     if boxes.len() != 2 {
                         continue;
                     }
@@ -791,7 +809,11 @@ pub fn find_hidden_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                                             if fab.cell_cands[corner].count() > 2
                                                 && fab.cell_cands[corner].contains(other)
                                             {
-                                                let hr_floor: Vec<usize> = corners.iter().filter(|&&c| c != corner).copied().collect();
+                                                let hr_floor: Vec<usize> = corners
+                                                    .iter()
+                                                    .filter(|&&c| c != corner)
+                                                    .copied()
+                                                    .collect();
                                                 return Some(Finding {
                                                     technique: Technique::HiddenRectangle,
                                                     inference: InferenceResult::Elimination {
@@ -833,7 +855,11 @@ pub fn find_hidden_rectangle(fab: &CandidateFabric) -> Option<Finding> {
                                             if fab.cell_cands[corner].count() > 2
                                                 && fab.cell_cands[corner].contains(other)
                                             {
-                                                let hr_floor: Vec<usize> = corners.iter().filter(|&&c| c != corner).copied().collect();
+                                                let hr_floor: Vec<usize> = corners
+                                                    .iter()
+                                                    .filter(|&&c| c != corner)
+                                                    .copied()
+                                                    .collect();
                                                 return Some(Finding {
                                                     technique: Technique::HiddenRectangle,
                                                     inference: InferenceResult::Elimination {
@@ -871,10 +897,8 @@ pub fn find_extended_unique_rectangle(fab: &CandidateFabric) -> Option<Finding> 
         if corners.iter().any(|&c| fab.values[c].is_some()) {
             return None;
         }
-        let boxes: std::collections::HashSet<usize> = corners
-            .iter()
-            .map(|&c| idx_to_pos(c).box_index())
-            .collect();
+        let boxes: std::collections::HashSet<usize> =
+            corners.iter().map(|&c| idx_to_pos(c).box_index()).collect();
         if boxes.len() < 2 {
             return None;
         }
@@ -906,11 +930,25 @@ pub fn find_extended_unique_rectangle(fab: &CandidateFabric) -> Option<Finding> 
                 for &corner in corners {
                     if fab.cell_cands[corner].count() > 2 {
                         let mut elim = Vec::new();
-                        if fab.cell_cands[corner].contains(a) { elim.push(a); }
-                        if fab.cell_cands[corner].contains(b) { elim.push(b); }
+                        if fab.cell_cands[corner].contains(a) {
+                            elim.push(a);
+                        }
+                        if fab.cell_cands[corner].contains(b) {
+                            elim.push(b);
+                        }
                         if !elim.is_empty() {
-                            let eur_floor: Vec<usize> = corners.iter().filter(|&&c| fab.cell_cands[c].count() == 2 && fab.cell_cands[c] == ur_pair).copied().collect();
-                            let eur_roof: Vec<usize> = corners.iter().filter(|&&c| fab.cell_cands[c].count() > 2).copied().collect();
+                            let eur_floor: Vec<usize> = corners
+                                .iter()
+                                .filter(|&&c| {
+                                    fab.cell_cands[c].count() == 2 && fab.cell_cands[c] == ur_pair
+                                })
+                                .copied()
+                                .collect();
+                            let eur_roof: Vec<usize> = corners
+                                .iter()
+                                .filter(|&&c| fab.cell_cands[c].count() > 2)
+                                .copied()
+                                .collect();
                             return Some(Finding {
                                 technique: Technique::ExtendedUniqueRectangle,
                                 inference: InferenceResult::Elimination {
@@ -942,8 +980,12 @@ pub fn find_extended_unique_rectangle(fab: &CandidateFabric) -> Option<Finding> 
                 for c2 in (c1 + 1)..9 {
                     for c3 in (c2 + 1)..9 {
                         let corners = [
-                            pos_to_idx(r1, c1), pos_to_idx(r1, c2), pos_to_idx(r1, c3),
-                            pos_to_idx(r2, c1), pos_to_idx(r2, c2), pos_to_idx(r2, c3),
+                            pos_to_idx(r1, c1),
+                            pos_to_idx(r1, c2),
+                            pos_to_idx(r1, c3),
+                            pos_to_idx(r2, c1),
+                            pos_to_idx(r2, c2),
+                            pos_to_idx(r2, c3),
                         ];
                         if let Some(f) = try_ext_ur(&corners) {
                             return Some(f);
@@ -961,9 +1003,12 @@ pub fn find_extended_unique_rectangle(fab: &CandidateFabric) -> Option<Finding> 
                 for c1 in 0..9 {
                     for c2 in (c1 + 1)..9 {
                         let corners = [
-                            pos_to_idx(r1, c1), pos_to_idx(r1, c2),
-                            pos_to_idx(r2, c1), pos_to_idx(r2, c2),
-                            pos_to_idx(r3, c1), pos_to_idx(r3, c2),
+                            pos_to_idx(r1, c1),
+                            pos_to_idx(r1, c2),
+                            pos_to_idx(r2, c1),
+                            pos_to_idx(r2, c2),
+                            pos_to_idx(r3, c1),
+                            pos_to_idx(r3, c2),
                         ];
                         if let Some(f) = try_ext_ur(&corners) {
                             return Some(f);
@@ -1024,9 +1069,14 @@ pub fn find_bug(fab: &CandidateFabric) -> Option<Finding> {
                 let bug_floor: Vec<usize> = empty.iter().filter(|&&c| c != tri).copied().collect();
                 return Some(Finding {
                     technique: Technique::BivalueUniversalGrave,
-                    inference: InferenceResult::Placement { cell: tri, value: val },
+                    inference: InferenceResult::Placement {
+                        cell: tri,
+                        value: val,
+                    },
                     involved_cells: vec![tri],
-                    explanation: ExplanationData::Uniqueness { variant: "BUG+1".into() },
+                    explanation: ExplanationData::Uniqueness {
+                        variant: "BUG+1".into(),
+                    },
                     proof: Some(ProofCertificate::Uniqueness {
                         pattern: "BUG+1".into(),
                         floor_cells: bug_floor,
@@ -1070,7 +1120,10 @@ pub fn find_bug(fab: &CandidateFabric) -> Option<Finding> {
         }
 
         // Check if all share a row
-        if cells_with_digit.iter().all(|&c| c / 9 == cells_with_digit[0] / 9) {
+        if cells_with_digit
+            .iter()
+            .all(|&c| c / 9 == cells_with_digit[0] / 9)
+        {
             let row = cells_with_digit[0] / 9;
             for col in 0..9 {
                 let idx = pos_to_idx(row, col);
@@ -1078,7 +1131,11 @@ pub fn find_bug(fab: &CandidateFabric) -> Option<Finding> {
                     && fab.values[idx].is_none()
                     && fab.cell_cands[idx].contains(digit)
                 {
-                    let bug_floor: Vec<usize> = empty.iter().filter(|&&c| fab.cell_cands[c].count() == 2).copied().collect();
+                    let bug_floor: Vec<usize> = empty
+                        .iter()
+                        .filter(|&&c| fab.cell_cands[c].count() == 2)
+                        .copied()
+                        .collect();
                     return Some(Finding {
                         technique: Technique::BivalueUniversalGrave,
                         inference: InferenceResult::Elimination {
@@ -1100,7 +1157,10 @@ pub fn find_bug(fab: &CandidateFabric) -> Option<Finding> {
         }
 
         // Check if all share a column
-        if cells_with_digit.iter().all(|&c| c % 9 == cells_with_digit[0] % 9) {
+        if cells_with_digit
+            .iter()
+            .all(|&c| c % 9 == cells_with_digit[0] % 9)
+        {
             let col = cells_with_digit[0] % 9;
             for row in 0..9 {
                 let idx = pos_to_idx(row, col);
@@ -1108,7 +1168,11 @@ pub fn find_bug(fab: &CandidateFabric) -> Option<Finding> {
                     && fab.values[idx].is_none()
                     && fab.cell_cands[idx].contains(digit)
                 {
-                    let bug_floor: Vec<usize> = empty.iter().filter(|&&c| fab.cell_cands[c].count() == 2).copied().collect();
+                    let bug_floor: Vec<usize> = empty
+                        .iter()
+                        .filter(|&&c| fab.cell_cands[c].count() == 2)
+                        .copied()
+                        .collect();
                     return Some(Finding {
                         technique: Technique::BivalueUniversalGrave,
                         inference: InferenceResult::Elimination {
@@ -1141,7 +1205,11 @@ pub fn find_bug(fab: &CandidateFabric) -> Option<Finding> {
                     && fab.values[cell].is_none()
                     && fab.cell_cands[cell].contains(digit)
                 {
-                    let bug_floor: Vec<usize> = empty.iter().filter(|&&c| fab.cell_cands[c].count() == 2).copied().collect();
+                    let bug_floor: Vec<usize> = empty
+                        .iter()
+                        .filter(|&&c| fab.cell_cands[c].count() == 2)
+                        .copied()
+                        .collect();
                     return Some(Finding {
                         technique: Technique::BivalueUniversalGrave,
                         inference: InferenceResult::Elimination {

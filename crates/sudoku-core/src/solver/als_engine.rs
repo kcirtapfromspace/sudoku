@@ -6,17 +6,21 @@
 //! Core: Enumerate ALS per sector, build RCC graph, search chains.
 //! Classification: chain length + ALS sizes determine technique name.
 
-use super::explain::{AlsProofDescriptor, ExplanationData, Finding, InferenceResult, ProofCertificate};
-use super::fabric::{sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE};
+use super::explain::{
+    AlsProofDescriptor, ExplanationData, Finding, InferenceResult, ProofCertificate,
+};
+use super::fabric::{
+    sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE,
+};
 use super::types::Technique;
 use crate::BitSet;
 
 /// An Almost Locked Set: N cells with N+1 candidates in a single sector.
 #[derive(Debug, Clone)]
 struct Als {
-    cells: Vec<usize>,       // linear cell indices
-    candidates: BitSet,       // union of candidates
-    sector: usize,            // which sector it belongs to
+    cells: Vec<usize>,  // linear cell indices
+    candidates: BitSet, // union of candidates
+    sector: usize,      // which sector it belongs to
 }
 
 /// Convert an `Als` into an `AlsProofDescriptor` for proof certificates.
@@ -102,14 +106,26 @@ fn enumerate_als(fab: &CandidateFabric) -> Vec<Als> {
 
 /// Check if value X is an RCC between two ALS: all X-cells in A see all X-cells in B.
 fn is_rcc(fab: &CandidateFabric, als_a: &Als, als_b: &Als, x: u8) -> bool {
-    let a_cells_x: Vec<usize> = als_a.cells.iter().filter(|&&c| fab.cell_cands[c].contains(x)).copied().collect();
-    let b_cells_x: Vec<usize> = als_b.cells.iter().filter(|&&c| fab.cell_cands[c].contains(x)).copied().collect();
+    let a_cells_x: Vec<usize> = als_a
+        .cells
+        .iter()
+        .filter(|&&c| fab.cell_cands[c].contains(x))
+        .copied()
+        .collect();
+    let b_cells_x: Vec<usize> = als_b
+        .cells
+        .iter()
+        .filter(|&&c| fab.cell_cands[c].contains(x))
+        .copied()
+        .collect();
 
     if a_cells_x.is_empty() || b_cells_x.is_empty() {
         return false;
     }
 
-    a_cells_x.iter().all(|&a| b_cells_x.iter().all(|&b| fab.sees(a, b)))
+    a_cells_x
+        .iter()
+        .all(|&a| b_cells_x.iter().all(|&b| fab.sees(a, b)))
 }
 
 /// Find RCC values between two non-overlapping ALS.
@@ -118,7 +134,10 @@ fn find_rccs(fab: &CandidateFabric, als_a: &Als, als_b: &Als) -> Vec<u8> {
         return Vec::new();
     }
     let common = als_a.candidates.intersection(&als_b.candidates);
-    common.iter().filter(|&x| is_rcc(fab, als_a, als_b, x)).collect()
+    common
+        .iter()
+        .filter(|&x| is_rcc(fab, als_a, als_b, x))
+        .collect()
 }
 
 // ==================== Wings (small ALS-XZ) ====================
@@ -172,8 +191,18 @@ fn find_als_xz_filtered(fab: &CandidateFabric, filter: Option<Technique>) -> Opt
                         continue;
                     }
 
-                    let a_cells_z: Vec<usize> = als_a.cells.iter().filter(|&&c| fab.cell_cands[c].contains(z)).copied().collect();
-                    let b_cells_z: Vec<usize> = als_b.cells.iter().filter(|&&c| fab.cell_cands[c].contains(z)).copied().collect();
+                    let a_cells_z: Vec<usize> = als_a
+                        .cells
+                        .iter()
+                        .filter(|&&c| fab.cell_cands[c].contains(z))
+                        .copied()
+                        .collect();
+                    let b_cells_z: Vec<usize> = als_b
+                        .cells
+                        .iter()
+                        .filter(|&&c| fab.cell_cands[c].contains(z))
+                        .copied()
+                        .collect();
 
                     if a_cells_z.is_empty() || b_cells_z.is_empty() {
                         continue;
@@ -257,10 +286,15 @@ fn technique_name(t: Technique) -> &'static str {
 
 pub fn find_als_xy_wing(fab: &CandidateFabric) -> Option<Finding> {
     let all_als = enumerate_als(fab);
-    let small_als: Vec<&Als> = all_als.iter().filter(|a| a.cells.len() <= 4).take(60).collect();
+    let small_als: Vec<&Als> = all_als
+        .iter()
+        .filter(|a| a.cells.len() <= 4)
+        .take(60)
+        .collect();
 
     // Precompute RCC map
-    let mut rcc_map: std::collections::HashMap<(usize, usize), Vec<u8>> = std::collections::HashMap::new();
+    let mut rcc_map: std::collections::HashMap<(usize, usize), Vec<u8>> =
+        std::collections::HashMap::new();
     for i in 0..small_als.len() {
         for j in (i + 1)..small_als.len() {
             let rccs = find_rccs(fab, small_als[i], small_als[j]);
@@ -274,9 +308,13 @@ pub fn find_als_xy_wing(fab: &CandidateFabric) -> Option<Finding> {
     // Try chains A-B-C (length 3)
     for a_idx in 0..small_als.len() {
         for (&(from, b_idx), rccs_ab) in &rcc_map {
-            if from != a_idx { continue; }
+            if from != a_idx {
+                continue;
+            }
             for (&(from2, c_idx), rccs_bc) in &rcc_map {
-                if from2 != b_idx || c_idx == a_idx { continue; }
+                if from2 != b_idx || c_idx == a_idx {
+                    continue;
+                }
 
                 let als_a = small_als[a_idx];
                 let als_c = small_als[c_idx];
@@ -289,19 +327,39 @@ pub fn find_als_xy_wing(fab: &CandidateFabric) -> Option<Finding> {
 
                 for &x in rccs_ab {
                     for &y in rccs_bc {
-                        if y == x { continue; }
+                        if y == x {
+                            continue;
+                        }
 
                         for z in common_ac.iter() {
-                            if z == x { continue; }
+                            if z == x {
+                                continue;
+                            }
 
-                            let a_cells_z: Vec<usize> = als_a.cells.iter().filter(|&&c| fab.cell_cands[c].contains(z)).copied().collect();
-                            let c_cells_z: Vec<usize> = als_c.cells.iter().filter(|&&c| fab.cell_cands[c].contains(z)).copied().collect();
+                            let a_cells_z: Vec<usize> = als_a
+                                .cells
+                                .iter()
+                                .filter(|&&c| fab.cell_cands[c].contains(z))
+                                .copied()
+                                .collect();
+                            let c_cells_z: Vec<usize> = als_c
+                                .cells
+                                .iter()
+                                .filter(|&&c| fab.cell_cands[c].contains(z))
+                                .copied()
+                                .collect();
 
-                            if a_cells_z.is_empty() || c_cells_z.is_empty() { continue; }
+                            if a_cells_z.is_empty() || c_cells_z.is_empty() {
+                                continue;
+                            }
 
                             for cell in 0..81 {
-                                if fab.values[cell].is_some() || !fab.cell_cands[cell].contains(z) { continue; }
-                                if als_a.cells.contains(&cell) || als_c.cells.contains(&cell) { continue; }
+                                if fab.values[cell].is_some() || !fab.cell_cands[cell].contains(z) {
+                                    continue;
+                                }
+                                if als_a.cells.contains(&cell) || als_c.cells.contains(&cell) {
+                                    continue;
+                                }
                                 if a_cells_z.iter().all(|&a| fab.sees(cell, a))
                                     && c_cells_z.iter().all(|&c| fab.sees(cell, c))
                                 {
@@ -310,7 +368,10 @@ pub fn find_als_xy_wing(fab: &CandidateFabric) -> Option<Finding> {
                                     involved.extend(&als_c.cells);
                                     return Some(Finding {
                                         technique: Technique::AlsXyWing,
-                                        inference: InferenceResult::Elimination { cell, values: vec![z] },
+                                        inference: InferenceResult::Elimination {
+                                            cell,
+                                            values: vec![z],
+                                        },
                                         involved_cells: involved,
                                         explanation: ExplanationData::Als {
                                             variant: "ALS-XY-Wing".into(),
@@ -342,9 +403,14 @@ pub fn find_als_xy_wing(fab: &CandidateFabric) -> Option<Finding> {
 
 pub fn find_als_chain(fab: &CandidateFabric) -> Option<Finding> {
     let all_als = enumerate_als(fab);
-    let small_als: Vec<&Als> = all_als.iter().filter(|a| a.cells.len() <= 4).take(50).collect();
+    let small_als: Vec<&Als> = all_als
+        .iter()
+        .filter(|a| a.cells.len() <= 4)
+        .take(50)
+        .collect();
 
-    let mut rcc_map: std::collections::HashMap<(usize, usize), Vec<u8>> = std::collections::HashMap::new();
+    let mut rcc_map: std::collections::HashMap<(usize, usize), Vec<u8>> =
+        std::collections::HashMap::new();
     for i in 0..small_als.len() {
         for j in (i + 1)..small_als.len() {
             let rccs = find_rccs(fab, small_als[i], small_als[j]);
@@ -357,51 +423,86 @@ pub fn find_als_chain(fab: &CandidateFabric) -> Option<Finding> {
 
     // Try chains A-B-C-D (length 4)
     for a_idx in 0..small_als.len() {
-        let a_partners: Vec<(usize, &[u8])> = rcc_map.iter()
+        let a_partners: Vec<(usize, &[u8])> = rcc_map
+            .iter()
             .filter(|((from, _), _)| *from == a_idx)
             .map(|((_, to), rccs)| (*to, rccs.as_slice()))
             .collect();
 
         for &(b_idx, rccs_ab) in &a_partners {
-            let b_partners: Vec<(usize, &[u8])> = rcc_map.iter()
+            let b_partners: Vec<(usize, &[u8])> = rcc_map
+                .iter()
                 .filter(|((from, _), _)| *from == b_idx)
                 .map(|((_, to), rccs)| (*to, rccs.as_slice()))
                 .collect();
 
             for &(c_idx, rccs_bc) in &b_partners {
-                if c_idx == a_idx { continue; }
+                if c_idx == a_idx {
+                    continue;
+                }
 
-                let c_partners: Vec<(usize, &[u8])> = rcc_map.iter()
+                let c_partners: Vec<(usize, &[u8])> = rcc_map
+                    .iter()
                     .filter(|((from, _), _)| *from == c_idx)
                     .map(|((_, to), rccs)| (*to, rccs.as_slice()))
                     .collect();
 
                 for &(d_idx, rccs_cd) in &c_partners {
-                    if d_idx == a_idx || d_idx == b_idx { continue; }
+                    if d_idx == a_idx || d_idx == b_idx {
+                        continue;
+                    }
 
                     let als_a = small_als[a_idx];
                     let als_d = small_als[d_idx];
 
-                    if als_a.cells.iter().any(|c| als_d.cells.contains(c)) { continue; }
+                    if als_a.cells.iter().any(|c| als_d.cells.contains(c)) {
+                        continue;
+                    }
 
                     let common_ad = als_a.candidates.intersection(&als_d.candidates);
 
                     for &x in rccs_ab {
                         for &y in rccs_bc {
-                            if y == x { continue; }
+                            if y == x {
+                                continue;
+                            }
                             for &w in rccs_cd {
-                                if w == y { continue; }
+                                if w == y {
+                                    continue;
+                                }
                                 for z in common_ad.iter() {
-                                    if z == x || z == w { continue; }
+                                    if z == x || z == w {
+                                        continue;
+                                    }
 
-                                    let a_cells_z: Vec<usize> = als_a.cells.iter().filter(|&&c| fab.cell_cands[c].contains(z)).copied().collect();
-                                    let d_cells_z: Vec<usize> = als_d.cells.iter().filter(|&&c| fab.cell_cands[c].contains(z)).copied().collect();
+                                    let a_cells_z: Vec<usize> = als_a
+                                        .cells
+                                        .iter()
+                                        .filter(|&&c| fab.cell_cands[c].contains(z))
+                                        .copied()
+                                        .collect();
+                                    let d_cells_z: Vec<usize> = als_d
+                                        .cells
+                                        .iter()
+                                        .filter(|&&c| fab.cell_cands[c].contains(z))
+                                        .copied()
+                                        .collect();
 
-                                    if a_cells_z.is_empty() || d_cells_z.is_empty() { continue; }
+                                    if a_cells_z.is_empty() || d_cells_z.is_empty() {
+                                        continue;
+                                    }
 
                                     for cell in 0..81 {
-                                        if fab.values[cell].is_some() || !fab.cell_cands[cell].contains(z) { continue; }
-                                        if als_a.cells.contains(&cell) || als_d.cells.contains(&cell) { continue; }
+                                        if fab.values[cell].is_some()
+                                            || !fab.cell_cands[cell].contains(z)
+                                        {
+                                            continue;
+                                        }
+                                        if als_a.cells.contains(&cell)
+                                            || als_d.cells.contains(&cell)
+                                        {
+                                            continue;
+                                        }
                                         if a_cells_z.iter().all(|&a| fab.sees(cell, a))
                                             && d_cells_z.iter().all(|&d| fab.sees(cell, d))
                                         {
@@ -411,7 +512,10 @@ pub fn find_als_chain(fab: &CandidateFabric) -> Option<Finding> {
                                             involved.extend(&als_d.cells);
                                             return Some(Finding {
                                                 technique: Technique::AlsChain,
-                                                inference: InferenceResult::Elimination { cell, values: vec![z] },
+                                                inference: InferenceResult::Elimination {
+                                                    cell,
+                                                    values: vec![z],
+                                                },
                                                 involved_cells: involved,
                                                 explanation: ExplanationData::Als {
                                                     variant: "ALS Chain".into(),
@@ -452,17 +556,23 @@ pub fn find_sue_de_coq(fab: &CandidateFabric) -> Option<Finding> {
 
         for line_type in 0..2 {
             for line_idx in 0..9 {
-                let line_sector = if line_type == 0 { SECTOR_ROW_BASE + line_idx } else { SECTOR_COL_BASE + line_idx };
+                let line_sector = if line_type == 0 {
+                    SECTOR_ROW_BASE + line_idx
+                } else {
+                    SECTOR_COL_BASE + line_idx
+                };
                 let line_cells = sector_cells(line_sector);
 
                 // Intersection cells
-                let intersection: Vec<usize> = box_cells.iter()
+                let intersection: Vec<usize> = box_cells
+                    .iter()
                     .filter(|c| line_cells.contains(c))
                     .copied()
                     .collect();
 
                 // Empty intersection cells
-                let empty_inter: Vec<usize> = intersection.iter()
+                let empty_inter: Vec<usize> = intersection
+                    .iter()
                     .filter(|&&c| fab.values[c].is_none())
                     .copied()
                     .collect();
@@ -471,20 +581,24 @@ pub fn find_sue_de_coq(fab: &CandidateFabric) -> Option<Finding> {
                     continue;
                 }
 
-                let inter_cands = empty_inter.iter().fold(BitSet::empty(), |acc, &c| acc.union(&fab.cell_cands[c]));
+                let inter_cands = empty_inter
+                    .iter()
+                    .fold(BitSet::empty(), |acc, &c| acc.union(&fab.cell_cands[c]));
 
                 if inter_cands.count() < 3 || inter_cands.count() > 5 {
                     continue;
                 }
 
                 // Rest of box (not in intersection)
-                let rest_box: Vec<usize> = box_cells.iter()
+                let rest_box: Vec<usize> = box_cells
+                    .iter()
                     .filter(|c| !intersection.contains(c) && fab.values[**c].is_none())
                     .copied()
                     .collect();
 
                 // Rest of line (not in intersection)
-                let rest_line: Vec<usize> = line_cells.iter()
+                let rest_line: Vec<usize> = line_cells
+                    .iter()
                     .filter(|c| !intersection.contains(c) && fab.values[**c].is_none())
                     .copied()
                     .collect();
@@ -511,21 +625,29 @@ pub fn find_sue_de_coq(fab: &CandidateFabric) -> Option<Finding> {
                                 candidates: inter_cands.iter().collect(),
                                 sector: line_sector,
                             };
-                            let sdc_proof = || Some(ProofCertificate::Als {
-                                als_chain: vec![
-                                    inter_desc.clone(),
-                                    als_to_descriptor(ba),
-                                    als_to_descriptor(la),
-                                ],
-                                rcc_values: ba.candidates.intersection(&inter_cands)
-                                    .iter()
-                                    .chain(la.candidates.intersection(&inter_cands).iter())
-                                    .collect(),
-                                z_value: None,
-                            });
+                            let sdc_proof = || {
+                                Some(ProofCertificate::Als {
+                                    als_chain: vec![
+                                        inter_desc.clone(),
+                                        als_to_descriptor(ba),
+                                        als_to_descriptor(la),
+                                    ],
+                                    rcc_values: ba
+                                        .candidates
+                                        .intersection(&inter_cands)
+                                        .iter()
+                                        .chain(la.candidates.intersection(&inter_cands).iter())
+                                        .collect(),
+                                    z_value: None,
+                                })
+                            };
                             for &cell in &rest_box {
-                                if ba.cells.contains(&cell) { continue; }
-                                let to_remove: Vec<u8> = ba.candidates.iter()
+                                if ba.cells.contains(&cell) {
+                                    continue;
+                                }
+                                let to_remove: Vec<u8> = ba
+                                    .candidates
+                                    .iter()
                                     .filter(|&v| fab.cell_cands[cell].contains(v))
                                     .collect();
                                 if !to_remove.is_empty() {
@@ -549,8 +671,12 @@ pub fn find_sue_de_coq(fab: &CandidateFabric) -> Option<Finding> {
                                 }
                             }
                             for &cell in &rest_line {
-                                if la.cells.contains(&cell) { continue; }
-                                let to_remove: Vec<u8> = la.candidates.iter()
+                                if la.cells.contains(&cell) {
+                                    continue;
+                                }
+                                let to_remove: Vec<u8> = la
+                                    .candidates
+                                    .iter()
                                     .filter(|&v| fab.cell_cands[cell].contains(v))
                                     .collect();
                                 if !to_remove.is_empty() {
@@ -587,7 +713,9 @@ fn find_local_als(fab: &CandidateFabric, cells: &[usize]) -> Vec<Als> {
     let mut result = Vec::new();
     for n in 1..=cells.len().min(4) {
         for combo in combinations_usize(cells, n) {
-            let union = combo.iter().fold(BitSet::empty(), |acc, &c| acc.union(&fab.cell_cands[c]));
+            let union = combo
+                .iter()
+                .fold(BitSet::empty(), |acc, &c| acc.union(&fab.cell_cands[c]));
             if union.count() == (n + 1) as u32 {
                 result.push(Als {
                     cells: combo,
@@ -607,9 +735,13 @@ pub fn find_death_blossom(fab: &CandidateFabric) -> Option<Finding> {
     let all_als = enumerate_als(fab);
 
     for stem in 0..81 {
-        if fab.values[stem].is_some() { continue; }
+        if fab.values[stem].is_some() {
+            continue;
+        }
         let stem_cands = fab.cell_cands[stem];
-        if stem_cands.count() < 2 || stem_cands.count() > 4 { continue; }
+        if stem_cands.count() < 2 || stem_cands.count() > 4 {
+            continue;
+        }
 
         // For each candidate of the stem, find an ALS that:
         // 1. Contains that candidate
@@ -624,10 +756,16 @@ pub fn find_death_blossom(fab: &CandidateFabric) -> Option<Finding> {
         for &d in &cand_vec {
             let mut options = Vec::new();
             for (idx, als) in all_als.iter().enumerate() {
-                if als.cells.contains(&stem) { continue; }
-                if !als.candidates.contains(d) { continue; }
+                if als.cells.contains(&stem) {
+                    continue;
+                }
+                if !als.candidates.contains(d) {
+                    continue;
+                }
                 // Check restricted link: exactly the d-cells in ALS that see stem
-                let d_cells: Vec<usize> = als.cells.iter()
+                let d_cells: Vec<usize> = als
+                    .cells
+                    .iter()
                     .filter(|&&c| fab.cell_cands[c].contains(d) && fab.sees(c, stem))
                     .copied()
                     .collect();
@@ -642,7 +780,9 @@ pub fn find_death_blossom(fab: &CandidateFabric) -> Option<Finding> {
             petal_options.push(options);
         }
 
-        if !all_have_petals || petal_options.len() < 2 { continue; }
+        if !all_have_petals || petal_options.len() < 2 {
+            continue;
+        }
 
         // Try combinations of petals (one per candidate)
         // For simplicity, try the first valid combination
@@ -673,7 +813,11 @@ fn try_death_blossom(
     // Check no overlap between petals
     for i in 0..petals.len() {
         for j in (i + 1)..petals.len() {
-            if all_als[petals[i]].cells.iter().any(|c| all_als[petals[j]].cells.contains(c)) {
+            if all_als[petals[i]]
+                .cells
+                .iter()
+                .any(|c| all_als[petals[j]].cells.contains(c))
+            {
                 return None;
             }
         }
@@ -692,22 +836,33 @@ fn try_death_blossom(
     }
 
     for z in common_cands.iter() {
-        let z_cell_groups: Vec<Vec<usize>> = petals.iter().map(|&pi| {
-            all_als[pi].cells.iter()
-                .filter(|&&c| fab.cell_cands[c].contains(z))
-                .copied()
-                .collect()
-        }).collect();
+        let z_cell_groups: Vec<Vec<usize>> = petals
+            .iter()
+            .map(|&pi| {
+                all_als[pi]
+                    .cells
+                    .iter()
+                    .filter(|&&c| fab.cell_cands[c].contains(z))
+                    .copied()
+                    .collect()
+            })
+            .collect();
 
-        if z_cell_groups.iter().any(|g| g.is_empty()) { continue; }
+        if z_cell_groups.iter().any(|g| g.is_empty()) {
+            continue;
+        }
 
         for cell in 0..81 {
-            if cell == stem || fab.values[cell].is_some() || !fab.cell_cands[cell].contains(z) { continue; }
-            if petals.iter().any(|&pi| all_als[pi].cells.contains(&cell)) { continue; }
+            if cell == stem || fab.values[cell].is_some() || !fab.cell_cands[cell].contains(z) {
+                continue;
+            }
+            if petals.iter().any(|&pi| all_als[pi].cells.contains(&cell)) {
+                continue;
+            }
 
-            let sees_all = z_cell_groups.iter().all(|group| {
-                group.iter().all(|&zc| fab.sees(cell, zc))
-            });
+            let sees_all = z_cell_groups
+                .iter()
+                .all(|group| group.iter().all(|&zc| fab.sees(cell, zc)));
 
             if sees_all {
                 let mut involved = vec![stem];
@@ -726,7 +881,10 @@ fn try_death_blossom(
                 }
                 return Some(Finding {
                     technique: Technique::DeathBlossom,
-                    inference: InferenceResult::Elimination { cell, values: vec![z] },
+                    inference: InferenceResult::Elimination {
+                        cell,
+                        values: vec![z],
+                    },
                     involved_cells: involved,
                     explanation: ExplanationData::Als {
                         variant: "Death Blossom".into(),
@@ -800,9 +958,7 @@ pub fn find_aligned_pair_exclusion(fab: &CandidateFabric) -> Option<Finding> {
                 for val in fab.cell_cands[pos].iter() {
                     // If every valid assignment uses val in at least one cell,
                     // val is locked to the pair — eliminate from this peer.
-                    let all_exclude = valid_pairs.iter().all(|&(v1, v2)| {
-                        v1 == val || v2 == val
-                    });
+                    let all_exclude = valid_pairs.iter().all(|&(v1, v2)| v1 == val || v2 == val);
 
                     if all_exclude {
                         return Some(Finding {
@@ -822,12 +978,20 @@ pub fn find_aligned_pair_exclusion(fab: &CandidateFabric) -> Option<Finding> {
                                     AlsProofDescriptor {
                                         cells: vec![p1],
                                         candidates: c1.iter().collect(),
-                                        sector: fab.cell_sectors[p1].iter().copied().min().unwrap_or(0),
+                                        sector: fab.cell_sectors[p1]
+                                            .iter()
+                                            .copied()
+                                            .min()
+                                            .unwrap_or(0),
                                     },
                                     AlsProofDescriptor {
                                         cells: vec![p2],
                                         candidates: c2.iter().collect(),
-                                        sector: fab.cell_sectors[p2].iter().copied().min().unwrap_or(0),
+                                        sector: fab.cell_sectors[p2]
+                                            .iter()
+                                            .copied()
+                                            .min()
+                                            .unwrap_or(0),
                                     },
                                 ],
                                 rcc_values: vec![val],
@@ -903,9 +1067,9 @@ pub fn find_aligned_triplet_exclusion(fab: &CandidateFabric) -> Option<Finding> 
                     }
 
                     for val in fab.cell_cands[pos].iter() {
-                        let all_exclude = valid_triples.iter().all(|&(v1, v2, v3)| {
-                            v1 == val || v2 == val || v3 == val
-                        });
+                        let all_exclude = valid_triples
+                            .iter()
+                            .all(|&(v1, v2, v3)| v1 == val || v2 == val || v3 == val);
 
                         if all_exclude {
                             return Some(Finding {
@@ -925,17 +1089,29 @@ pub fn find_aligned_triplet_exclusion(fab: &CandidateFabric) -> Option<Finding> 
                                         AlsProofDescriptor {
                                             cells: vec![p1],
                                             candidates: c1.iter().collect(),
-                                            sector: fab.cell_sectors[p1].iter().copied().min().unwrap_or(0),
+                                            sector: fab.cell_sectors[p1]
+                                                .iter()
+                                                .copied()
+                                                .min()
+                                                .unwrap_or(0),
                                         },
                                         AlsProofDescriptor {
                                             cells: vec![p2],
                                             candidates: c2.iter().collect(),
-                                            sector: fab.cell_sectors[p2].iter().copied().min().unwrap_or(0),
+                                            sector: fab.cell_sectors[p2]
+                                                .iter()
+                                                .copied()
+                                                .min()
+                                                .unwrap_or(0),
                                         },
                                         AlsProofDescriptor {
                                             cells: vec![p3],
                                             candidates: c3.iter().collect(),
-                                            sector: fab.cell_sectors[p3].iter().copied().min().unwrap_or(0),
+                                            sector: fab.cell_sectors[p3]
+                                                .iter()
+                                                .copied()
+                                                .min()
+                                                .unwrap_or(0),
                                         },
                                     ],
                                     rcc_values: vec![val],
@@ -963,10 +1139,14 @@ fn combinations_usize(items: &[usize], k: usize) -> Vec<Vec<usize>> {
         result.push(indices.iter().map(|&i| items[i]).collect());
         let mut i = k;
         loop {
-            if i == 0 { return result; }
+            if i == 0 {
+                return result;
+            }
             i -= 1;
             indices[i] += 1;
-            if indices[i] <= items.len() - k + i { break; }
+            if indices[i] <= items.len() - k + i {
+                break;
+            }
         }
         for j in (i + 1)..k {
             indices[j] = indices[j - 1] + 1;

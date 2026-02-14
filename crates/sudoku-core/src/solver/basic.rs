@@ -33,7 +33,9 @@ pub fn find_naked_single(fab: &CandidateFabric) -> Option<Finding> {
                 inference: InferenceResult::Placement { cell: idx, value },
                 involved_cells: vec![idx],
                 explanation: ExplanationData::NakedSingle { cell: idx, value },
-                proof: Some(ProofCertificate::Basic { kind: "NakedSingle" }),
+                proof: Some(ProofCertificate::Basic {
+                    kind: "NakedSingle",
+                }),
             });
         }
     }
@@ -59,7 +61,9 @@ pub fn find_hidden_single(fab: &CandidateFabric) -> Option<Finding> {
                             value: digit,
                             sector_name: sector_name(sector),
                         },
-                        proof: Some(ProofCertificate::Basic { kind: "HiddenSingle" }),
+                        proof: Some(ProofCertificate::Basic {
+                            kind: "HiddenSingle",
+                        }),
                     });
                 }
             }
@@ -85,7 +89,11 @@ pub fn find_naked_subset(fab: &CandidateFabric, size: usize) -> Option<Finding> 
         // Collect empty cells in this sector with appropriate candidate counts
         let empty: Vec<usize> = sec_cells
             .iter()
-            .filter(|&&c| fab.values[c].is_none() && fab.cell_cands[c].count() >= 2 && fab.cell_cands[c].count() <= size as u32)
+            .filter(|&&c| {
+                fab.values[c].is_none()
+                    && fab.cell_cands[c].count() >= 2
+                    && fab.cell_cands[c].count() <= size as u32
+            })
             .copied()
             .collect();
 
@@ -220,7 +228,6 @@ pub fn find_hidden_subset(fab: &CandidateFabric, size: usize) -> Option<Finding>
     }
     None
 }
-
 
 // ==================== Combination utilities ====================
 

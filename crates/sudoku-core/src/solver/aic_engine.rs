@@ -11,8 +11,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::explain::{
-    ExplanationData, Finding, ForcingSource, InferenceResult, LinkType, Polarity,
-    ProofCertificate,
+    ExplanationData, Finding, ForcingSource, InferenceResult, LinkType, Polarity, ProofCertificate,
 };
 use super::fabric::{sector_cells, CandidateFabric};
 use super::types::Technique;
@@ -237,7 +236,11 @@ pub fn find_aic(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> {
 }
 
 /// Core AIC search: BFS alternating strong/weak links.
-fn find_aic_with_filter(fab: &CandidateFabric, graph: &LinkGraph, single_value_only: bool) -> Option<Finding> {
+fn find_aic_with_filter(
+    fab: &CandidateFabric,
+    graph: &LinkGraph,
+    single_value_only: bool,
+) -> Option<Finding> {
     const MAX_LENGTH: usize = 12;
 
     let all_nodes: Vec<Node> = graph.strong.keys().copied().collect();
@@ -284,7 +287,8 @@ fn find_aic_with_filter(fab: &CandidateFabric, graph: &LinkGraph, single_value_o
                             if next.1 == start.1 && next.0 != start.0 {
                                 let val = start.1;
                                 for idx in 0..81 {
-                                    if fab.values[idx].is_some() || idx == start.0 || idx == next.0 {
+                                    if fab.values[idx].is_some() || idx == start.0 || idx == next.0
+                                    {
                                         continue;
                                     }
                                     if !fab.cell_cands[idx].contains(val) {
@@ -357,8 +361,7 @@ fn find_aic_with_filter(fab: &CandidateFabric, graph: &LinkGraph, single_value_o
                                     .filter(|&v| v != start.1 && v != next.1)
                                     .collect();
                                 if !to_remove.is_empty() {
-                                    let involved: Vec<usize> =
-                                        chain.iter().map(|n| n.0).collect();
+                                    let involved: Vec<usize> = chain.iter().map(|n| n.0).collect();
                                     let mut full_chain = chain.clone();
                                     full_chain.push(next);
                                     let aic_chain: Vec<(usize, u8, Polarity)> = full_chain
@@ -510,8 +513,7 @@ pub fn find_medusa(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> 
                     // Eliminate all candidates of this color
                     for &(cell, digit) in &colored {
                         if fab.values[cell].is_none() && fab.cell_cands[cell].contains(digit) {
-                            let involved: Vec<usize> =
-                                colored.iter().map(|&(c, _)| c).collect();
+                            let involved: Vec<usize> = colored.iter().map(|&(c, _)| c).collect();
                             let medusa_chain: Vec<(usize, u8, Polarity)> = color
                                 .iter()
                                 .map(|(&(c, d), &clr)| {
@@ -557,16 +559,15 @@ pub fn find_medusa(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> 
                         continue;
                     }
 
-                    let sees_color_0 = color.iter().any(|(&(c, d), &clr)| {
-                        clr == 0 && d == digit && fab.sees(idx2, c)
-                    });
-                    let sees_color_1 = color.iter().any(|(&(c, d), &clr)| {
-                        clr == 1 && d == digit && fab.sees(idx2, c)
-                    });
+                    let sees_color_0 = color
+                        .iter()
+                        .any(|(&(c, d), &clr)| clr == 0 && d == digit && fab.sees(idx2, c));
+                    let sees_color_1 = color
+                        .iter()
+                        .any(|(&(c, d), &clr)| clr == 1 && d == digit && fab.sees(idx2, c));
 
                     if sees_color_0 && sees_color_1 {
-                        let involved: Vec<usize> =
-                            color.keys().map(|&(c, _)| c).collect();
+                        let involved: Vec<usize> = color.keys().map(|&(c, _)| c).collect();
                         let medusa_chain: Vec<(usize, u8, Polarity)> = color
                             .iter()
                             .map(|(&(c, d), &clr)| {
@@ -701,9 +702,7 @@ pub fn find_kraken_fish(
                             .filter(move |&r| r != r1 && r != r2)
                             .map(move |r| Position::new(r, c))
                     })
-                    .filter(|&p| {
-                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit)
-                    })
+                    .filter(|&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
                     .collect();
 
                 for &target in &targets {
@@ -748,10 +747,7 @@ pub fn find_kraken_fish(
                                 source_cell: target_cell,
                             },
                             proof: Some(ProofCertificate::Forcing {
-                                source: ForcingSource::Region {
-                                    sector: r1,
-                                    digit,
-                                },
+                                source: ForcingSource::Region { sector: r1, digit },
                                 branches: fins.len(),
                             }),
                         });

@@ -80,7 +80,12 @@ fn compute_hint_roles(hint: &Hint, detail: HintDetailLevel) -> [HintCellRole; 81
     if detail == HintDetailLevel::ProofDetail {
         if let Some(ref proof) = hint.proof {
             match proof {
-                ProofCertificate::Fish { base_sectors, cover_sectors, fins, .. } => {
+                ProofCertificate::Fish {
+                    base_sectors,
+                    cover_sectors,
+                    fins,
+                    ..
+                } => {
                     for &s in base_sectors {
                         for idx in sector_cells(s) {
                             if roles[idx] == HintCellRole::Involved {
@@ -111,7 +116,11 @@ fn compute_hint_roles(hint: &Hint, detail: HintDetailLevel) -> [HintCellRole; 81
                         }
                     }
                 }
-                ProofCertificate::Uniqueness { floor_cells, roof_cells, .. } => {
+                ProofCertificate::Uniqueness {
+                    floor_cells,
+                    roof_cells,
+                    ..
+                } => {
                     for &idx in floor_cells {
                         if idx < 81 {
                             roles[idx] = HintCellRole::UrFloor;
@@ -268,9 +277,9 @@ fn render_grid(
     let completed = state.completed_numbers();
 
     // Pre-compute hint cell roles once per render
-    let hint_roles: Option<[HintCellRole; 81]> = state.current_hint().map(|hint| {
-        compute_hint_roles(hint, state.hint_detail())
-    });
+    let hint_roles: Option<[HintCellRole; 81]> = state
+        .current_hint()
+        .map(|hint| compute_hint_roles(hint, state.hint_detail()));
 
     // Set font for numbers
     ctx.set_font(&format!(
@@ -1072,13 +1081,19 @@ fn render_hint_panel(
     // Technique name + SE rating
     ctx.set_text_align("left");
     ctx.set_text_baseline("top");
-    ctx.set_font(&format!("bold {}px 'JetBrains Mono', monospace", small_font));
+    ctx.set_font(&format!(
+        "bold {}px 'JetBrains Mono', monospace",
+        small_font
+    ));
     ctx.set_fill_style_str(&theme.hint_technique_text.as_css());
     let header = format!("{} (SE {:.1})", hint.technique, hint.technique.se_rating());
     let _ = ctx.fill_text(&header, x + padding, y + padding);
 
     // Explanation text
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font * 0.9));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        small_font * 0.9
+    ));
     ctx.set_fill_style_str(&theme.hint_explain_text.as_css());
     let _ = ctx.fill_text(&hint.explanation, x + padding, y + padding + line_height);
 
@@ -1087,18 +1102,37 @@ fn render_hint_panel(
         if let Some(ref proof) = hint.proof {
             let proof_summary = match proof {
                 ProofCertificate::Basic { kind } => format!("Proof: {}", kind),
-                ProofCertificate::Fish { digit, base_sectors, fins, .. } => {
+                ProofCertificate::Fish {
+                    digit,
+                    base_sectors,
+                    fins,
+                    ..
+                } => {
                     if fins.is_empty() {
-                        format!("Fish on digit {}, {} base sectors", digit, base_sectors.len())
+                        format!(
+                            "Fish on digit {}, {} base sectors",
+                            digit,
+                            base_sectors.len()
+                        )
                     } else {
                         format!("Finned fish on digit {}, {} fins", digit, fins.len())
                     }
                 }
-                ProofCertificate::Aic { chain, link_types, .. } => {
+                ProofCertificate::Aic {
+                    chain, link_types, ..
+                } => {
                     format!("Chain: {} nodes, {} links", chain.len(), link_types.len())
                 }
-                ProofCertificate::Als { als_chain, rcc_values, .. } => {
-                    format!("ALS chain: {} sets, {} RCC values", als_chain.len(), rcc_values.len())
+                ProofCertificate::Als {
+                    als_chain,
+                    rcc_values,
+                    ..
+                } => {
+                    format!(
+                        "ALS chain: {} sets, {} RCC values",
+                        als_chain.len(),
+                        rcc_values.len()
+                    )
                 }
                 ProofCertificate::Uniqueness { pattern, .. } => {
                     format!("Uniqueness: {}", pattern)
@@ -1115,7 +1149,10 @@ fn render_hint_panel(
 
     // Right-aligned prompt
     ctx.set_text_align("right");
-    ctx.set_font(&format!("{}px 'JetBrains Mono', monospace", small_font * 0.85));
+    ctx.set_font(&format!(
+        "{}px 'JetBrains Mono', monospace",
+        small_font * 0.85
+    ));
     ctx.set_fill_style_str(&theme.hint_technique_text.as_css_alpha(0.6));
     let prompt = if state.hint_detail() == HintDetailLevel::ProofDetail {
         "[proof shown]"

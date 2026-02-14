@@ -182,7 +182,7 @@ impl CandidateFabric {
     pub fn sees(&self, a: usize, b: usize) -> bool {
         self.cell_sectors[a][0] == self.cell_sectors[b][0]  // same row
             || self.cell_sectors[a][1] == self.cell_sectors[b][1]  // same col
-            || self.cell_sectors[a][2] == self.cell_sectors[b][2]  // same box
+            || self.cell_sectors[a][2] == self.cell_sectors[b][2] // same box
     }
 
     /// Get all empty cell indices
@@ -242,7 +242,10 @@ impl CandidateFabric {
 /// Find the position (0..8) of cell `idx` within the given sector.
 fn sector_cell_position(sector: usize, idx: usize) -> usize {
     let cells = sector_cells(sector);
-    cells.iter().position(|&c| c == idx).expect("cell not in sector")
+    cells
+        .iter()
+        .position(|&c| c == idx)
+        .expect("cell not in sector")
 }
 
 // ==================== Four Grid Spaces ====================

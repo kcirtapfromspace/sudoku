@@ -2,7 +2,9 @@
 
 use crate::animations::{LoseScreen, WinScreen};
 use serde::{Deserialize, Serialize};
-use sudoku_core::{BitSet, Difficulty, Generator, Grid, Hint, HintType, Position, PuzzleId, Solver};
+use sudoku_core::{
+    BitSet, Difficulty, Generator, Grid, Hint, HintType, Position, PuzzleId, Solver,
+};
 
 /// Maximum mistakes before game over
 pub const MAX_MISTAKES: usize = 3;
@@ -703,7 +705,6 @@ impl GameState {
         // Set the value
         self.grid.set_cell_unchecked(self.cursor, Some(value));
         self.grid.recalculate_candidates();
-
     }
 
     fn clear_cell(&mut self) {
@@ -718,7 +719,6 @@ impl GameState {
 
         self.grid.set_cell_unchecked(self.cursor, None);
         self.grid.recalculate_candidates();
-
     }
 
     fn toggle_candidate(&mut self, value: u8) {
@@ -727,7 +727,6 @@ impl GameState {
             return;
         }
         self.grid.cell_mut(self.cursor).toggle_candidate(value);
-
     }
 
     fn clear_candidates(&mut self) {
@@ -771,7 +770,7 @@ impl GameState {
             self.redo_stack.push((pos, current_value));
             self.grid.set_cell_unchecked(pos, old_value);
             self.grid.recalculate_candidates();
-    
+
             true
         } else {
             false
@@ -784,7 +783,7 @@ impl GameState {
             self.undo_stack.push((pos, current_value));
             self.grid.set_cell_unchecked(pos, value);
             self.grid.recalculate_candidates();
-    
+
             true
         } else {
             false
