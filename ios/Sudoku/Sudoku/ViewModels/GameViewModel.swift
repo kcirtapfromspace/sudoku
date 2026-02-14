@@ -590,6 +590,12 @@ class GameViewModel: ObservableObject {
 
     // MARK: - Puzzle Fingerprint
 
+    /// Get the puzzle string via FFI (givens as digits, empty as "0")
+    /// Used for telemetry — same format the API expects
+    func getPuzzleString() -> String {
+        return game.getPuzzleString()
+    }
+
     /// Get the puzzle fingerprint (81-char string with givens as digits, empty as ".")
     /// Used for identifying unique puzzles in the history
     func getPuzzleFingerprint() -> String {

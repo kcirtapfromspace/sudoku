@@ -31,6 +31,7 @@
 		BF905E448EA4592279B177C0 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEE270122AA4A2795230A75C /* QRScannerView.swift */; };
 		E3D566CB81AA0EC9502D4FAA /* PuzzleCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6699671B041E2B1C69B1DE3D /* PuzzleCache.swift */; };
 		EE711ADDBB80B24E8C434E8F /* GameHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC7D55AB62B5A336FC308A8 /* GameHistory.swift */; };
+		FE8A3C1D2B4E5F9A01D7C8B3 /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE8A3C1C2B4E5F9A01D7C8B3 /* TelemetryService.swift */; };
 		FF049CC7B162486907B6338F /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B778D4F8E525013FE40E3C47 /* GameManager.swift */; };
 		FFDAC89D9AE5F86EA0F1B996 /* NumberPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5845121794317A59FF4BEA24 /* NumberPadView.swift */; };
 /* End PBXBuildFile section */
@@ -87,6 +88,7 @@
 		E2B8111C142D1E948BAC29F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EB34BD4A57FA07DF7EF0C6D1 /* SERatingPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SERatingPickerView.swift; sourceTree = "<group>"; };
 		FE1F7E4A124E1E6523353A9A /* SudokuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SudokuApp.swift; sourceTree = "<group>"; };
+		FE8A3C1C2B4E5F9A01D7C8B3 /* TelemetryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -159,6 +161,7 @@
 				4E48F51C8F39E07F64BDBCBE /* GameHistoryManager.swift */,
 				B778D4F8E525013FE40E3C47 /* GameManager.swift */,
 				6699671B041E2B1C69B1DE3D /* PuzzleCache.swift */,
+				FE8A3C1C2B4E5F9A01D7C8B3 /* TelemetryService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -374,6 +377,7 @@
 				8B6258CC4DD4621086F43E90 /* StatsView.swift in Sources */,
 				B463F4C229827901EA86A192 /* SudokuApp.swift in Sources */,
 				1726143491F7B599683DFCD8 /* SudokuEngine.swift in Sources */,
+				FE8A3C1D2B4E5F9A01D7C8B3 /* TelemetryService.swift in Sources */,
 				0A0FA9214358FB0851D69424 /* WinScreenView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

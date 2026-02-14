@@ -209,6 +209,9 @@ class GameManager: ObservableObject {
             gameState = .lost
         }
 
+        // Submit to ukodus API (fire-and-forget)
+        TelemetryService.shared.submitResult(game: game, won: won)
+
         // Record result in history
         GameHistoryManager.shared.recordResult(
             puzzleHash: game.puzzleHash,

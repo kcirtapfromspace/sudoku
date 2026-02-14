@@ -4,6 +4,7 @@ mod game;
 mod leaderboard;
 mod render;
 mod stats;
+mod telemetry;
 mod theme;
 
 use app::App;

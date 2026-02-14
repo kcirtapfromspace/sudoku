@@ -265,7 +265,7 @@ impl App {
         }
         self.game_recorded = true;
 
-        self.stats.record_game(
+        let record = self.stats.record_game(
             self.game.original_puzzle(),
             self.game.difficulty(),
             result,
@@ -277,6 +277,9 @@ impl App {
             self.game.seed(),
             self.game.short_code(),
         );
+
+        // Submit to ukodus API (fire-and-forget background thread)
+        crate::telemetry::submit_result(record);
     }
 
     /// Show a temporary message
