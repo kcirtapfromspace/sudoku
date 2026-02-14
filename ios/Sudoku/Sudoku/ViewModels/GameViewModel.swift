@@ -537,7 +537,23 @@ class GameViewModel: ObservableObject {
             return
         }
         let rawRoles = game.getHintCellRoles(detailLevel: UInt8(hintDetailLevel.rawValue))
-        hintCellRoles = rawRoles.map { HintCellRole(rawValue: $0) ?? .none }
+        hintCellRoles = rawRoles.map { Self.hintCellRole(from: $0) }
+    }
+
+    private static func hintCellRole(from raw: UInt8) -> HintCellRole {
+        switch raw {
+        case 1: return .target
+        case 2: return .involved
+        case 3: return .chainOn
+        case 4: return .chainOff
+        case 5: return .fishBase
+        case 6: return .fishCover
+        case 7: return .fishFin
+        case 8: return .urFloor
+        case 9: return .urRoof
+        case 10: return .alsGroup
+        default: return .none
+        }
     }
 
     // MARK: - Pause/Resume

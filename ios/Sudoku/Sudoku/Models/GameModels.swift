@@ -81,21 +81,7 @@ enum HintDetailLevel: Int {
     case proofDetail = 1
 }
 
-// MARK: - Hint Cell Role
-
-enum HintCellRole: UInt8 {
-    case none = 0
-    case target = 1
-    case involved = 2
-    case chainOn = 3
-    case chainOff = 4
-    case fishBase = 5
-    case fishCover = 6
-    case fishFin = 7
-    case urFloor = 8
-    case urRoof = 9
-    case alsGroup = 10
-}
+// Note: HintCellRole is provided by the Rust engine (SudokuEngine.swift via UniFFI)
 
 // Note: MoveResult is provided by the Rust engine (SudokuEngine.swift)
 // Use the Rust-generated MoveResult type directly
