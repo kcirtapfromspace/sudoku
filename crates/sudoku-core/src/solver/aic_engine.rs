@@ -1,0 +1,1099 @@
+//! AIC Engine: Bipartite polarity inference graph.
+//!
+//! Replaces: find_x_chain, find_aic, find_three_d_medusa, find_w_wing,
+//! find_nishio_forcing_chain, find_kraken_fish, find_cell_forcing_chain,
+//! find_region_forcing_chain, find_dynamic_forcing_chain.
+//!
+//! Core: Build ON/OFF node graph with directed edges. Chain search finds
+//! paths with elimination checks at endpoints. Medusa = strong-link coloring.
+//! Forcing chains = multi-source propagation.
+
+use std::collections::{HashMap, HashSet, VecDeque};
+
+use super::explain::{
+    ExplanationData, Finding, ForcingSource, InferenceResult, LinkType, Polarity,
+    ProofCertificate,
+};
+use super::fabric::{sector_cells, CandidateFabric};
+use super::types::Technique;
+use crate::{Grid, Position};
+
+/// Node in the inference graph: a (cell_index, digit) pair.
+type Node = (usize, u8);
+
+/// Strong and weak link maps (shared by X-Chain, 3D Medusa, AIC).
+pub(crate) struct LinkGraph {
+    strong: HashMap<Node, Vec<Node>>,
+    weak: HashMap<Node, Vec<Node>>,
+}
+
+/// Build the link graph from the CandidateFabric.
+pub(crate) fn build_link_graph(fab: &CandidateFabric) -> LinkGraph {
+    let mut strong: HashMap<Node, Vec<Node>> = HashMap::new();
+    let mut weak: HashMap<Node, Vec<Node>> = HashMap::new();
+
+    // Conjugate pairs: exactly 2 cells for a value in a sector → strong link
+    for sector in 0..27 {
+        for digit in 1..=9u8 {
+            let di = (digit - 1) as usize;
+            let mask = fab.sector_digit_cells[sector][di];
+            let count = mask.count_ones();
+
+            let sec_cells = sector_cells(sector);
+
+            if count == 2 {
+                let cells: Vec<usize> = (0..9)
+                    .filter(|&i| mask & (1 << i) != 0)
+                    .map(|i| sec_cells[i])
+                    .collect();
+                let a = (cells[0], digit);
+                let b = (cells[1], digit);
+                strong.entry(a).or_default().push(b);
+                strong.entry(b).or_default().push(a);
+                weak.entry(a).or_default().push(b);
+                weak.entry(b).or_default().push(a);
+            }
+
+            // Weak links: same value in same sector with >2 occurrences
+            if count > 2 {
+                let cells: Vec<usize> = (0..9)
+                    .filter(|&i| mask & (1 << i) != 0)
+                    .map(|i| sec_cells[i])
+                    .collect();
+                for i in 0..cells.len() {
+                    for j in (i + 1)..cells.len() {
+                        let a = (cells[i], digit);
+                        let b = (cells[j], digit);
+                        weak.entry(a).or_default().push(b);
+                        weak.entry(b).or_default().push(a);
+                    }
+                }
+            }
+        }
+    }
+
+    // Bivalue cells: strong link between the two candidates
+    for idx in 0..81 {
+        if fab.values[idx].is_some() {
+            continue;
+        }
+        let cands = fab.cell_cands[idx];
+        let vals: Vec<u8> = cands.iter().collect();
+
+        if vals.len() == 2 {
+            let a = (idx, vals[0]);
+            let b = (idx, vals[1]);
+            strong.entry(a).or_default().push(b);
+            strong.entry(b).or_default().push(a);
+            weak.entry(a).or_default().push(b);
+            weak.entry(b).or_default().push(a);
+        }
+
+        // Weak links: different values in same cell
+        for i in 0..vals.len() {
+            for j in (i + 1)..vals.len() {
+                let a = (idx, vals[i]);
+                let b = (idx, vals[j]);
+                weak.entry(a).or_default().push(b);
+                weak.entry(b).or_default().push(a);
+            }
+        }
+    }
+
+    // Deduplicate
+    for list in strong.values_mut() {
+        list.sort_unstable();
+        list.dedup();
+    }
+    for list in weak.values_mut() {
+        list.sort_unstable();
+        list.dedup();
+    }
+
+    LinkGraph { strong, weak }
+}
+
+// ==================== W-Wing ====================
+
+/// W-Wing: Two bivalue cells with same candidates {x,y}, connected by a
+/// strong link on one value. Eliminates the other value from common peers.
+pub fn find_w_wing(fab: &CandidateFabric) -> Option<Finding> {
+    // Collect bivalue cells
+    let bivalues: Vec<(usize, u8, u8)> = (0..81)
+        .filter_map(|idx| {
+            if fab.values[idx].is_some() {
+                return None;
+            }
+            let cands = fab.cell_cands[idx];
+            if cands.count() == 2 {
+                let vals: Vec<u8> = cands.iter().collect();
+                Some((idx, vals[0], vals[1]))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for i in 0..bivalues.len() {
+        for j in (i + 1)..bivalues.len() {
+            let (c1, a1, b1) = bivalues[i];
+            let (c2, a2, b2) = bivalues[j];
+
+            if !((a1 == a2 && b1 == b2) || (a1 == b2 && b1 == a2)) {
+                continue;
+            }
+
+            let x = a1;
+            let y = b1;
+
+            // Check for strong link on x or y in some sector
+            for &link_val in &[x, y] {
+                let other_val = if link_val == x { y } else { x };
+
+                // Check all sectors for a conjugate pair on link_val
+                for sector in 0..27 {
+                    let di = (link_val - 1) as usize;
+                    let mask = fab.sector_digit_cells[sector][di];
+                    if mask.count_ones() != 2 {
+                        continue;
+                    }
+
+                    let sec_cells = sector_cells(sector);
+                    let link_cells: Vec<usize> = (0..9)
+                        .filter(|&i| mask & (1 << i) != 0)
+                        .map(|i| sec_cells[i])
+                        .collect();
+
+                    let l1 = link_cells[0];
+                    let l2 = link_cells[1];
+
+                    // c1 must see one link cell, c2 must see the other (or vice versa)
+                    let ok = (fab.sees(c1, l1) && fab.sees(c2, l2))
+                        || (fab.sees(c1, l2) && fab.sees(c2, l1));
+                    if !ok {
+                        continue;
+                    }
+
+                    // Eliminate other_val from cells seeing both c1 and c2
+                    for idx in 0..81 {
+                        if fab.values[idx].is_some() || idx == c1 || idx == c2 {
+                            continue;
+                        }
+                        if !fab.cell_cands[idx].contains(other_val) {
+                            continue;
+                        }
+                        if fab.sees(idx, c1) && fab.sees(idx, c2) {
+                            return Some(Finding {
+                                technique: Technique::WWing,
+                                inference: InferenceResult::Elimination {
+                                    cell: idx,
+                                    values: vec![other_val],
+                                },
+                                involved_cells: vec![c1, c2, l1, l2],
+                                explanation: ExplanationData::Chain {
+                                    variant: "W-Wing".into(),
+                                    chain_length: 4,
+                                    values: vec![x, y],
+                                },
+                                proof: Some(ProofCertificate::Aic {
+                                    chain: vec![
+                                        (c1, other_val, Polarity::On),
+                                        (c1, link_val, Polarity::Off),
+                                        (l1, link_val, Polarity::On),
+                                        (l2, link_val, Polarity::Off),
+                                        (c2, link_val, Polarity::Off),
+                                        (c2, other_val, Polarity::On),
+                                    ],
+                                    link_types: vec![
+                                        LinkType::Strong,
+                                        LinkType::Weak,
+                                        LinkType::Strong,
+                                        LinkType::Weak,
+                                        LinkType::Strong,
+                                    ],
+                                }),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+// ==================== X-Chain ====================
+
+/// X-Chain: Single-digit alternating inference chain (AIC subclass).
+pub fn find_x_chain(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> {
+    find_aic_with_filter(fab, graph, true)
+}
+
+// ==================== AIC ====================
+
+/// AIC: Multi-digit alternating inference chain.
+pub fn find_aic(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> {
+    find_aic_with_filter(fab, graph, false)
+}
+
+/// Core AIC search: BFS alternating strong/weak links.
+fn find_aic_with_filter(fab: &CandidateFabric, graph: &LinkGraph, single_value_only: bool) -> Option<Finding> {
+    const MAX_LENGTH: usize = 12;
+
+    let all_nodes: Vec<Node> = graph.strong.keys().copied().collect();
+
+    for &start in &all_nodes {
+        let mut queue: VecDeque<(Node, bool, Vec<Node>)> = VecDeque::new();
+        let mut visited: HashSet<(Node, bool)> = HashSet::new();
+
+        // Start by following strong links from start
+        if let Some(neighbors) = graph.strong.get(&start) {
+            for &next in neighbors {
+                if single_value_only && next.1 != start.1 {
+                    continue;
+                }
+                queue.push_back((next, true, vec![start, next]));
+            }
+        }
+
+        while let Some((current, arrived_strong, chain)) = queue.pop_front() {
+            if chain.len() > MAX_LENGTH {
+                continue;
+            }
+
+            let key = (current, arrived_strong);
+            if visited.contains(&key) {
+                continue;
+            }
+            visited.insert(key);
+
+            if arrived_strong {
+                // Follow weak links
+                if let Some(neighbors) = graph.weak.get(&current) {
+                    for &next in neighbors {
+                        if chain.contains(&next) && next != start {
+                            continue;
+                        }
+                        if single_value_only && next.1 != start.1 {
+                            continue;
+                        }
+
+                        // Check for elimination at chain endpoints
+                        if next != start && chain.len() >= 3 {
+                            // Type 1: same value at different positions
+                            if next.1 == start.1 && next.0 != start.0 {
+                                let val = start.1;
+                                for idx in 0..81 {
+                                    if fab.values[idx].is_some() || idx == start.0 || idx == next.0 {
+                                        continue;
+                                    }
+                                    if !fab.cell_cands[idx].contains(val) {
+                                        continue;
+                                    }
+                                    if fab.sees(idx, start.0) && fab.sees(idx, next.0) {
+                                        let tech = if single_value_only {
+                                            Technique::XChain
+                                        } else {
+                                            Technique::AIC
+                                        };
+                                        let mut involved: Vec<usize> =
+                                            chain.iter().map(|n| n.0).collect();
+                                        involved.push(next.0);
+                                        involved.sort_unstable();
+                                        involved.dedup();
+                                        let mut full_chain = chain.clone();
+                                        full_chain.push(next);
+                                        let aic_chain: Vec<(usize, u8, Polarity)> = full_chain
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(i, &(c, d))| {
+                                                let pol = if i % 2 == 0 {
+                                                    Polarity::On
+                                                } else {
+                                                    Polarity::Off
+                                                };
+                                                (c, d, pol)
+                                            })
+                                            .collect();
+                                        let aic_links: Vec<LinkType> = (0..full_chain.len() - 1)
+                                            .map(|i| {
+                                                if i % 2 == 0 {
+                                                    LinkType::Strong
+                                                } else {
+                                                    LinkType::Weak
+                                                }
+                                            })
+                                            .collect();
+                                        return Some(Finding {
+                                            technique: tech,
+                                            inference: InferenceResult::Elimination {
+                                                cell: idx,
+                                                values: vec![val],
+                                            },
+                                            involved_cells: involved,
+                                            explanation: ExplanationData::Chain {
+                                                variant: if single_value_only {
+                                                    "X-Chain".into()
+                                                } else {
+                                                    "AIC".into()
+                                                },
+                                                chain_length: chain.len(),
+                                                values: vec![val],
+                                            },
+                                            proof: Some(ProofCertificate::Aic {
+                                                chain: aic_chain,
+                                                link_types: aic_links,
+                                            }),
+                                        });
+                                    }
+                                }
+                            }
+
+                            // Type 2: same cell, different values → eliminate other candidates
+                            if !single_value_only && next.0 == start.0 && next.1 != start.1 {
+                                let cands = fab.cell_cands[start.0];
+                                let to_remove: Vec<u8> = cands
+                                    .iter()
+                                    .filter(|&v| v != start.1 && v != next.1)
+                                    .collect();
+                                if !to_remove.is_empty() {
+                                    let involved: Vec<usize> =
+                                        chain.iter().map(|n| n.0).collect();
+                                    let mut full_chain = chain.clone();
+                                    full_chain.push(next);
+                                    let aic_chain: Vec<(usize, u8, Polarity)> = full_chain
+                                        .iter()
+                                        .enumerate()
+                                        .map(|(i, &(c, d))| {
+                                            let pol = if i % 2 == 0 {
+                                                Polarity::On
+                                            } else {
+                                                Polarity::Off
+                                            };
+                                            (c, d, pol)
+                                        })
+                                        .collect();
+                                    let aic_links: Vec<LinkType> = (0..full_chain.len() - 1)
+                                        .map(|i| {
+                                            if i % 2 == 0 {
+                                                LinkType::Strong
+                                            } else {
+                                                LinkType::Weak
+                                            }
+                                        })
+                                        .collect();
+                                    return Some(Finding {
+                                        technique: Technique::AIC,
+                                        inference: InferenceResult::Elimination {
+                                            cell: start.0,
+                                            values: to_remove.clone(),
+                                        },
+                                        involved_cells: involved,
+                                        explanation: ExplanationData::Chain {
+                                            variant: "AIC".into(),
+                                            chain_length: chain.len(),
+                                            values: to_remove,
+                                        },
+                                        proof: Some(ProofCertificate::Aic {
+                                            chain: aic_chain,
+                                            link_types: aic_links,
+                                        }),
+                                    });
+                                }
+                            }
+                        }
+
+                        if next != start && !visited.contains(&(next, false)) {
+                            let mut new_chain = chain.clone();
+                            new_chain.push(next);
+                            queue.push_back((next, false, new_chain));
+                        }
+                    }
+                }
+            } else {
+                // Follow strong links
+                if let Some(neighbors) = graph.strong.get(&current) {
+                    for &next in neighbors {
+                        if chain.contains(&next) && next != start {
+                            continue;
+                        }
+                        if single_value_only && next.1 != start.1 {
+                            continue;
+                        }
+                        if !visited.contains(&(next, true)) {
+                            let mut new_chain = chain.clone();
+                            new_chain.push(next);
+                            queue.push_back((next, true, new_chain));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+// ==================== 3D Medusa ====================
+
+/// 3D Medusa: AIC subclass using 2-coloring on the strong-link subgraph.
+///
+/// Medusa is equivalent to finding contradictions/eliminations via coloring
+/// connected components of the AIC polarity graph's strong links:
+/// - Contradiction: same color has two digits in one cell, or same digit+color in one unit
+/// - Elimination: uncolored candidate sees both colors of its digit
+pub fn find_medusa(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> {
+    let mut globally_visited: HashSet<Node> = HashSet::new();
+
+    for idx in 0..81 {
+        if fab.values[idx].is_some() {
+            continue;
+        }
+        for start_digit in fab.cell_cands[idx].iter() {
+            let start = (idx, start_digit);
+            if globally_visited.contains(&start) {
+                continue;
+            }
+
+            // BFS coloring: color 0 and color 1
+            let mut color: HashMap<Node, u8> = HashMap::new();
+            let mut queue: VecDeque<(Node, u8)> = VecDeque::new();
+
+            color.insert(start, 0);
+            queue.push_back((start, 0));
+
+            while let Some((node, c)) = queue.pop_front() {
+                globally_visited.insert(node);
+                let opp = 1 - c;
+
+                // Follow strong links only for coloring
+                if let Some(neighbors) = graph.strong.get(&node) {
+                    for &next in neighbors {
+                        if !color.contains_key(&next) {
+                            color.insert(next, opp);
+                            queue.push_back((next, opp));
+                        }
+                    }
+                }
+            }
+
+            if color.len() < 4 {
+                continue;
+            }
+
+            // Check for contradictions in each color
+            for check_color in 0..=1u8 {
+                let colored: Vec<Node> = color
+                    .iter()
+                    .filter(|(_, &c)| c == check_color)
+                    .map(|(&k, _)| k)
+                    .collect();
+
+                let mut contradiction = false;
+                'outer: for i in 0..colored.len() {
+                    for j in (i + 1)..colored.len() {
+                        let (c1, d1) = colored[i];
+                        let (c2, d2) = colored[j];
+                        // Rule 1: Same digit, same unit
+                        if d1 == d2 && fab.sees(c1, c2) {
+                            contradiction = true;
+                            break 'outer;
+                        }
+                        // Rule 2: Same cell, different digits
+                        if c1 == c2 {
+                            contradiction = true;
+                            break 'outer;
+                        }
+                    }
+                }
+
+                if contradiction {
+                    // Eliminate all candidates of this color
+                    for &(cell, digit) in &colored {
+                        if fab.values[cell].is_none() && fab.cell_cands[cell].contains(digit) {
+                            let involved: Vec<usize> =
+                                colored.iter().map(|&(c, _)| c).collect();
+                            let medusa_chain: Vec<(usize, u8, Polarity)> = color
+                                .iter()
+                                .map(|(&(c, d), &clr)| {
+                                    let pol = if clr == 0 {
+                                        Polarity::On
+                                    } else {
+                                        Polarity::Off
+                                    };
+                                    (c, d, pol)
+                                })
+                                .collect();
+                            let medusa_links: Vec<LinkType> =
+                                vec![LinkType::Strong; medusa_chain.len().saturating_sub(1)];
+                            return Some(Finding {
+                                technique: Technique::ThreeDMedusa,
+                                inference: InferenceResult::Elimination {
+                                    cell,
+                                    values: vec![digit],
+                                },
+                                involved_cells: involved,
+                                explanation: ExplanationData::Chain {
+                                    variant: "3D Medusa".into(),
+                                    chain_length: color.len(),
+                                    values: vec![digit],
+                                },
+                                proof: Some(ProofCertificate::Aic {
+                                    chain: medusa_chain,
+                                    link_types: medusa_links,
+                                }),
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Rule 5: Uncolored candidate sees both colors of same digit
+            for idx2 in 0..81 {
+                if fab.values[idx2].is_some() {
+                    continue;
+                }
+                for digit in fab.cell_cands[idx2].iter() {
+                    if color.contains_key(&(idx2, digit)) {
+                        continue;
+                    }
+
+                    let sees_color_0 = color.iter().any(|(&(c, d), &clr)| {
+                        clr == 0 && d == digit && fab.sees(idx2, c)
+                    });
+                    let sees_color_1 = color.iter().any(|(&(c, d), &clr)| {
+                        clr == 1 && d == digit && fab.sees(idx2, c)
+                    });
+
+                    if sees_color_0 && sees_color_1 {
+                        let involved: Vec<usize> =
+                            color.keys().map(|&(c, _)| c).collect();
+                        let medusa_chain: Vec<(usize, u8, Polarity)> = color
+                            .iter()
+                            .map(|(&(c, d), &clr)| {
+                                let pol = if clr == 0 {
+                                    Polarity::On
+                                } else {
+                                    Polarity::Off
+                                };
+                                (c, d, pol)
+                            })
+                            .collect();
+                        let medusa_links: Vec<LinkType> =
+                            vec![LinkType::Strong; medusa_chain.len().saturating_sub(1)];
+                        return Some(Finding {
+                            technique: Technique::ThreeDMedusa,
+                            inference: InferenceResult::Elimination {
+                                cell: idx2,
+                                values: vec![digit],
+                            },
+                            involved_cells: involved,
+                            explanation: ExplanationData::Chain {
+                                variant: "3D Medusa".into(),
+                                chain_length: color.len(),
+                                values: vec![digit],
+                            },
+                            proof: Some(ProofCertificate::Aic {
+                                chain: medusa_chain,
+                                link_types: medusa_links,
+                            }),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+// ==================== Forcing Chains ====================
+// These use Grid-level propagation rather than CandidateFabric.
+
+/// Nishio Forcing Chain: if assuming a candidate leads to contradiction, eliminate it.
+pub fn find_nishio_fc(
+    grid: &Grid,
+    propagate: &dyn Fn(&Grid, Position, u8) -> (Grid, bool),
+) -> Option<Finding> {
+    let mut cells: Vec<Position> = grid.empty_positions();
+    cells.sort_by_key(|&p| grid.get_candidates(p).count());
+
+    for &pos in &cells {
+        let cands = grid.get_candidates(pos);
+        if cands.count() < 2 || cands.count() > 4 {
+            continue;
+        }
+        for val in cands.iter() {
+            let (_, contradiction) = propagate(grid, pos, val);
+            if contradiction {
+                let cell = pos.row * 9 + pos.col;
+                return Some(Finding {
+                    technique: Technique::NishioForcingChain,
+                    inference: InferenceResult::Elimination {
+                        cell,
+                        values: vec![val],
+                    },
+                    involved_cells: vec![cell],
+                    explanation: ExplanationData::ForcingChain {
+                        variant: "Nishio Forcing Chain".into(),
+                        source_cell: cell,
+                    },
+                    proof: Some(ProofCertificate::Forcing {
+                        source: ForcingSource::Nishio { cell, digit: val },
+                        branches: 1,
+                    }),
+                });
+            }
+        }
+    }
+    None
+}
+
+/// Kraken Fish: finned fish verified via forcing chain propagation.
+pub fn find_kraken_fish(
+    grid: &Grid,
+    propagate: &dyn Fn(&Grid, Position, u8) -> (Grid, bool),
+) -> Option<Finding> {
+    for digit in 1..=9u8 {
+        for r1 in 0..9 {
+            for r2 in (r1 + 1)..9 {
+                let row1_cols: Vec<usize> = (0..9)
+                    .filter(|&c| {
+                        let p = Position::new(r1, c);
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit)
+                    })
+                    .collect();
+                let row2_cols: Vec<usize> = (0..9)
+                    .filter(|&c| {
+                        let p = Position::new(r2, c);
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit)
+                    })
+                    .collect();
+
+                let common_cols: Vec<usize> = row1_cols
+                    .iter()
+                    .filter(|c| row2_cols.contains(c))
+                    .copied()
+                    .collect();
+
+                if common_cols.len() != 2 {
+                    continue;
+                }
+
+                let fins: Vec<Position> = row1_cols
+                    .iter()
+                    .filter(|c| !common_cols.contains(c))
+                    .map(|&c| Position::new(r1, c))
+                    .chain(
+                        row2_cols
+                            .iter()
+                            .filter(|c| !common_cols.contains(c))
+                            .map(|&c| Position::new(r2, c)),
+                    )
+                    .collect();
+
+                if fins.is_empty() || fins.len() > 2 {
+                    continue;
+                }
+
+                let targets: Vec<Position> = common_cols
+                    .iter()
+                    .flat_map(|&c| {
+                        (0..9)
+                            .filter(move |&r| r != r1 && r != r2)
+                            .map(move |r| Position::new(r, c))
+                    })
+                    .filter(|&p| {
+                        grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit)
+                    })
+                    .collect();
+
+                for &target in &targets {
+                    let mut all_fins_eliminate = true;
+                    for &fin in &fins {
+                        let (result, contradiction) = propagate(grid, fin, digit);
+                        if contradiction {
+                            continue;
+                        }
+                        if result.get(target).is_some() {
+                            if result.get(target) == Some(digit) {
+                                all_fins_eliminate = false;
+                                break;
+                            }
+                        } else if result.get_candidates(target).contains(digit) {
+                            all_fins_eliminate = false;
+                            break;
+                        }
+                    }
+
+                    if all_fins_eliminate {
+                        let target_cell = target.row * 9 + target.col;
+                        let mut involved = vec![
+                            r1 * 9 + common_cols[0],
+                            r1 * 9 + common_cols[1],
+                            r2 * 9 + common_cols[0],
+                            r2 * 9 + common_cols[1],
+                        ];
+                        for fin in &fins {
+                            involved.push(fin.row * 9 + fin.col);
+                        }
+                        involved.push(target_cell);
+                        return Some(Finding {
+                            technique: Technique::KrakenFish,
+                            inference: InferenceResult::Elimination {
+                                cell: target_cell,
+                                values: vec![digit],
+                            },
+                            involved_cells: involved,
+                            explanation: ExplanationData::ForcingChain {
+                                variant: "Kraken Fish".into(),
+                                source_cell: target_cell,
+                            },
+                            proof: Some(ProofCertificate::Forcing {
+                                source: ForcingSource::Region {
+                                    sector: r1,
+                                    digit,
+                                },
+                                branches: fins.len(),
+                            }),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Cell Forcing Chain: all candidates of a cell propagate to the same conclusion.
+pub fn find_cell_fc(
+    grid: &Grid,
+    propagate: &dyn Fn(&Grid, Position, u8) -> (Grid, bool),
+) -> Option<Finding> {
+    let mut cells: Vec<Position> = grid.empty_positions();
+    cells.sort_by_key(|&p| grid.get_candidates(p).count());
+
+    for &pos in &cells {
+        let cands = grid.get_candidates(pos);
+        if cands.count() < 2 || cands.count() > 4 {
+            continue;
+        }
+
+        let mut branches = Vec::new();
+        let mut any_contradiction = false;
+
+        for val in cands.iter() {
+            let (result, contradiction) = propagate(grid, pos, val);
+            if contradiction {
+                any_contradiction = true;
+                break;
+            }
+            branches.push(result);
+        }
+
+        if any_contradiction || branches.len() < 2 {
+            continue;
+        }
+
+        let source_cell = pos.row * 9 + pos.col;
+        let num_branches = branches.len();
+
+        if let Some(f) = find_common_placement(
+            grid,
+            pos,
+            &branches,
+            Technique::CellForcingChain,
+            ProofCertificate::Forcing {
+                source: ForcingSource::Cell(source_cell),
+                branches: num_branches,
+            },
+        ) {
+            return Some(f);
+        }
+        if let Some(f) = find_common_elimination(
+            grid,
+            pos,
+            &branches,
+            Technique::CellForcingChain,
+            ProofCertificate::Forcing {
+                source: ForcingSource::Cell(source_cell),
+                branches: num_branches,
+            },
+        ) {
+            return Some(f);
+        }
+    }
+    None
+}
+
+/// Region Forcing Chain: all positions of a digit in a sector propagate to the same conclusion.
+pub fn find_region_fc(
+    grid: &Grid,
+    propagate: &dyn Fn(&Grid, Position, u8) -> (Grid, bool),
+) -> Option<Finding> {
+    for unit in 0..27 {
+        let positions: Vec<Position> = if unit < 9 {
+            (0..9).map(|c| Position::new(unit, c)).collect()
+        } else if unit < 18 {
+            (0..9).map(|r| Position::new(r, unit - 9)).collect()
+        } else {
+            let box_idx = unit - 18;
+            let br = (box_idx / 3) * 3;
+            let bc = (box_idx % 3) * 3;
+            (0..9)
+                .map(|i| Position::new(br + i / 3, bc + i % 3))
+                .collect()
+        };
+
+        for digit in 1..=9u8 {
+            let digit_cells: Vec<Position> = positions
+                .iter()
+                .filter(|&&p| grid.cell(p).is_empty() && grid.get_candidates(p).contains(digit))
+                .copied()
+                .collect();
+
+            if digit_cells.len() < 2 || digit_cells.len() > 4 {
+                continue;
+            }
+
+            let mut branches = Vec::new();
+            let mut any_contradiction = false;
+
+            for &pos in &digit_cells {
+                let (result, contradiction) = propagate(grid, pos, digit);
+                if contradiction {
+                    any_contradiction = true;
+                    break;
+                }
+                branches.push(result);
+            }
+
+            if any_contradiction || branches.len() < 2 {
+                continue;
+            }
+
+            let source = digit_cells[0];
+            let num_branches = branches.len();
+
+            if let Some(f) = find_common_placement(
+                grid,
+                source,
+                &branches,
+                Technique::RegionForcingChain,
+                ProofCertificate::Forcing {
+                    source: ForcingSource::Region {
+                        sector: unit,
+                        digit,
+                    },
+                    branches: num_branches,
+                },
+            ) {
+                return Some(f);
+            }
+            if let Some(f) = find_common_elimination(
+                grid,
+                source,
+                &branches,
+                Technique::RegionForcingChain,
+                ProofCertificate::Forcing {
+                    source: ForcingSource::Region {
+                        sector: unit,
+                        digit,
+                    },
+                    branches: num_branches,
+                },
+            ) {
+                return Some(f);
+            }
+        }
+    }
+    None
+}
+
+/// Dynamic Forcing Chain: like Cell FC but propagation uses the full technique set.
+pub fn find_dynamic_fc(
+    grid: &Grid,
+    propagate_full: &dyn Fn(&Grid, Position, u8) -> (Grid, bool),
+) -> Option<Finding> {
+    let mut cells: Vec<Position> = grid.empty_positions();
+    cells.sort_by_key(|&p| grid.get_candidates(p).count());
+
+    for &pos in &cells {
+        let cands = grid.get_candidates(pos);
+        if cands.count() < 2 || cands.count() > 3 {
+            continue;
+        }
+
+        let mut branches = Vec::new();
+
+        for val in cands.iter() {
+            let (result, contradiction) = propagate_full(grid, pos, val);
+            if contradiction {
+                let cell = pos.row * 9 + pos.col;
+                return Some(Finding {
+                    technique: Technique::DynamicForcingChain,
+                    inference: InferenceResult::Elimination {
+                        cell,
+                        values: vec![val],
+                    },
+                    involved_cells: vec![cell],
+                    explanation: ExplanationData::ForcingChain {
+                        variant: "Dynamic Forcing Chain".into(),
+                        source_cell: cell,
+                    },
+                    proof: Some(ProofCertificate::Forcing {
+                        source: ForcingSource::Nishio { cell, digit: val },
+                        branches: 1,
+                    }),
+                });
+            }
+            branches.push(result);
+        }
+
+        if branches.len() < 2 {
+            continue;
+        }
+
+        let dfc_cell = pos.row * 9 + pos.col;
+        let dfc_branches = branches.len();
+
+        if let Some(f) = find_common_placement(
+            grid,
+            pos,
+            &branches,
+            Technique::DynamicForcingChain,
+            ProofCertificate::Forcing {
+                source: ForcingSource::Cell(dfc_cell),
+                branches: dfc_branches,
+            },
+        ) {
+            return Some(f);
+        }
+        if let Some(f) = find_common_elimination(
+            grid,
+            pos,
+            &branches,
+            Technique::DynamicForcingChain,
+            ProofCertificate::Forcing {
+                source: ForcingSource::Cell(dfc_cell),
+                branches: dfc_branches,
+            },
+        ) {
+            return Some(f);
+        }
+    }
+    None
+}
+
+// ==================== Forcing Chain Helpers ====================
+
+/// Find a common placement across all propagation branches.
+fn find_common_placement(
+    grid: &Grid,
+    source: Position,
+    branches: &[Grid],
+    technique: Technique,
+    proof: ProofCertificate,
+) -> Option<Finding> {
+    for target in grid.empty_positions() {
+        if target == source || grid.get(target).is_some() {
+            continue;
+        }
+        let mut common_val: Option<u8> = None;
+        let mut all_agree = true;
+        for branch in branches {
+            if let Some(v) = branch.get(target) {
+                match common_val {
+                    None => common_val = Some(v),
+                    Some(cv) if cv != v => {
+                        all_agree = false;
+                        break;
+                    }
+                    _ => {}
+                }
+            } else {
+                all_agree = false;
+                break;
+            }
+        }
+        if all_agree {
+            if let Some(val) = common_val {
+                let source_cell = source.row * 9 + source.col;
+                let target_cell = target.row * 9 + target.col;
+                return Some(Finding {
+                    technique,
+                    inference: InferenceResult::Placement {
+                        cell: target_cell,
+                        value: val,
+                    },
+                    involved_cells: vec![source_cell, target_cell],
+                    explanation: ExplanationData::ForcingChain {
+                        variant: match technique {
+                            Technique::CellForcingChain => "Cell Forcing Chain".into(),
+                            Technique::RegionForcingChain => "Region Forcing Chain".into(),
+                            Technique::DynamicForcingChain => "Dynamic Forcing Chain".into(),
+                            _ => "Forcing Chain".into(),
+                        },
+                        source_cell: source_cell,
+                    },
+                    proof: Some(proof),
+                });
+            }
+        }
+    }
+    None
+}
+
+/// Find a common elimination across all propagation branches.
+fn find_common_elimination(
+    grid: &Grid,
+    source: Position,
+    branches: &[Grid],
+    technique: Technique,
+    proof: ProofCertificate,
+) -> Option<Finding> {
+    for target in grid.empty_positions() {
+        if target == source {
+            continue;
+        }
+        let orig_cands = grid.get_candidates(target);
+        if orig_cands.count() < 2 {
+            continue;
+        }
+        for val in orig_cands.iter() {
+            let mut all_eliminate = true;
+            for branch in branches {
+                if let Some(placed) = branch.get(target) {
+                    if placed == val {
+                        all_eliminate = false;
+                        break;
+                    }
+                } else if branch.get_candidates(target).contains(val) {
+                    all_eliminate = false;
+                    break;
+                }
+            }
+            if all_eliminate {
+                let source_cell = source.row * 9 + source.col;
+                let target_cell = target.row * 9 + target.col;
+                return Some(Finding {
+                    technique,
+                    inference: InferenceResult::Elimination {
+                        cell: target_cell,
+                        values: vec![val],
+                    },
+                    involved_cells: vec![source_cell, target_cell],
+                    explanation: ExplanationData::ForcingChain {
+                        variant: match technique {
+                            Technique::CellForcingChain => "Cell Forcing Chain".into(),
+                            Technique::RegionForcingChain => "Region Forcing Chain".into(),
+                            Technique::DynamicForcingChain => "Dynamic Forcing Chain".into(),
+                            _ => "Forcing Chain".into(),
+                        },
+                        source_cell: source_cell,
+                    },
+                    proof: Some(proof),
+                });
+            }
+        }
+    }
+    None
+}
