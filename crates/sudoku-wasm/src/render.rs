@@ -249,7 +249,7 @@ pub fn render_game(
         }
         ScreenState::Menu => {
             render_grid(ctx, state, theme, grid_x, grid_y, cell_size, font_size);
-            render_menu(ctx, theme, width, height, font_size);
+            render_menu(ctx, state, theme, width, height, font_size);
         }
         ScreenState::Stats => {
             render_grid(ctx, state, theme, grid_x, grid_y, cell_size, font_size);
@@ -619,6 +619,10 @@ fn render_win_screen(
     let w = width as f64;
     let h = height as f64;
 
+    // Dim the grid behind the overlay
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.75));
+    ctx.fill_rect(0.0, 0.0, w, h);
+
     if let Some(win_screen) = state.win_screen() {
         // Render animated background
         let frame = win_screen.frame_count() as f32;
@@ -631,7 +635,7 @@ fn render_win_screen(
             let mut x = 0.0;
             while x < w {
                 let color = bg.color_at(x as f32, y as f32, w as f32, h as f32, frame);
-                ctx.set_fill_style_str(&color.as_css_alpha(0.3));
+                ctx.set_fill_style_str(&color.as_css_alpha(0.15));
                 ctx.fill_rect(x, y, step, step);
                 x += step;
             }
@@ -653,6 +657,14 @@ fn render_win_screen(
                 );
             }
         }
+
+        // Content backdrop panel
+        let panel_w = w * 0.75;
+        let panel_x = (w - panel_w) / 2.0;
+        let panel_top = h / 2.0 - 30.0;
+        let panel_bottom = h / 2.0 + 175.0;
+        ctx.set_fill_style_str(&theme.background.as_css_alpha(0.85));
+        ctx.fill_rect(panel_x, panel_top, panel_w, panel_bottom - panel_top);
 
         // Render ASCII banner with rainbow effect
         let banner = win_screen.current_banner();
@@ -682,9 +694,7 @@ fn render_win_screen(
         ctx.set_text_baseline("middle");
         let _ = ctx.fill_text(win_screen.current_message(), w / 2.0, h / 2.0 + 20.0);
     } else {
-        // Fallback: simple overlay
-        ctx.set_fill_style_str(&theme.win_color.as_css_alpha(0.15));
-        ctx.fill_rect(0.0, 0.0, w, h);
+        // Fallback: simple overlay (already dimmed above)
     }
 
     // Stats
@@ -728,11 +738,12 @@ fn render_win_screen(
         font_size * 0.7
     ));
     ctx.set_fill_style_str(&theme.info_text.as_css_alpha(0.8));
-    let _ = ctx.fill_text(
-        "N: New game  1-6: Difficulty  S: Full stats",
-        w / 2.0,
-        h / 2.0 + 160.0,
-    );
+    let diff_hint = if state.secrets_unlocked() {
+        "N: New game  1-8: Difficulty  S: Full stats"
+    } else {
+        "N: New game  1-6: Difficulty  S: Full stats"
+    };
+    let _ = ctx.fill_text(diff_hint, w / 2.0, h / 2.0 + 160.0);
 }
 
 /// Render lose screen with rain/debris particles
@@ -747,8 +758,10 @@ fn render_lose_screen(
     let w = width as f64;
     let h = height as f64;
 
-    // Dark overlay
-    ctx.set_fill_style_str(&theme.lose_color.as_css_alpha(0.2));
+    // Dark overlay to dim the grid
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.75));
+    ctx.fill_rect(0.0, 0.0, w, h);
+    ctx.set_fill_style_str(&theme.lose_color.as_css_alpha(0.15));
     ctx.fill_rect(0.0, 0.0, w, h);
 
     // Render rain/debris particles
@@ -768,6 +781,14 @@ fn render_lose_screen(
             }
         }
     }
+
+    // Content backdrop panel
+    let panel_w = w * 0.75;
+    let panel_x = (w - panel_w) / 2.0;
+    let panel_top = h / 2.0 + 25.0;
+    let panel_bottom = h / 2.0 + 110.0;
+    ctx.set_fill_style_str(&theme.background.as_css_alpha(0.85));
+    ctx.fill_rect(panel_x, panel_top, panel_w, panel_bottom - panel_top);
 
     // ASCII art for GAME OVER
     let game_over_art = r#"
@@ -815,16 +836,18 @@ fn render_lose_screen(
         font_size * 0.7
     ));
     ctx.set_fill_style_str(&theme.info_text.as_css_alpha(0.8));
-    let _ = ctx.fill_text(
-        "Press N for new game, 1-6 for difficulty",
-        w / 2.0,
-        h / 2.0 + 90.0,
-    );
+    let diff_hint = if state.secrets_unlocked() {
+        "Press N for new game, 1-8 for difficulty"
+    } else {
+        "Press N for new game, 1-6 for difficulty"
+    };
+    let _ = ctx.fill_text(diff_hint, w / 2.0, h / 2.0 + 90.0);
 }
 
 /// Render new game menu
 fn render_menu(
     ctx: &CanvasRenderingContext2d,
+    state: &GameState,
     theme: &Theme,
     width: u32,
     height: u32,
@@ -850,7 +873,7 @@ fn render_menu(
     ));
     ctx.set_fill_style_str(&theme.info_text.as_css());
 
-    let difficulties = [
+    let mut difficulties: Vec<(&str, &str)> = vec![
         ("1", "Beginner"),
         ("2", "Easy"),
         ("3", "Medium"),
@@ -859,8 +882,13 @@ fn render_menu(
         ("6", "Expert"),
     ];
 
+    if state.secrets_unlocked() {
+        difficulties.push(("7", "Master"));
+        difficulties.push(("8", "Extreme"));
+    }
+
     let mut cy = height as f64 / 2.0 - 60.0;
-    for (key, name) in difficulties {
+    for (key, name) in &difficulties {
         let _ = ctx.fill_text(&format!("[{}] {}", key, name), width as f64 / 2.0, cy);
         cy += font_size * 1.3;
     }

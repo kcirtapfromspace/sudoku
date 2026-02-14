@@ -238,7 +238,18 @@ pub struct GameState {
     game_recorded: bool,
     /// Seed for deterministic puzzle generation (from PuzzleId)
     seed: Option<u64>,
+    /// Konami code progress tracker
+    konami_progress: usize,
+    /// Whether secret difficulties (Master/Extreme) are unlocked
+    secrets_unlocked: bool,
 }
+
+/// Konami code sequence: Up Up Down Down Left Right Left Right B A
+const KONAMI_SEQUENCE: [&str; 10] = [
+    "ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
+    "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight",
+    "b", "a",
+];
 
 impl GameState {
     /// Create a new game
@@ -279,13 +290,23 @@ impl GameState {
             player_stats: PlayerStats::default(),
             game_recorded: false,
             seed: Some(seed),
+            konami_progress: 0,
+            secrets_unlocked: false,
         }
     }
 
-    /// Create a new game preserving player stats
+    /// Create a new game preserving player stats and unlock state
     pub fn new_with_stats(difficulty: Difficulty, stats: PlayerStats) -> Self {
         let mut game = Self::new(difficulty);
         game.player_stats = stats;
+        game
+    }
+
+    /// Create a new game preserving player stats, unlock state, and secrets
+    pub fn new_preserving(difficulty: Difficulty, stats: PlayerStats, secrets: bool) -> Self {
+        let mut game = Self::new(difficulty);
+        game.player_stats = stats;
+        game.secrets_unlocked = secrets;
         game
     }
 
@@ -325,6 +346,8 @@ impl GameState {
             player_stats: PlayerStats::default(),
             game_recorded: false,
             seed: None,
+            konami_progress: 0,
+            secrets_unlocked: false,
         })
     }
 
@@ -367,6 +390,8 @@ impl GameState {
             player_stats: PlayerStats::default(),
             game_recorded: false,
             seed: Some(seed),
+            konami_progress: 0,
+            secrets_unlocked: false,
         })
     }
 
@@ -472,23 +497,77 @@ impl GameState {
     }
 
     fn handle_endgame_key(&mut self, key: &str) -> bool {
+        // Track Konami code
+        if self.check_konami(key) {
+            return true;
+        }
+
         match key {
             "q" | "Escape" => return false,
             "s" => self.screen = ScreenState::Stats,
             "n" | "Enter" | " " => {
-                *self = GameState::new_with_stats(self.difficulty, self.player_stats.clone());
+                *self = GameState::new_preserving(
+                    self.difficulty,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                );
             }
             "1" => {
-                *self = GameState::new_with_stats(Difficulty::Beginner, self.player_stats.clone())
+                *self = GameState::new_preserving(
+                    Difficulty::Beginner,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
             }
-            "2" => *self = GameState::new_with_stats(Difficulty::Easy, self.player_stats.clone()),
-            "3" => *self = GameState::new_with_stats(Difficulty::Medium, self.player_stats.clone()),
+            "2" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Easy,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "3" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Medium,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
             "4" => {
-                *self =
-                    GameState::new_with_stats(Difficulty::Intermediate, self.player_stats.clone())
+                *self = GameState::new_preserving(
+                    Difficulty::Intermediate,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
             }
-            "5" => *self = GameState::new_with_stats(Difficulty::Hard, self.player_stats.clone()),
-            "6" => *self = GameState::new_with_stats(Difficulty::Expert, self.player_stats.clone()),
+            "5" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Hard,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "6" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Expert,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "7" if self.secrets_unlocked => {
+                *self = GameState::new_preserving(
+                    Difficulty::Master,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "8" if self.secrets_unlocked => {
+                *self = GameState::new_preserving(
+                    Difficulty::Extreme,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
             _ => {}
         }
         true
@@ -508,20 +587,70 @@ impl GameState {
     }
 
     fn handle_menu_key(&mut self, key: &str) -> bool {
+        // Track Konami code
+        if self.check_konami(key) {
+            return true;
+        }
+
         match key {
             "Escape" => self.screen = ScreenState::Playing,
             "s" => self.screen = ScreenState::Stats,
             "1" => {
-                *self = GameState::new_with_stats(Difficulty::Beginner, self.player_stats.clone())
+                *self = GameState::new_preserving(
+                    Difficulty::Beginner,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
             }
-            "2" => *self = GameState::new_with_stats(Difficulty::Easy, self.player_stats.clone()),
-            "3" => *self = GameState::new_with_stats(Difficulty::Medium, self.player_stats.clone()),
+            "2" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Easy,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "3" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Medium,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
             "4" => {
-                *self =
-                    GameState::new_with_stats(Difficulty::Intermediate, self.player_stats.clone())
+                *self = GameState::new_preserving(
+                    Difficulty::Intermediate,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
             }
-            "5" => *self = GameState::new_with_stats(Difficulty::Hard, self.player_stats.clone()),
-            "6" => *self = GameState::new_with_stats(Difficulty::Expert, self.player_stats.clone()),
+            "5" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Hard,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "6" => {
+                *self = GameState::new_preserving(
+                    Difficulty::Expert,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "7" if self.secrets_unlocked => {
+                *self = GameState::new_preserving(
+                    Difficulty::Master,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
+            "8" if self.secrets_unlocked => {
+                *self = GameState::new_preserving(
+                    Difficulty::Extreme,
+                    self.player_stats.clone(),
+                    self.secrets_unlocked,
+                )
+            }
             _ => {}
         }
         true
@@ -534,6 +663,27 @@ impl GameState {
             _ => {}
         }
         true
+    }
+
+    /// Check Konami code progress. Returns true if the key was consumed.
+    fn check_konami(&mut self, key: &str) -> bool {
+        if self.secrets_unlocked {
+            return false;
+        }
+        if key == KONAMI_SEQUENCE[self.konami_progress] {
+            self.konami_progress += 1;
+            if self.konami_progress >= KONAMI_SEQUENCE.len() {
+                self.konami_progress = 0;
+                self.secrets_unlocked = true;
+                self.show_message("Secrets unlocked! 7: Master  8: Extreme");
+                return true;
+            }
+        } else if key == KONAMI_SEQUENCE[0] {
+            self.konami_progress = 1;
+        } else {
+            self.konami_progress = 0;
+        }
+        false
     }
 
     fn handle_playing_key(&mut self, key: &str, shift: bool, ctrl: bool) -> bool {
@@ -881,6 +1031,9 @@ impl GameState {
     pub fn seed(&self) -> Option<u64> {
         self.seed
     }
+    pub fn secrets_unlocked(&self) -> bool {
+        self.secrets_unlocked
+    }
 
     /// Get the short code for the current puzzle (e.g., "M1A2B3C4")
     pub fn short_code(&self) -> Option<String> {
@@ -1084,6 +1237,8 @@ impl GameState {
             player_stats: PlayerStats::default(),
             game_recorded: false,
             seed: None,
+            konami_progress: 0,
+            secrets_unlocked: false,
         }
     }
 }
