@@ -311,7 +311,11 @@ fn render_info_panel(stdout: &mut io::Stdout, app: &App, x: u16, y: u16) -> io::
         stdout,
         MoveTo(x, y + 4),
         SetForegroundColor(theme.info),
-        Print(format!("Level: {:>9}", format!("{}", game.difficulty())))
+        Print(format!(
+            "{} (SE {:.1})",
+            game.difficulty(),
+            game.se_rating()
+        ))
     )?;
 
     // Mode

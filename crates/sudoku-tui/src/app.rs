@@ -279,7 +279,7 @@ impl App {
         );
 
         // Submit to ukodus API (fire-and-forget background thread)
-        crate::telemetry::submit_result(record);
+        crate::telemetry::submit_result(record, self.game.se_rating());
     }
 
     /// Show a temporary message

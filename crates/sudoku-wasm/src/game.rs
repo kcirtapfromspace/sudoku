@@ -242,13 +242,22 @@ pub struct GameState {
     konami_progress: usize,
     /// Whether secret difficulties (Master/Extreme) are unlocked
     secrets_unlocked: bool,
+    /// Cached SE (Sudoku Explainer) rating
+    se_rating: f32,
 }
 
 /// Konami code sequence: Up Up Down Down Left Right Left Right B A
 const KONAMI_SEQUENCE: [&str; 10] = [
-    "ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
-    "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight",
-    "b", "a",
+    "ArrowUp",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowLeft",
+    "ArrowRight",
+    "b",
+    "a",
 ];
 
 impl GameState {
@@ -263,6 +272,7 @@ impl GameState {
 
         let solver = Solver::new();
         let solution = solver.solve(&puzzle).expect("Puzzle should be solvable");
+        let se_rating = solver.rate_se(&puzzle);
 
         Self {
             grid,
@@ -292,6 +302,7 @@ impl GameState {
             seed: Some(seed),
             konami_progress: 0,
             secrets_unlocked: false,
+            se_rating,
         }
     }
 
@@ -316,6 +327,7 @@ impl GameState {
         let solver = Solver::new();
         let solution = solver.solve(&puzzle_grid)?;
         let difficulty = solver.rate_difficulty(&puzzle_grid);
+        let se_rating = solver.rate_se(&puzzle_grid);
 
         let mut grid = puzzle_grid.deep_clone();
         grid.clear_all_candidates();
@@ -348,6 +360,7 @@ impl GameState {
             seed: None,
             konami_progress: 0,
             secrets_unlocked: false,
+            se_rating,
         })
     }
 
@@ -360,6 +373,7 @@ impl GameState {
 
         let solver = Solver::new();
         let solution = solver.solve(&puzzle)?;
+        let se_rating = solver.rate_se(&puzzle);
 
         let mut grid = puzzle.deep_clone();
         grid.clear_all_candidates();
@@ -392,6 +406,7 @@ impl GameState {
             seed: Some(seed),
             konami_progress: 0,
             secrets_unlocked: false,
+            se_rating,
         })
     }
 
@@ -992,8 +1007,7 @@ impl GameState {
         self.difficulty
     }
     pub fn se_rating(&self) -> f32 {
-        let solver = Solver::new();
-        solver.rate_se(&self.puzzle)
+        self.se_rating
     }
     pub fn mistakes(&self) -> usize {
         self.mistakes
@@ -1239,6 +1253,7 @@ impl GameState {
             seed: None,
             konami_progress: 0,
             secrets_unlocked: false,
+            se_rating: 0.0,
         }
     }
 }

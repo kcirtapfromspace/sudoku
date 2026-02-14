@@ -54,7 +54,7 @@ fn puzzle_to_api_format(puzzle: &str) -> String {
 
 /// Submit a game result to the ukodus API. Spawns a background thread
 /// so it never blocks the TUI. Failures are silently ignored.
-pub fn submit_result(record: &GameRecord) {
+pub fn submit_result(record: &GameRecord, se_rating: f32) {
     let puzzle_string = puzzle_to_api_format(&record.puzzle);
     let puzzle_hash = hash_puzzle(&puzzle_string);
     let difficulty = format!("{:?}", record.difficulty);
@@ -79,7 +79,7 @@ pub fn submit_result(record: &GameRecord) {
             "puzzle_hash": puzzle_hash,
             "puzzle_string": puzzle_string,
             "difficulty": difficulty,
-            "se_rating": 0.0,
+            "se_rating": se_rating,
             "result": result_str,
             "time_secs": time_secs,
             "hints_used": hints_used,

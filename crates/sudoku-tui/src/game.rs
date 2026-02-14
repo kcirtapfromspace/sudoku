@@ -64,6 +64,8 @@ pub struct Game {
     notes_used: bool,
     /// Puzzle seed (if generated via PuzzleId)
     seed: Option<u64>,
+    /// Cached SE (Sudoku Explainer) rating
+    se_rating: f32,
 }
 
 impl Game {
@@ -79,6 +81,7 @@ impl Game {
         let solution = solver
             .solve(&grid)
             .expect("Generated puzzle should be solvable");
+        let se_rating = solver.rate_se(&grid);
 
         // Clear all candidates - players add their own notes manually
         grid.clear_all_candidates();
@@ -101,6 +104,7 @@ impl Game {
             move_times_ms: Vec::new(),
             notes_used: false,
             seed: Some(puzzle_id.seed),
+            se_rating,
         }
     }
 
@@ -115,6 +119,7 @@ impl Game {
         let solution = solver
             .solve(&grid)
             .expect("Generated puzzle should be solvable");
+        let se_rating = solver.rate_se(&grid);
 
         // Clear all candidates - players add their own notes manually
         grid.clear_all_candidates();
@@ -137,6 +142,7 @@ impl Game {
             move_times_ms: Vec::new(),
             notes_used: false,
             seed: Some(id.seed),
+            se_rating,
         }
     }
 
@@ -146,6 +152,7 @@ impl Game {
         let solver = Solver::new();
         let solution = solver.solve(&grid)?;
         let difficulty = solver.rate_difficulty(&grid);
+        let se_rating = solver.rate_se(&grid);
 
         let now = Instant::now();
         Some(Self {
@@ -165,6 +172,7 @@ impl Game {
             move_times_ms: Vec::new(),
             notes_used: false,
             seed: None,
+            se_rating,
         })
     }
 
@@ -238,6 +246,11 @@ impl Game {
     /// Get the puzzle seed (if generated via PuzzleId)
     pub fn seed(&self) -> Option<u64> {
         self.seed
+    }
+
+    /// Get the SE (Sudoku Explainer) rating
+    pub fn se_rating(&self) -> f32 {
+        self.se_rating
     }
 
     /// Get the short code for this puzzle (if it has a seed)
@@ -834,6 +847,7 @@ impl Game {
             move_times_ms: Vec::new(), // Can't restore move times from save
             notes_used: false,         // Reset for loaded game
             seed: None,                // Can't restore seed from save
+            se_rating: 0.0,            // Can't restore SE rating from save
         })
     }
 }

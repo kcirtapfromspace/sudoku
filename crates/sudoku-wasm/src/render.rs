@@ -496,7 +496,11 @@ fn render_info_panel(
     let _ = ctx.fill_text(&format!("Time: {}", state.elapsed_string()), x, cy);
     cy += line_height;
 
-    let _ = ctx.fill_text(&format!("{}", state.difficulty()), x, cy);
+    let _ = ctx.fill_text(
+        &format!("{} (SE {:.1})", state.difficulty(), state.se_rating()),
+        x,
+        cy,
+    );
     cy += line_height;
 
     let remaining = MAX_MISTAKES.saturating_sub(state.mistakes());
