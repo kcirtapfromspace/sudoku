@@ -21,19 +21,24 @@ cargo run --bin sudoku
 | Key | Action |
 |-----|--------|
 | Arrow keys / hjkl | Navigate cells |
+| w/a/s/d | Jump to adjacent 3x3 box |
 | 1-9 | Enter number |
 | Shift + 1-9 | Toggle candidate |
 | 0 / Delete / Backspace | Clear cell |
 | c | Toggle candidate mode |
+| f | Fill candidates (current cell) |
+| Shift+F | Fill candidates (all cells) |
+| x | Clear notes (current cell) |
+| Shift+X | Clear notes (all cells) |
+| g | Toggle ghost hints |
+| v | Toggle valid cell highlighting |
 | u | Undo |
 | Ctrl+r | Redo |
-| ? | Show hint |
+| ? | Show hint (press again for proof detail) |
 | ! | Apply hint |
-| n | New game |
-| p | Pause/Resume |
-| t | Change theme |
-| Shift+S | Save game |
-| Shift+L | Load game |
+| n | New game menu |
+| p | Pause |
+| Shift+S | Stats screen |
 | q | Quit |
 
 ## Building for Mobile

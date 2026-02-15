@@ -34,7 +34,7 @@ The solver, validator, and candidate updates all operate through the active cons
 
 ### Solver
 
-`Solver` (`src/solver.rs`) has two layers:
+`Solver` (`src/solver/`) is organized as a modular directory with dedicated engine files for each technique family (fish, ALS, AIC/chains, uniqueness, etc.), plus `types.rs` for the `Technique` enum and `fabric.rs` for the dual-indexed candidate state. It has two layers:
 
 1. **Human-style techniques** (45 techniques, ordered by complexity)
    - The solver can search for a concrete next step (a `Hint`) by trying techniques in increasing complexity.
@@ -162,6 +162,10 @@ The generator accepts puzzles one tier easier than requested for generation spee
 - `get_rated_difficulty()` — the *actual* rated difficulty of the generated puzzle
 
 Both values are persisted through serialization. UIs can choose which to display — the iOS app currently uses the requested difficulty as the label with the SE numeric rating for precision.
+
+### PuzzleId
+
+The `PuzzleId` module (`src/puzzle_id.rs`) encodes puzzle parameters (seed, difficulty, variant) into short alphanumeric codes. This enables deterministic puzzle regeneration from a compact identifier, powering shareable puzzle links (e.g., on ukodus.com).
 
 ## Reproducibility
 

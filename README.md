@@ -2,9 +2,10 @@
 
 Shared Sudoku engine written in Rust, with:
 
+- Core engine (`crates/sudoku-core`)
 - Terminal UI (`crates/sudoku-tui`)
 - WebAssembly build (`crates/sudoku-wasm`)
-- iOS app (Rust via FFI) (`ios/`)
+- iOS app via UniFFI (`crates/sudoku-ffi` + `ios/`)
 
 App Store: https://apps.apple.com/us/app/sudoku/id6758485043
 
@@ -38,6 +39,8 @@ python3 serve.py 8080
 
 Then open `http://127.0.0.1:8080/`.
 
+Live at [ukodus.com/play](https://ukodus.com/play/).
+
 ### iOS
 
 Open `ios/Sudoku/Sudoku.xcodeproj` in Xcode and run the `Sudoku` scheme.
@@ -47,7 +50,7 @@ Open `ios/Sudoku/Sudoku.xcodeproj` in Xcode and run the `Sudoku` scheme.
 Puzzle generation lives in the Rust core crate:
 
 - Generator: `crates/sudoku-core/src/generator.rs`
-- Solver + uniqueness + difficulty rating: `crates/sudoku-core/src/solver.rs`
+- Solver + uniqueness + difficulty rating: `crates/sudoku-core/src/solver/` (modular directory with engines for fish, ALS, AIC, uniqueness, etc.)
 
 At a high level:
 
@@ -57,4 +60,6 @@ At a high level:
    - After each removal, verify the puzzle still has **exactly one solution** (the solver stops once it finds 2).
 3. **Rate the puzzle difficulty** using a human-style technique simulation and retry generation until it matches the requested difficulty.
 
-The iOS app uses this same generator through the Rust FFI layer (`crates/sudoku-ffi`), and stores the solved grid alongside the puzzle so it can power hints and validation.
+The `PuzzleId` system (`crates/sudoku-core/src/puzzle_id.rs`) encodes puzzle parameters into short alphanumeric codes, enabling deterministic regeneration and shareable puzzle links.
+
+The iOS app uses this same generator through the Rust FFI layer (`crates/sudoku-ffi`), and stores the solved grid alongside the puzzle so it can power hints and validation. The WASM build powers [ukodus.com/play](https://ukodus.com/play/) and includes an anti-cheat move log that records timestamped actions for leaderboard verification.

@@ -1,6 +1,6 @@
 # Privacy Policy for Ukodus
 
-**Last updated: January 30, 2025**
+**Last updated: February 14, 2026**
 
 ## Overview
 
@@ -27,7 +27,18 @@ If you enable iCloud sync:
 - Data is stored in your personal iCloud account
 - This data is managed by Apple according to their privacy policy
 
-## Data We Do NOT Collect
+### Web Version (ukodus.com)
+
+When playing on [ukodus.com](https://ukodus.com/play/):
+- Game results (puzzle data, solve time, mistakes, hints used) are submitted to the server
+- A randomly generated player ID is stored in the browser's localStorage
+- Move actions are recorded with timestamps for anti-cheat verification
+- No personal information, email, or account is required
+- Data is used for leaderboards and puzzle analytics only
+
+## Data We Do NOT Collect (iOS App)
+
+The following applies to the iOS app:
 
 - Personal identification information
 - Email addresses or contact information
@@ -35,6 +46,8 @@ If you enable iCloud sync:
 - Usage analytics or behavioral data
 - Advertising identifiers (IDFA)
 - Any data for marketing purposes
+
+The web version (ukodus.com) does collect anonymous gameplay data as described in the "Web Version" section above.
 
 ## Third-Party Services
 
