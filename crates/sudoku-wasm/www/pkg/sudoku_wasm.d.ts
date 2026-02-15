@@ -76,6 +76,10 @@ export class SudokuGame {
      */
     is_paused(): boolean;
     /**
+     * Check if secret difficulties (Master/Extreme) are unlocked
+     */
+    is_secrets_unlocked(): boolean;
+    /**
      * Load a puzzle from an 81-character string, returns true on success
      */
     load_puzzle_string(puzzle: string): boolean;
@@ -111,6 +115,10 @@ export class SudokuGame {
      * Get Sudoku Explainer (SE) numerical rating for the current puzzle
      */
     se_rating(): number;
+    /**
+     * Set secrets unlocked state (for persistence from JS)
+     */
+    set_secrets_unlocked(unlocked: boolean): void;
     /**
      * Set the color theme
      */
@@ -149,6 +157,7 @@ export interface InitOutput {
     readonly sudokugame_is_complete: (a: number) => number;
     readonly sudokugame_is_game_over: (a: number) => number;
     readonly sudokugame_is_paused: (a: number) => number;
+    readonly sudokugame_is_secrets_unlocked: (a: number) => number;
     readonly sudokugame_load_puzzle_string: (a: number, b: number, c: number) => number;
     readonly sudokugame_load_short_code: (a: number, b: number, c: number) => number;
     readonly sudokugame_load_state_json: (a: number, b: number, c: number) => number;
@@ -158,6 +167,7 @@ export interface InitOutput {
     readonly sudokugame_new_game: (a: number, b: number, c: number) => void;
     readonly sudokugame_resize: (a: number, b: number, c: number) => void;
     readonly sudokugame_se_rating: (a: number) => number;
+    readonly sudokugame_set_secrets_unlocked: (a: number, b: number) => void;
     readonly sudokugame_set_theme: (a: number, b: number, c: number) => void;
     readonly sudokugame_tick: (a: number) => void;
     readonly sudokugame_toggle_pause: (a: number) => void;
