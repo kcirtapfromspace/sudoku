@@ -30,9 +30,14 @@ pub enum Polarity {
 }
 
 /// Link type in an alternating inference chain.
+///
+/// Community terminology: `Weak` represents a "weak inference" (NAND
+/// relationship), while `Strong` is a structural link (XOR). The variant
+/// name `Weak` is retained for brevity but denotes a weak inference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LinkType {
     Strong,
+    /// Weak inference (NAND): at most one of the connected nodes is true.
     Weak,
 }
 

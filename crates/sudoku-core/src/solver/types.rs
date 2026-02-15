@@ -147,6 +147,8 @@ pub enum Technique {
     WXYZWing,
     WWing,
     XChain,
+    /// Legacy: 3D Medusa is strong-link-only AIC coloring, subsumed by general AIC.
+    /// Retained for SE rating compatibility (SE 5.0).
     ThreeDMedusa,
     SueDeCoq,
     AIC,
@@ -160,7 +162,9 @@ pub enum Technique {
     AlsXyWing,
     AlsChain,
     MutantFish,
+    /// Legacy: APE is subsumed by ALS chains. Retained for SE rating compatibility.
     AlignedPairExclusion,
+    /// Legacy: ATE is subsumed by ALS chains. Retained for SE rating compatibility.
     AlignedTripletExclusion,
     DeathBlossom,
     NishioForcingChain,

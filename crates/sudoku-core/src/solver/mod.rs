@@ -204,7 +204,7 @@ impl Solver {
         }
 
         // Phase 5: Uniqueness
-        if let Some(f) = uniqueness::find_empty_rectangle(&fab) {
+        if let Some(f) = aic_engine::find_empty_rectangle(&fab) {
             return Some(f);
         }
         if let Some(f) = uniqueness::find_avoidable_rectangle(&fab) {
@@ -337,7 +337,7 @@ impl Solver {
                 .or_else(|| basic::find_naked_subset(&fab, 4))
                 .or_else(|| basic::find_hidden_subset(&fab, 4))
                 // Phase 5: Uniqueness
-                .or_else(|| uniqueness::find_empty_rectangle(&fab))
+                .or_else(|| aic_engine::find_empty_rectangle(&fab))
                 .or_else(|| uniqueness::find_avoidable_rectangle(&fab))
                 .or_else(|| uniqueness::find_unique_rectangle(&fab))
                 .or_else(|| uniqueness::find_hidden_rectangle(&fab))
@@ -513,7 +513,7 @@ fn propagate_full(grid: &Grid, pos: Position, val: u8) -> (Grid, bool) {
             .or_else(|| fish_engine::find_finned_fish(&fab, 4))
             .or_else(|| basic::find_naked_subset(&fab, 4))
             .or_else(|| basic::find_hidden_subset(&fab, 4))
-            .or_else(|| uniqueness::find_empty_rectangle(&fab))
+            .or_else(|| aic_engine::find_empty_rectangle(&fab))
             .or_else(|| uniqueness::find_avoidable_rectangle(&fab))
             .or_else(|| uniqueness::find_unique_rectangle(&fab))
             .or_else(|| uniqueness::find_hidden_rectangle(&fab))

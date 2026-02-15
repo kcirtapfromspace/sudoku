@@ -1,13 +1,14 @@
 //! Uniqueness-based techniques.
 //!
 //! These rely on the uniqueness assumption (puzzle has exactly one solution).
-//! Replaces: find_unique_rectangle, find_avoidable_rectangle, find_empty_rectangle,
+//! Replaces: find_unique_rectangle, find_avoidable_rectangle,
 //! find_hidden_rectangle, find_extended_unique_rectangle, find_bug.
+//!
+//! Note: Empty Rectangle was moved to aic_engine.rs — it is a single-digit
+//! AIC pattern, not a uniqueness technique.
 
 use super::explain::{ExplanationData, Finding, InferenceResult, ProofCertificate};
-use super::fabric::{
-    idx_to_pos, sector_cells, CandidateFabric, SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE,
-};
+use super::fabric::{idx_to_pos, sector_cells, CandidateFabric};
 use super::types::Technique;
 use crate::BitSet;
 
@@ -23,188 +24,6 @@ fn sees(a: usize, b: usize) -> bool {
 
 fn pos_to_idx(row: usize, col: usize) -> usize {
     row * 9 + col
-}
-
-// ==================== Empty Rectangle ====================
-
-/// Empty Rectangle: In a box, if a digit's candidates form an "L" or "T" shape,
-/// a conjugate pair in a crossing line can eliminate.
-pub fn find_empty_rectangle(fab: &CandidateFabric) -> Option<Finding> {
-    for digit in 1..=9u8 {
-        let di = (digit - 1) as usize;
-        for box_idx in 0..9 {
-            let box_sector = SECTOR_BOX_BASE + box_idx;
-            let box_cells = sector_cells(box_sector);
-
-            // Find cells in this box with this digit
-            let digit_cells: Vec<usize> = box_cells
-                .iter()
-                .filter(|&&c| fab.values[c].is_none() && fab.cell_cands[c].contains(digit))
-                .copied()
-                .collect();
-
-            if digit_cells.len() < 2 {
-                continue;
-            }
-
-            let rows: std::collections::HashSet<usize> =
-                digit_cells.iter().map(|&c| c / 9).collect();
-            let cols: std::collections::HashSet<usize> =
-                digit_cells.iter().map(|&c| c % 9).collect();
-
-            if rows.len() < 2 || cols.len() < 2 {
-                continue;
-            }
-
-            // For each row that has candidates in this box, check ER pattern
-            for &er_row in &rows {
-                let cells_in_row: Vec<usize> = digit_cells
-                    .iter()
-                    .filter(|&&c| c / 9 == er_row)
-                    .copied()
-                    .collect();
-
-                if cells_in_row.len() != 1 {
-                    continue; // Need exactly one cell in this row (the "hinge")
-                }
-
-                let hinge_col = cells_in_row[0] % 9;
-
-                // Others must all be in the hinge column
-                let others: Vec<usize> = digit_cells
-                    .iter()
-                    .filter(|&&c| c / 9 != er_row)
-                    .copied()
-                    .collect();
-                if !others.iter().all(|&c| c % 9 == hinge_col) {
-                    continue;
-                }
-
-                // Look for conjugate pair in the hinge row outside the box
-                let row_sector = SECTOR_ROW_BASE + er_row;
-                let row_mask = fab.sector_digit_cells[row_sector][di];
-                let row_cells: Vec<usize> = (0..9)
-                    .filter(|&i| row_mask & (1 << i) != 0)
-                    .map(|i| sector_cells(row_sector)[i])
-                    .filter(|&c| idx_to_pos(c).box_index() != box_idx)
-                    .collect();
-
-                if row_cells.len() != 1 {
-                    continue;
-                }
-
-                let conjugate = row_cells[0];
-
-                // Eliminate from intersection of conjugate's column and others' rows
-                for &other in &others {
-                    let other_row = other / 9;
-                    let conj_col = conjugate % 9;
-                    let elim = pos_to_idx(other_row, conj_col);
-                    if elim != conjugate
-                        && fab.values[elim].is_none()
-                        && fab.cell_cands[elim].contains(digit)
-                        && idx_to_pos(elim).box_index() != box_idx
-                    {
-                        let mut involved = digit_cells.clone();
-                        involved.push(conjugate);
-                        return Some(Finding {
-                            technique: Technique::EmptyRectangle,
-                            inference: InferenceResult::Elimination {
-                                cell: elim,
-                                values: vec![digit],
-                            },
-                            involved_cells: involved,
-                            explanation: ExplanationData::Uniqueness {
-                                variant: "Empty Rectangle".into(),
-                            },
-                            proof: Some(ProofCertificate::Uniqueness {
-                                pattern: "Empty Rectangle".into(),
-                                floor_cells: vec![cells_in_row[0], conjugate],
-                                roof_cells: digit_cells
-                                    .iter()
-                                    .filter(|&&c| c / 9 != er_row)
-                                    .copied()
-                                    .collect(),
-                            }),
-                        });
-                    }
-                }
-            }
-
-            // Symmetric: check columns
-            for &er_col in &cols {
-                let cells_in_col: Vec<usize> = digit_cells
-                    .iter()
-                    .filter(|&&c| c % 9 == er_col)
-                    .copied()
-                    .collect();
-
-                if cells_in_col.len() != 1 {
-                    continue;
-                }
-
-                let hinge_row = cells_in_col[0] / 9;
-
-                let others: Vec<usize> = digit_cells
-                    .iter()
-                    .filter(|&&c| c % 9 != er_col)
-                    .copied()
-                    .collect();
-                if !others.iter().all(|&c| c / 9 == hinge_row) {
-                    continue;
-                }
-
-                let col_sector = SECTOR_COL_BASE + er_col;
-                let col_mask = fab.sector_digit_cells[col_sector][di];
-                let col_cells: Vec<usize> = (0..9)
-                    .filter(|&i| col_mask & (1 << i) != 0)
-                    .map(|i| sector_cells(col_sector)[i])
-                    .filter(|&c| idx_to_pos(c).box_index() != box_idx)
-                    .collect();
-
-                if col_cells.len() != 1 {
-                    continue;
-                }
-
-                let conjugate = col_cells[0];
-
-                for &other in &others {
-                    let other_col = other % 9;
-                    let conj_row = conjugate / 9;
-                    let elim = pos_to_idx(conj_row, other_col);
-                    if elim != conjugate
-                        && fab.values[elim].is_none()
-                        && fab.cell_cands[elim].contains(digit)
-                        && idx_to_pos(elim).box_index() != box_idx
-                    {
-                        let mut involved = digit_cells.clone();
-                        involved.push(conjugate);
-                        return Some(Finding {
-                            technique: Technique::EmptyRectangle,
-                            inference: InferenceResult::Elimination {
-                                cell: elim,
-                                values: vec![digit],
-                            },
-                            involved_cells: involved,
-                            explanation: ExplanationData::Uniqueness {
-                                variant: "Empty Rectangle".into(),
-                            },
-                            proof: Some(ProofCertificate::Uniqueness {
-                                pattern: "Empty Rectangle".into(),
-                                floor_cells: vec![cells_in_col[0], conjugate],
-                                roof_cells: digit_cells
-                                    .iter()
-                                    .filter(|&&c| c % 9 != er_col)
-                                    .copied()
-                                    .collect(),
-                            }),
-                        });
-                    }
-                }
-            }
-        }
-    }
-    None
 }
 
 // ==================== Avoidable Rectangle ====================

@@ -20,27 +20,29 @@ use crate::{Grid, Position};
 /// Node in the inference graph: a (cell_index, digit) pair.
 type Node = (usize, u8);
 
-/// Strong and weak link maps (shared by X-Chain, 3D Medusa, AIC).
+/// Strong link map (shared by X-Chain, 3D Medusa, AIC).
+///
+/// Weak inferences (NAND relationships) are derived on-the-fly from the
+/// CandidateFabric rather than pre-computed, since they are trivially
+/// enumerable from sector/cell constraints and only one call site needs them.
 pub(crate) struct LinkGraph {
     strong: HashMap<Node, Vec<Node>>,
-    weak: HashMap<Node, Vec<Node>>,
 }
 
 /// Build the link graph from the CandidateFabric.
+///
+/// Only strong links are pre-computed. Weak inferences are derived
+/// on-the-fly via `weak_inferences()`.
 pub(crate) fn build_link_graph(fab: &CandidateFabric) -> LinkGraph {
     let mut strong: HashMap<Node, Vec<Node>> = HashMap::new();
-    let mut weak: HashMap<Node, Vec<Node>> = HashMap::new();
 
     // Conjugate pairs: exactly 2 cells for a value in a sector → strong link
     for sector in 0..27 {
         for digit in 1..=9u8 {
             let di = (digit - 1) as usize;
             let mask = fab.sector_digit_cells[sector][di];
-            let count = mask.count_ones();
-
-            let sec_cells = sector_cells(sector);
-
-            if count == 2 {
+            if mask.count_ones() == 2 {
+                let sec_cells = sector_cells(sector);
                 let cells: Vec<usize> = (0..9)
                     .filter(|&i| mask & (1 << i) != 0)
                     .map(|i| sec_cells[i])
@@ -49,24 +51,6 @@ pub(crate) fn build_link_graph(fab: &CandidateFabric) -> LinkGraph {
                 let b = (cells[1], digit);
                 strong.entry(a).or_default().push(b);
                 strong.entry(b).or_default().push(a);
-                weak.entry(a).or_default().push(b);
-                weak.entry(b).or_default().push(a);
-            }
-
-            // Weak links: same value in same sector with >2 occurrences
-            if count > 2 {
-                let cells: Vec<usize> = (0..9)
-                    .filter(|&i| mask & (1 << i) != 0)
-                    .map(|i| sec_cells[i])
-                    .collect();
-                for i in 0..cells.len() {
-                    for j in (i + 1)..cells.len() {
-                        let a = (cells[i], digit);
-                        let b = (cells[j], digit);
-                        weak.entry(a).or_default().push(b);
-                        weak.entry(b).or_default().push(a);
-                    }
-                }
             }
         }
     }
@@ -77,25 +61,12 @@ pub(crate) fn build_link_graph(fab: &CandidateFabric) -> LinkGraph {
             continue;
         }
         let cands = fab.cell_cands[idx];
-        let vals: Vec<u8> = cands.iter().collect();
-
-        if vals.len() == 2 {
+        if cands.count() == 2 {
+            let vals: Vec<u8> = cands.iter().collect();
             let a = (idx, vals[0]);
             let b = (idx, vals[1]);
             strong.entry(a).or_default().push(b);
             strong.entry(b).or_default().push(a);
-            weak.entry(a).or_default().push(b);
-            weak.entry(b).or_default().push(a);
-        }
-
-        // Weak links: different values in same cell
-        for i in 0..vals.len() {
-            for j in (i + 1)..vals.len() {
-                let a = (idx, vals[i]);
-                let b = (idx, vals[j]);
-                weak.entry(a).or_default().push(b);
-                weak.entry(b).or_default().push(a);
-            }
         }
     }
 
@@ -104,12 +75,243 @@ pub(crate) fn build_link_graph(fab: &CandidateFabric) -> LinkGraph {
         list.sort_unstable();
         list.dedup();
     }
-    for list in weak.values_mut() {
-        list.sort_unstable();
-        list.dedup();
+
+    LinkGraph { strong }
+}
+
+/// Derive weak inferences for a node on-the-fly from the CandidateFabric.
+///
+/// A weak inference (NAND) exists between two nodes when at most one can
+/// be true: same digit in same sector, or different digits in same cell.
+fn weak_inferences(fab: &CandidateFabric, node: Node) -> Vec<Node> {
+    let (cell, digit) = node;
+    let mut result = Vec::new();
+
+    // Same digit, same sector (at most one cell holds this digit per sector)
+    for &sector in &fab.cell_sectors[cell] {
+        let di = (digit - 1) as usize;
+        let mask = fab.sector_digit_cells[sector][di];
+        let sec_cells = sector_cells(sector);
+        for i in 0..9 {
+            if mask & (1 << i) != 0 {
+                let c = sec_cells[i];
+                if c != cell {
+                    result.push((c, digit));
+                }
+            }
+        }
     }
 
-    LinkGraph { strong, weak }
+    // Same cell, different digit (a cell holds at most one value)
+    for d in fab.cell_cands[cell].iter() {
+        if d != digit {
+            result.push((cell, d));
+        }
+    }
+
+    result.sort_unstable();
+    result.dedup();
+    result
+}
+
+// ==================== Empty Rectangle ====================
+//
+// Empty Rectangle is a single-digit pattern (X-chain sub-class), NOT a
+// uniqueness technique.  The box's L/T-shaped candidate distribution acts
+// as an ERI (Empty Rectangle Intersection) strong link connecting a row
+// and a column within the box.  Combined with a conjugate pair in a
+// crossing line, it forms a 2-strong-link single-digit chain.
+//
+// Community classification (Sudopedia): "Single Digit Patterns"
+// StrmCkr taxonomy: (row or col) + box => type 2 to type 5
+// sudokuwiki.org has retired the standalone name in favour of X-chain.
+
+/// Empty Rectangle: single-digit pattern using an ERI pivot in a box
+/// combined with a conjugate pair in a crossing line.
+pub fn find_empty_rectangle(fab: &CandidateFabric) -> Option<Finding> {
+    use super::fabric::{SECTOR_BOX_BASE, SECTOR_COL_BASE, SECTOR_ROW_BASE};
+
+    fn pos_to_idx(row: usize, col: usize) -> usize {
+        row * 9 + col
+    }
+
+    for digit in 1..=9u8 {
+        let di = (digit - 1) as usize;
+        for box_idx in 0..9 {
+            let box_sector = SECTOR_BOX_BASE + box_idx;
+            let box_cells = sector_cells(box_sector);
+
+            let digit_cells: Vec<usize> = box_cells
+                .iter()
+                .filter(|&&c| fab.values[c].is_none() && fab.cell_cands[c].contains(digit))
+                .copied()
+                .collect();
+
+            if digit_cells.len() < 2 {
+                continue;
+            }
+
+            let rows: std::collections::HashSet<usize> =
+                digit_cells.iter().map(|&c| c / 9).collect();
+            let cols: std::collections::HashSet<usize> =
+                digit_cells.iter().map(|&c| c % 9).collect();
+
+            if rows.len() < 2 || cols.len() < 2 {
+                continue;
+            }
+
+            // Row-based ER: hinge in a row, others in hinge column
+            for &er_row in &rows {
+                let cells_in_row: Vec<usize> = digit_cells
+                    .iter()
+                    .filter(|&&c| c / 9 == er_row)
+                    .copied()
+                    .collect();
+
+                if cells_in_row.len() != 1 {
+                    continue;
+                }
+
+                let hinge = cells_in_row[0];
+                let hinge_col = hinge % 9;
+
+                let others: Vec<usize> = digit_cells
+                    .iter()
+                    .filter(|&&c| c / 9 != er_row)
+                    .copied()
+                    .collect();
+                if !others.iter().all(|&c| c % 9 == hinge_col) {
+                    continue;
+                }
+
+                let row_sector = SECTOR_ROW_BASE + er_row;
+                let row_mask = fab.sector_digit_cells[row_sector][di];
+                let row_cells: Vec<usize> = (0..9)
+                    .filter(|&i| row_mask & (1 << i) != 0)
+                    .map(|i| sector_cells(row_sector)[i])
+                    .filter(|&c| super::fabric::idx_to_pos(c).box_index() != box_idx)
+                    .collect();
+
+                if row_cells.len() != 1 {
+                    continue;
+                }
+
+                let conjugate = row_cells[0];
+
+                for &other in &others {
+                    let other_row = other / 9;
+                    let conj_col = conjugate % 9;
+                    let elim = pos_to_idx(other_row, conj_col);
+                    if elim != conjugate
+                        && fab.values[elim].is_none()
+                        && fab.cell_cands[elim].contains(digit)
+                        && super::fabric::idx_to_pos(elim).box_index() != box_idx
+                    {
+                        let mut involved = digit_cells.clone();
+                        involved.push(conjugate);
+                        // AIC chain: conjugate =[strong, conjugate pair]= hinge
+                        //            =[strong, ERI]= other (box column)
+                        return Some(Finding {
+                            technique: Technique::EmptyRectangle,
+                            inference: InferenceResult::Elimination {
+                                cell: elim,
+                                values: vec![digit],
+                            },
+                            involved_cells: involved,
+                            explanation: ExplanationData::Chain {
+                                variant: "Empty Rectangle".into(),
+                                chain_length: 3,
+                                values: vec![digit],
+                            },
+                            proof: Some(ProofCertificate::Aic {
+                                chain: vec![
+                                    (conjugate, digit, Polarity::On),
+                                    (hinge, digit, Polarity::Off),
+                                    (other, digit, Polarity::On),
+                                ],
+                                link_types: vec![LinkType::Strong, LinkType::Strong],
+                            }),
+                        });
+                    }
+                }
+            }
+
+            // Column-based ER: hinge in a column, others in hinge row
+            for &er_col in &cols {
+                let cells_in_col: Vec<usize> = digit_cells
+                    .iter()
+                    .filter(|&&c| c % 9 == er_col)
+                    .copied()
+                    .collect();
+
+                if cells_in_col.len() != 1 {
+                    continue;
+                }
+
+                let hinge = cells_in_col[0];
+                let hinge_row = hinge / 9;
+
+                let others: Vec<usize> = digit_cells
+                    .iter()
+                    .filter(|&&c| c % 9 != er_col)
+                    .copied()
+                    .collect();
+                if !others.iter().all(|&c| c / 9 == hinge_row) {
+                    continue;
+                }
+
+                let col_sector = SECTOR_COL_BASE + er_col;
+                let col_mask = fab.sector_digit_cells[col_sector][di];
+                let col_cells: Vec<usize> = (0..9)
+                    .filter(|&i| col_mask & (1 << i) != 0)
+                    .map(|i| sector_cells(col_sector)[i])
+                    .filter(|&c| super::fabric::idx_to_pos(c).box_index() != box_idx)
+                    .collect();
+
+                if col_cells.len() != 1 {
+                    continue;
+                }
+
+                let conjugate = col_cells[0];
+
+                for &other in &others {
+                    let other_col = other % 9;
+                    let conj_row = conjugate / 9;
+                    let elim = pos_to_idx(conj_row, other_col);
+                    if elim != conjugate
+                        && fab.values[elim].is_none()
+                        && fab.cell_cands[elim].contains(digit)
+                        && super::fabric::idx_to_pos(elim).box_index() != box_idx
+                    {
+                        let mut involved = digit_cells.clone();
+                        involved.push(conjugate);
+                        return Some(Finding {
+                            technique: Technique::EmptyRectangle,
+                            inference: InferenceResult::Elimination {
+                                cell: elim,
+                                values: vec![digit],
+                            },
+                            involved_cells: involved,
+                            explanation: ExplanationData::Chain {
+                                variant: "Empty Rectangle".into(),
+                                chain_length: 3,
+                                values: vec![digit],
+                            },
+                            proof: Some(ProofCertificate::Aic {
+                                chain: vec![
+                                    (conjugate, digit, Polarity::On),
+                                    (hinge, digit, Polarity::Off),
+                                    (other, digit, Polarity::On),
+                                ],
+                                link_types: vec![LinkType::Strong, LinkType::Strong],
+                            }),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 // ==================== W-Wing ====================
@@ -241,7 +443,39 @@ pub fn find_aic(fab: &CandidateFabric, graph: &LinkGraph) -> Option<Finding> {
     find_aic_with_filter(fab, graph, false)
 }
 
-/// Core AIC search: BFS alternating strong/weak links.
+/// Classify a 3-strong-link AIC chain using StrmCkr's wing taxonomy.
+///
+/// Strong link types: V = bivalue cell (same cell, different digits),
+/// L = bilocal conjugate pair (same digit, different cells).
+/// Returns the community wing name for display.
+fn classify_wing(chain: &[Node]) -> Option<&'static str> {
+    // 3 strong links = 6 nodes (strong-weak-strong-weak-strong = 5 links, 6 nodes)
+    if chain.len() != 6 {
+        return None;
+    }
+    // Strong links are at positions (0,1), (2,3), (4,5)
+    let link_type = |i: usize| -> char {
+        let (c1, _) = chain[i];
+        let (c2, _) = chain[i + 1];
+        if c1 == c2 { 'V' } else { 'L' }
+    };
+    let s0 = link_type(0);
+    let s1 = link_type(2);
+    let s2 = link_type(4);
+    match (s0, s1, s2) {
+        ('V', 'V', 'V') => Some("XY-Wing (VVV)"),
+        ('V', 'L', 'V') => Some("W-Wing (VLV)"),
+        ('L', 'V', 'L') => Some("S-Wing (LVL)"),
+        ('V', 'L', 'L') => Some("M-Wing (VLL)"),
+        ('L', 'L', 'V') => Some("M-Wing (LLV)"),
+        ('L', 'L', 'L') => Some("L-Wing (LLL)"),
+        ('V', 'V', 'L') => Some("H-Wing (VVL)"),
+        ('L', 'V', 'V') => Some("H-Wing (LVV)"),
+        _ => None,
+    }
+}
+
+/// Core AIC search: BFS alternating strong/weak inferences.
 fn find_aic_with_filter(
     fab: &CandidateFabric,
     graph: &LinkGraph,
@@ -277,97 +511,40 @@ fn find_aic_with_filter(
             visited.insert(key);
 
             if arrived_strong {
-                // Follow weak links
-                if let Some(neighbors) = graph.weak.get(&current) {
-                    for &next in neighbors {
-                        if chain.contains(&next) && next != start {
-                            continue;
-                        }
-                        if single_value_only && next.1 != start.1 {
-                            continue;
-                        }
+                // Follow weak inferences (derived on-the-fly from fabric)
+                let neighbors = weak_inferences(fab, current);
+                for next in neighbors {
+                    if chain.contains(&next) && next != start {
+                        continue;
+                    }
+                    if single_value_only && next.1 != start.1 {
+                        continue;
+                    }
 
-                        // Check for elimination at chain endpoints
-                        if next != start && chain.len() >= 3 {
-                            // Type 1: same value at different positions
-                            if next.1 == start.1 && next.0 != start.0 {
-                                let val = start.1;
-                                for idx in 0..81 {
-                                    if fab.values[idx].is_some() || idx == start.0 || idx == next.0
-                                    {
-                                        continue;
-                                    }
-                                    if !fab.cell_cands[idx].contains(val) {
-                                        continue;
-                                    }
-                                    if fab.sees(idx, start.0) && fab.sees(idx, next.0) {
-                                        let tech = if single_value_only {
-                                            Technique::XChain
-                                        } else {
-                                            Technique::AIC
-                                        };
-                                        let mut involved: Vec<usize> =
-                                            chain.iter().map(|n| n.0).collect();
-                                        involved.push(next.0);
-                                        involved.sort_unstable();
-                                        involved.dedup();
-                                        let mut full_chain = chain.clone();
-                                        full_chain.push(next);
-                                        let aic_chain: Vec<(usize, u8, Polarity)> = full_chain
-                                            .iter()
-                                            .enumerate()
-                                            .map(|(i, &(c, d))| {
-                                                let pol = if i % 2 == 0 {
-                                                    Polarity::On
-                                                } else {
-                                                    Polarity::Off
-                                                };
-                                                (c, d, pol)
-                                            })
-                                            .collect();
-                                        let aic_links: Vec<LinkType> = (0..full_chain.len() - 1)
-                                            .map(|i| {
-                                                if i % 2 == 0 {
-                                                    LinkType::Strong
-                                                } else {
-                                                    LinkType::Weak
-                                                }
-                                            })
-                                            .collect();
-                                        return Some(Finding {
-                                            technique: tech,
-                                            inference: InferenceResult::Elimination {
-                                                cell: idx,
-                                                values: vec![val],
-                                            },
-                                            involved_cells: involved,
-                                            explanation: ExplanationData::Chain {
-                                                variant: if single_value_only {
-                                                    "X-Chain".into()
-                                                } else {
-                                                    "AIC".into()
-                                                },
-                                                chain_length: chain.len(),
-                                                values: vec![val],
-                                            },
-                                            proof: Some(ProofCertificate::Aic {
-                                                chain: aic_chain,
-                                                link_types: aic_links,
-                                            }),
-                                        });
-                                    }
+                    // Check for elimination at chain endpoints
+                    if next != start && chain.len() >= 3 {
+                        // Type 1: same value at different positions
+                        if next.1 == start.1 && next.0 != start.0 {
+                            let val = start.1;
+                            for idx in 0..81 {
+                                if fab.values[idx].is_some() || idx == start.0 || idx == next.0
+                                {
+                                    continue;
                                 }
-                            }
-
-                            // Type 2: same cell, different values → eliminate other candidates
-                            if !single_value_only && next.0 == start.0 && next.1 != start.1 {
-                                let cands = fab.cell_cands[start.0];
-                                let to_remove: Vec<u8> = cands
-                                    .iter()
-                                    .filter(|&v| v != start.1 && v != next.1)
-                                    .collect();
-                                if !to_remove.is_empty() {
-                                    let involved: Vec<usize> = chain.iter().map(|n| n.0).collect();
+                                if !fab.cell_cands[idx].contains(val) {
+                                    continue;
+                                }
+                                if fab.sees(idx, start.0) && fab.sees(idx, next.0) {
+                                    let tech = if single_value_only {
+                                        Technique::XChain
+                                    } else {
+                                        Technique::AIC
+                                    };
+                                    let mut involved: Vec<usize> =
+                                        chain.iter().map(|n| n.0).collect();
+                                    involved.push(next.0);
+                                    involved.sort_unstable();
+                                    involved.dedup();
                                     let mut full_chain = chain.clone();
                                     full_chain.push(next);
                                     let aic_chain: Vec<(usize, u8, Polarity)> = full_chain
@@ -391,17 +568,27 @@ fn find_aic_with_filter(
                                             }
                                         })
                                         .collect();
+                                    // Classify named wings for 3-strong-link chains
+                                    let variant = if let Some(wing_name) =
+                                        classify_wing(&full_chain)
+                                    {
+                                        wing_name.to_string()
+                                    } else if single_value_only {
+                                        "X-Chain".into()
+                                    } else {
+                                        "AIC".into()
+                                    };
                                     return Some(Finding {
-                                        technique: Technique::AIC,
+                                        technique: tech,
                                         inference: InferenceResult::Elimination {
-                                            cell: start.0,
-                                            values: to_remove.clone(),
+                                            cell: idx,
+                                            values: vec![val],
                                         },
                                         involved_cells: involved,
                                         explanation: ExplanationData::Chain {
-                                            variant: "AIC".into(),
+                                            variant,
                                             chain_length: chain.len(),
-                                            values: to_remove,
+                                            values: vec![val],
                                         },
                                         proof: Some(ProofCertificate::Aic {
                                             chain: aic_chain,
@@ -412,11 +599,66 @@ fn find_aic_with_filter(
                             }
                         }
 
-                        if next != start && !visited.contains(&(next, false)) {
-                            let mut new_chain = chain.clone();
-                            new_chain.push(next);
-                            queue.push_back((next, false, new_chain));
+                        // Type 2: same cell, different values → eliminate other candidates
+                        if !single_value_only && next.0 == start.0 && next.1 != start.1 {
+                            let cands = fab.cell_cands[start.0];
+                            let to_remove: Vec<u8> = cands
+                                .iter()
+                                .filter(|&v| v != start.1 && v != next.1)
+                                .collect();
+                            if !to_remove.is_empty() {
+                                let involved: Vec<usize> = chain.iter().map(|n| n.0).collect();
+                                let mut full_chain = chain.clone();
+                                full_chain.push(next);
+                                let aic_chain: Vec<(usize, u8, Polarity)> = full_chain
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, &(c, d))| {
+                                        let pol = if i % 2 == 0 {
+                                            Polarity::On
+                                        } else {
+                                            Polarity::Off
+                                        };
+                                        (c, d, pol)
+                                    })
+                                    .collect();
+                                let aic_links: Vec<LinkType> = (0..full_chain.len() - 1)
+                                    .map(|i| {
+                                        if i % 2 == 0 {
+                                            LinkType::Strong
+                                        } else {
+                                            LinkType::Weak
+                                        }
+                                    })
+                                    .collect();
+                                let variant = classify_wing(&full_chain)
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_else(|| "AIC".into());
+                                return Some(Finding {
+                                    technique: Technique::AIC,
+                                    inference: InferenceResult::Elimination {
+                                        cell: start.0,
+                                        values: to_remove.clone(),
+                                    },
+                                    involved_cells: involved,
+                                    explanation: ExplanationData::Chain {
+                                        variant,
+                                        chain_length: chain.len(),
+                                        values: to_remove,
+                                    },
+                                    proof: Some(ProofCertificate::Aic {
+                                        chain: aic_chain,
+                                        link_types: aic_links,
+                                    }),
+                                });
+                            }
                         }
+                    }
+
+                    if next != start && !visited.contains(&(next, false)) {
+                        let mut new_chain = chain.clone();
+                        new_chain.push(next);
+                        queue.push_back((next, false, new_chain));
                     }
                 }
             } else {

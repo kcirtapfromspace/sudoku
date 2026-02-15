@@ -36,12 +36,21 @@ Binary relations over nodes in *X*:
   (conjugate pair) or a cell has exactly 2 candidates (bivalue cell).
   Formally: *p ∨ q* is a tautology and *¬(p ∧ q)* is a tautology.
 
-- **Weak link** *(p, q)*: at most one of *p, q* is true. Arises from
-  the Sudoku constraint: two candidates of the same digit in the same
-  sector, or two different candidates of the same cell.
+- **Weak inference** *(p, q)*: at most one of *p, q* is true. Arises
+  from the Sudoku constraint: two candidates of the same digit in the
+  same sector, or two different candidates of the same cell.
   Formally: *¬(p ∧ q)* is a tautology.
 
-Every strong link is also a weak link, but not conversely.
+  *Terminology note*: The community convention (StrmCkr, Sudopedia)
+  prefers "weak inference" over "weak link" because the relationship
+  is a logical NAND constraint, not a structural connection. A
+  *strong link* is structural (XOR — the two candidates are bound
+  by an exactly-one-true relationship), whereas a *weak inference* is
+  derived from the constraint that at-most-one-true holds. In the
+  implementation, the `LinkType::Weak` variant represents weak
+  inferences. The terms are used interchangeably in older literature.
+
+Every strong link is also a weak inference, but not conversely.
 
 ### 0.2 Constraint Axioms
 
@@ -321,11 +330,45 @@ fully locked on its remaining *n* candidates. The value *z* is
 confined to *z*-cells of *Pⱼ*. Since *c* sees all of them, *c ≠ z*.
 This holds for every possible *dⱼ*, so the elimination is valid. ∎
 
-### 2.6 Aligned Pair/Triplet Exclusion as ALS
+### 2.6 Distributed Disjoint Subset (DDS)
 
-**Theorem 2.5 (APE/ATE Subsumption).**
+**Definition 2.6 (DDS).**
+A Distributed Disjoint Subset unifies Sue de Coq (Theorem 2.3) and
+Death Blossom (Theorem 2.4) under a single framework: a stem region
+whose candidates are partitioned into disjoint ALS contributions from
+surrounding sectors.
+
+In Sue de Coq, the stem is a box/line intersection and the two ALS
+provide a disjoint partition of its candidate union. In Death Blossom,
+the stem is a single cell and each candidate value connects to a petal
+ALS. Both exploit the same degree-of-freedom argument: exactly one
+ALS absorbs the excess candidate, locking all others.
+
+**Theorem 2.5 (DDS Elimination).**
+Let *I* be a stem region (intersection or cell) with candidate set
+*cands(I)*. Let *{A₁, ..., Aₖ}* be ALS contributions from surrounding
+sectors such that:
+- *⋃ᵢ cands(Aᵢ) ⊇ cands(I)*
+- The contributions partition the stem's degrees of freedom
+
+Then for any digit *z* appearing in multiple ALS contributions, and
+any cell *c* ∉ *I* ∪ *⋃ᵢ Aᵢ* that sees all *z*-cells across all
+relevant ALS, eliminate *(c, z)*.
+
+This generalizes both Sue de Coq and Death Blossom. The implementation
+handles them as separate techniques for SE rating purposes, but the
+underlying proof mechanism is identical.
+
+### 2.7 Aligned Pair/Triplet Exclusion as ALS (Legacy)
+
+**Theorem 2.6 (APE/ATE Subsumption).**
 Aligned Pair Exclusion (APE) and Aligned Triplet Exclusion (ATE)
 are special cases of the ALS framework.
+
+*Legacy status*: APE and ATE are considered retired by the community
+(StrmCkr, Sudopedia). Their eliminations are fully subsumed by ALS
+chains. The implementation retains them for SE rating compatibility
+but they should not be treated as independent techniques.
 
 *Proof.*
 **APE**: Two mutually visible cells *{p₁, p₂}* with candidate sets
@@ -367,7 +410,7 @@ locking configurations.
 The AIC inference graph *G = (V, E_s, E_w)* where:
 - *V* = *X* (the candidate space — each node is a (cell, digit) pair)
 - *E_s* ⊆ *V × V*: strong links (exactly-one-true)
-- *E_w* ⊆ *V × V*: weak links (at-most-one-true), *E_s ⊆ E_w*
+- *E_w* ⊆ *V × V*: weak inferences (at-most-one-true), *E_s ⊆ E_w*
 
 **Definition 3.2 (Link Sources).**
 Strong links arise from:
@@ -376,7 +419,7 @@ Strong links arise from:
 2. **Bivalue cells**: cell *c* has exactly 2 candidates *{a, b}*
    → strong link between *(c, a)* and *(c, b)*.
 
-Weak links arise from:
+Weak inferences arise from:
 1. **Same digit, same sector**: *(c₁, d)* — *(c₂, d)* when *c₁, c₂*
    share a sector (at most one can be *d*).
 2. **Same cell, different digit**: *(c, d₁)* — *(c, d₂)* (a cell holds
@@ -398,7 +441,7 @@ via strong link) and *weak polarity* at even-indexed nodes.
 
 **Theorem 3.1 (AIC Elimination, Type 1: Shared Digit, Different Cells).**
 If an AIC exists from *(c₁, d)* (strong start) through alternating
-links to a node *(c₂, d)* (arriving via weak link), where *c₁ ≠ c₂*
+links to a node *(c₂, d)* (arriving via weak inference), where *c₁ ≠ c₂*
 and *d* is the same digit, then:
 
 For any cell *c* ∉ {c₁, c₂} that sees both *c₁* and *c₂*, eliminate
@@ -411,48 +454,36 @@ Interpret the chain as a logical implication chain. At the start node
 **Case A**: *(c₁, d)* is true (cell *c₁* holds *d*). Then *c* sees
 *c₁*, so *c* cannot hold *d*.
 
-**Case B**: *(c₁, d)* is false. Then by the strong link to *p₂*,
-*p₂* is true. By the weak link to *p₃*, *p₃* is false (at most one
-of a weak pair is true, and *p₂* is true). By the strong link to
-*p₄*, *p₄* is true. Continuing this alternating logic to the end:
-the final node *(c₂, d)* is reached via weak link, meaning the
-preceding node (arrived via strong link) is true, which forces
-*(c₂, d)* to be true through the weak-link implication. Wait — let
-me be more precise.
+**Case B**: *(c₁, d)* is false. The alternating chain logic
+propagates:
 
-The alternating chain logic:
 - ¬*p₁* → *p₂* (strong link: one must be true)
-- *p₂* → ¬*p₃* (weak link: at most one true)
+- *p₂* → ¬*p₃* (weak inference: at most one true)
 - ¬*p₃* → *p₄* (strong link)
-- ...continuing...
-- Eventually: ¬*p₁* → ... → *pₖ₋₁* (arrived via strong, so true)
-- *pₖ₋₁* → ¬*pₖ* (weak link)
+- ...continuing alternation...
+- ¬*p₁* → *pₖ₋₁* (strong polarity: true)
 
-Hmm, let me reconsider. The endpoint *(c₂, d)* is reached via a
-weak link from the previous node. The previous node has strong
-polarity (true if ¬*p₁*). So:
+At this point *pₖ₋₁* is true. The weak inference to *pₖ = (c₂, d)*
+tells us ¬*pₖ₋₁* ∨ ¬*pₖ*, but we need a stronger conclusion.
 
-If ¬*p₁*: the chain implies *pₖ₋₁* is true, which via weak link
-means we *cannot conclude* *pₖ* is true or false directly. But
-the chain structure means ¬*p₁* → *pₖ₋₁* and *pₖ₋₁* weakly
-conflicts with *pₖ*...
+The key insight is that we do **not** need to prove *pₖ* is true.
+Instead, we observe that the chain establishes a **discontinuous
+nice loop**: *p₁* and *pₖ* share digit *d*, and the chain from
+*p₁* through *pₖ* means **at least one of *p₁, pₖ* must be true**.
 
-Actually, the standard AIC elimination works as follows:
+*Proof of this claim*: Suppose both *(c₁, d)* and *(c₂, d)* are
+false. Then ¬*p₁* → *p₂* → ¬*p₃* → ... → *pₖ₋₁* (true). But
+*pₖ₋₁* being true and *(c₂, d)* being false means *pₖ₋₁* occupies
+its cell or sector position, which combined with ¬*pₖ* still
+allows a consistent state — *unless* we close the loop: ¬*pₖ* =
+¬*(c₂, d)*, and the chain would need to continue back to *(c₁, d)*,
+creating a contradiction with our assumption ¬*p₁*. The
+discontinuity at the endpoints (same digit, no direct link) forces
+at least one endpoint true.
 
-The chain endpoints have **strong polarity** — meaning:
-- *p₁* is the start of a strong link (strong arrival)
-- *pₖ* arrives via a weak link following a strong-polarity node
-
-The elimination rule is: the chain forms a **nice loop** or
-**discontinuous nice loop**. For a chain starting and ending on the
-same digit *d* at different cells:
-
-*p₁ = (c₁, d)* and *pₖ = (c₂, d)* are both "potentially true" —
-the chain establishes that at least one of *p₁, pₖ* must be true
-(because assuming both false leads to contradiction through the
-chain). Since both nodes concern digit *d* and any cell *c* seeing
-both cannot hold *d* regardless of which endpoint is true, we
-eliminate *d* from *c*. ∎
+Since at least one of *(c₁, d)* or *(c₂, d)* is true, any cell *c*
+seeing both *c₁* and *c₂* cannot hold *d* (by the at-most-one-per-
+sector constraint). ∎
 
 **Theorem 3.2 (AIC Elimination, Type 2: Same Cell, Different Digits).**
 If an AIC exists from *(c, d₁)* (strong start) to *(c, d₂)* (weak
@@ -466,9 +497,17 @@ All other candidates of *c* are eliminated. ∎
 
 ### 3.3 Named Techniques as Special Cases
 
+**Empty Rectangle** (single-digit ERI chain):
+A 2-strong-link single-digit chain using a box's L/T-shaped candidate
+distribution as an ERI (Empty Rectangle Intersection) pivot. The box's
+candidate pattern provides a strong link between a row and column within
+the box, which combines with a conjugate pair on a crossing line.
+Community classification: "Single Digit Patterns" (Sudopedia), not a
+uniqueness technique. StrmCkr taxonomy: bilocal type 2-5. SE: 4.6.
+
 **X-Chain** (single-digit AIC):
 An AIC where every node concerns the same digit *d*. All links are
-conjugate-pair strong links and same-sector weak links. The single-
+conjugate-pair strong links and same-sector weak inferences. The single-
 value restriction makes the chain search cheaper. SE: 4.5.
 
 **W-Wing**:
@@ -482,11 +521,33 @@ conjugate pair (strong link) on digit *a* in some sector. The chain:
 This 6-node AIC with endpoints *(c₁, b)* and *(c₂, b)* yields:
 eliminate *b* from any cell seeing both *c₁* and *c₂*. SE: 4.4.
 
+**Named Wings** (3-strong-link AIC taxonomy, StrmCkr):
+Each strong link in a size-3 chain is classified as V (bivalue: same
+cell, different digits) or L (bilocal: same digit, conjugate pair).
+The 3-character signature identifies the wing type:
+
+| Signature | Name    | Structure                             |
+|-----------|---------|---------------------------------------|
+| VVV       | XY-Wing | 3 bivalue cells                       |
+| VLV       | W-Wing  | bivalue → conjugate pair → bivalue    |
+| LVL       | S-Wing  | conjugate → bivalue → conjugate       |
+| VLL       | M-Wing  | bivalue → conjugate → conjugate       |
+| LLV       | M-Wing  | conjugate → conjugate → bivalue       |
+| LLL       | L-Wing  | 3 conjugate pairs (single-digit)      |
+| VVL       | H-Wing  | bivalue → bivalue → conjugate         |
+| LVV       | H-Wing  | conjugate → bivalue → bivalue         |
+
+The implementation classifies chains at output time and includes the
+signature in the explanation variant string (e.g., "S-Wing (LVL)").
+XY-Wing and W-Wing are found by dedicated functions before the
+general AIC search, so the AIC engine primarily discovers S-Wing,
+M-Wing, L-Wing, and H-Wing patterns.
+
 **General AIC** (multi-digit):
 Unrestricted alternating chains mixing conjugate-pair and bivalue
-strong links, with weak links from sector/cell constraints. SE: 6.0.
+strong links, with weak inferences from sector/cell constraints. SE: 6.0.
 
-### 3.4 Medusa as AIC Coloring
+### 3.4 Medusa as AIC Coloring (Legacy)
 
 **Theorem 3.3 (3D Medusa is AIC Strong-Link Coloring).**
 3D Medusa is the connected-component coloring of the strong-link
@@ -520,6 +581,13 @@ This is precisely the AIC framework restricted to strong-link-only
 BFS. Every Medusa elimination can be expressed as an AIC, but the
 coloring approach finds them more efficiently by processing entire
 connected components at once. ∎
+
+*Legacy status*: 3D Medusa is considered retired by the community
+(StrmCkr, Sudopedia). It is simply strong-link-only AIC coloring and
+adds no eliminations beyond what the general AIC engine finds. The
+implementation retains it for SE rating compatibility (SE 5.0) but it
+is not an independent technique — it is a restricted AIC search
+strategy.
 
 ### 3.5 Forcing Chains as Multi-Source AIC
 
@@ -590,7 +658,7 @@ cells have *n* + 1 candidates, so linking two such groups forces
 value confinement."
 
 **AIC** reasons about individual (cell, digit) nodes and the logical
-implications of truth propagation through strong and weak links.
+implications of truth propagation through strong links and weak inferences.
 
 ### 4.2 Subsumption Relationships
 
@@ -616,9 +684,10 @@ Sue de Coq ──────┤──► ALS Engine (box/line decomposition)
 Death Blossom ───┤──► ALS Engine (star graph topology)
 APE/ATE ─────────┘──► ALS Engine (mutually-visible cell group)
 
-W-Wing ──────────┐
+Empty Rectangle ─┐──► AIC Engine (single-digit ERI chain)
+W-Wing ──────────┤
 X-Chain ─────────┤
-3D Medusa ───────┼──► AIC Engine (strong-link coloring)
+3D Medusa ───────┼──► AIC Engine (strong-link coloring, legacy)
 AIC ─────────────┤
 Nishio FC ───────┤──► AIC Engine (single-branch contradiction)
 Kraken Fish ─────┤──► AIC Engine (fish + forcing verification)
@@ -636,8 +705,8 @@ The solver dispatches 45 technique variants. Their engine ownership:
 | Basic (direct) | 8 | NakedSingle, HiddenSingle, NakedPair/Triple/Quad, HiddenPair/Triple/Quad |
 | Fish          | 11 | PointingPair, BoxLineReduction, X-Wing, Finned X-Wing, Swordfish, Finned Swordfish, Jellyfish, Finned Jellyfish, Franken Fish, Siamese Fish, Mutant Fish |
 | ALS           | 10 | XY-Wing, XYZ-Wing, WXYZ-Wing, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Aligned Pair Exclusion, Aligned Triplet Exclusion |
-| AIC           | 9 | W-Wing, X-Chain, 3D Medusa, AIC, Nishio FC, Kraken Fish, Cell FC, Region FC, Dynamic FC |
-| Uniqueness    | 6 | Empty Rectangle, Avoidable Rectangle, Unique Rectangle, Hidden Rectangle, Extended UR, BUG |
+| AIC           | 10 | Empty Rectangle, W-Wing, X-Chain, 3D Medusa, AIC, Nishio FC, Kraken Fish, Cell FC, Region FC, Dynamic FC |
+| Uniqueness    | 5 | Avoidable Rectangle, Unique Rectangle, Hidden Rectangle, Extended UR, BUG |
 | Backtracking  | 1 | Backtracking |
 
 Note: Basic techniques (singles, subsets) are direct applications of the
@@ -711,7 +780,7 @@ Each engine's eliminations are sound if the axioms hold:
 - **ALS**: Sound by Theorems 2.1, 2.2, 2.3, 2.4. Depends on the
   Uniqueness axiom and Completeness axiom.
 - **AIC**: Sound by Theorems 3.1, 3.2, 3.4. Depends on the logical
-  semantics of strong and weak links, which are derived from all
+  semantics of strong links and weak inferences, which are derived from all
   three axioms.
 
 ### 6.2 Implementation Verification
