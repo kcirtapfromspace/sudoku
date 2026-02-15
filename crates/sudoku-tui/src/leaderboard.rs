@@ -138,10 +138,7 @@ struct LocalLeaderboardData {
 
 impl LocalLeaderboard {
     pub fn new() -> Self {
-        let path = dirs::data_local_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("."))
-            .join("sudoku_leaderboard.json");
-
+        let path = crate::persistence::app_data_dir().join("sudoku_leaderboard.json");
         Self {
             path,
             cache: Mutex::new(None),
@@ -166,10 +163,8 @@ impl LocalLeaderboard {
     fn save(&self, data: &LocalLeaderboardData) -> LeaderboardResult<()> {
         let json = serde_json::to_string_pretty(data)
             .map_err(|e| LeaderboardError::StorageError(e.to_string()))?;
-
-        std::fs::write(&self.path, json)
+        crate::persistence::atomic_write(&self.path, json.as_bytes())
             .map_err(|e| LeaderboardError::StorageError(e.to_string()))?;
-
         *self.cache.lock().unwrap() = Some(data.clone());
         Ok(())
     }
@@ -528,7 +523,7 @@ impl LeaderboardBackend for RemoteLeaderboard {
 
         let response: RankResponse = self.request(
             "GET",
-            &format!("/api/v1/leaderboard/rank/{}/{:?}", player_name, difficulty),
+            &format!("/api/v1/leaderboard/rank/{}/{:?}", urlencoding::encode(player_name), difficulty),
             None::<&()>,
         )?;
 
@@ -547,7 +542,7 @@ impl LeaderboardBackend for RemoteLeaderboard {
 
         let response: ScoresResponse = self.request(
             "GET",
-            &format!("/api/v1/leaderboard/player/{}?limit={}", player_name, limit),
+            &format!("/api/v1/leaderboard/player/{}?limit={}", urlencoding::encode(player_name), limit),
             None::<&()>,
         )?;
 

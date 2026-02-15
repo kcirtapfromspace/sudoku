@@ -4,6 +4,7 @@ mod game;
 mod leaderboard;
 mod render;
 mod stats;
+mod persistence;
 mod telemetry;
 mod theme;
 
@@ -18,7 +19,7 @@ use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
 #[derive(Parser)]
-#[command(name = "sudoku", about = "Terminal Sudoku game")]
+#[command(name = "ukodus", about = "Terminal Sudoku game")]
 struct Cli {
     /// Load a puzzle from an 81-character string or 8-character short code
     #[arg(long)]

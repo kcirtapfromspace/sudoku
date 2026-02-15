@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use sudoku_core::{
     BitSet, Difficulty, Generator, Grid, Hint, HintType, Polarity, Position, ProofCertificate,
-    PuzzleId, Solver,
+    PuzzleId, Solver, canonical_puzzle_hash_str,
 };
 
 uniffi::setup_scaffolding!();
@@ -674,22 +674,22 @@ impl SudokuGame {
         !self.redo_stack.lock().unwrap().is_empty()
     }
 
-    /// Get the puzzle as an 81-character string (givens as digits, empty as '0')
+    /// Get the puzzle as an 81-character string (givens as digits, empty as '.')
     pub fn get_puzzle_string(&self) -> String {
         let grid = self.grid.lock().unwrap();
-        let values = grid.values();
+        // Return only givens: non-given cells become '.'
         let mut result = String::with_capacity(81);
         for row in 0..9 {
             for col in 0..9 {
                 let pos = Position::new(row, col);
                 if grid.cell(pos).is_given() {
-                    if let Some(v) = values[row][col] {
-                        result.push((b'0' + v) as char);
+                    if let Some(v) = grid.get(pos) {
+                        result.push(char::from_digit(v as u32, 10).unwrap());
                     } else {
-                        result.push('0');
+                        result.push('.');
                     }
                 } else {
-                    result.push('0');
+                    result.push('.');
                 }
             }
         }
@@ -1007,6 +1007,13 @@ fn parse_difficulty(s: &str) -> Difficulty {
         "Extreme" => Difficulty::Extreme,
         _ => Difficulty::Medium,
     }
+}
+
+/// Compute SHA-256 hash of an 81-character puzzle string (canonical `.` format).
+/// Returns a 64-character lowercase hex string.
+#[uniffi::export]
+pub fn canonical_puzzle_hash(puzzle_string: String) -> String {
+    canonical_puzzle_hash_str(&puzzle_string)
 }
 
 /// Deserialize a saved game state

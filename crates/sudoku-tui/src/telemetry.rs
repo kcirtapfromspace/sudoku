@@ -3,8 +3,60 @@
 
 use crate::stats::GameRecord;
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
+use sudoku_core::canonical_puzzle_hash_str;
 
 const API_ENDPOINT: &str = "https://ukodus.now/api/v1/results";
+const TOKEN_ENDPOINT: &str = "https://ukodus.now/api/v1/token";
+
+struct CachedToken {
+    token: String,
+    expires_at: u64, // Unix timestamp
+}
+
+static TOKEN_CACHE: Mutex<Option<CachedToken>> = Mutex::new(None);
+
+/// Fetch an auth token from the server. Returns None if the server is unavailable
+/// or doesn't support the token endpoint yet (migration period).
+fn fetch_token(player_id: &str) -> Option<CachedToken> {
+    let body = serde_json::json!({ "player_id": player_id });
+    let resp = ureq::post(TOKEN_ENDPOINT)
+        .set("Content-Type", "application/json")
+        .timeout(std::time::Duration::from_secs(5))
+        .send_string(&body.to_string())
+        .ok()?;
+
+    let body = resp.into_string().ok()?;
+    let json: serde_json::Value = serde_json::from_str(&body).ok()?;
+    let token = json["token"].as_str()?.to_string();
+    let expires_at = json["expires_at"].as_u64()?;
+
+    Some(CachedToken { token, expires_at })
+}
+
+/// Get a valid auth token, fetching a new one if needed.
+/// Returns None during migration (server doesn't support tokens yet).
+fn get_token(player_id: &str) -> Option<String> {
+    let mut cache = TOKEN_CACHE.lock().unwrap();
+
+    // Check if cached token is still valid (with 60s buffer)
+    if let Some(ref cached) = *cache {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        if cached.expires_at > now + 60 {
+            return Some(cached.token.clone());
+        }
+    }
+
+    // Fetch new token
+    let new_token = fetch_token(player_id)?;
+    let token_str = new_token.token.clone();
+    *cache = Some(new_token);
+    Some(token_str)
+}
 
 /// Get or create a persistent player UUID stored alongside stats.
 fn player_id() -> String {
@@ -24,39 +76,19 @@ fn player_id() -> String {
         rand::random::<u16>(),
         rand::random::<u64>() & 0xFFFF_FFFF_FFFF,
     );
-    let _ = std::fs::write(&path, &id);
+    let _ = crate::persistence::atomic_write(&path, id.as_bytes());
     id
 }
 
 fn player_id_path() -> PathBuf {
-    dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("sudoku_player_id")
-}
-
-/// DJB2 hash matching the JS `hashPuzzle()` and iOS `TelemetryService.hashPuzzle()`.
-/// Uses Int32 wrapping arithmetic, output as 8-char zero-padded hex.
-fn hash_puzzle(puzzle_string: &str) -> String {
-    let mut hash: i32 = 0;
-    for ch in puzzle_string.bytes() {
-        hash = hash
-            .wrapping_shl(5)
-            .wrapping_sub(hash)
-            .wrapping_add(ch as i32);
-    }
-    format!("{:08x}", hash as u32)
-}
-
-/// Convert puzzle string from grid format ("." = empty) to API format ("0" = empty).
-fn puzzle_to_api_format(puzzle: &str) -> String {
-    puzzle.replace('.', "0")
+    crate::persistence::app_data_dir().join("sudoku_player_id")
 }
 
 /// Submit a game result to the ukodus API. Spawns a background thread
 /// so it never blocks the TUI. Failures are silently ignored.
 pub fn submit_result(record: &GameRecord, se_rating: f32) {
-    let puzzle_string = puzzle_to_api_format(&record.puzzle);
-    let puzzle_hash = hash_puzzle(&puzzle_string);
+    let puzzle_string = record.puzzle.clone();
+    let puzzle_hash = canonical_puzzle_hash_str(&record.puzzle);
     let difficulty = format!("{:?}", record.difficulty);
     let result_str = match record.result {
         crate::stats::GameResult::Win => "Win",
@@ -97,16 +129,41 @@ pub fn submit_result(record: &GameRecord, se_rating: f32) {
             body["short_code"] = serde_json::Value::String(code);
         }
 
-        let resp = ureq::post(API_ENDPOINT)
-            .set("Content-Type", "application/json")
-            .timeout(std::time::Duration::from_secs(10))
-            .send_string(&body.to_string());
+        // Try to get auth token (None during migration = unauthenticated)
+        let token = get_token(&pid);
 
-        #[cfg(debug_assertions)]
-        match resp {
-            Ok(r) => eprintln!("Telemetry: {} for {}", r.status(), puzzle_hash),
-            Err(e) => eprintln!("Telemetry error: {}", e),
+        let mut req = ureq::post(API_ENDPOINT)
+            .set("Content-Type", "application/json")
+            .timeout(std::time::Duration::from_secs(10));
+
+        if let Some(ref t) = token {
+            req = req.set("Authorization", &format!("Bearer {}", t));
         }
-        let _ = resp;
+
+        let resp = req.send_string(&body.to_string());
+
+        match resp {
+            Ok(_r) => {
+                #[cfg(debug_assertions)]
+                eprintln!("Telemetry: {} for {}", _r.status(), puzzle_hash);
+            }
+            Err(ureq::Error::Status(401, _)) => {
+                // Token expired or invalid — clear cache so next submission refreshes
+                *TOKEN_CACHE.lock().unwrap() = None;
+                #[cfg(debug_assertions)]
+                eprintln!("Telemetry: 401 — token expired, cleared cache");
+            }
+            Err(ureq::Error::Status(429, _resp)) => {
+                #[cfg(debug_assertions)]
+                {
+                    let retry_after = _resp.header("Retry-After").unwrap_or("?");
+                    eprintln!("Telemetry: 429 — rate limited, retry after {}s", retry_after);
+                }
+            }
+            Err(_e) => {
+                #[cfg(debug_assertions)]
+                eprintln!("Telemetry error: {}", _e);
+            }
+        }
     });
 }

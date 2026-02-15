@@ -309,9 +309,7 @@ impl StatsManager {
 
     /// Get the save file path
     fn save_path() -> PathBuf {
-        dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("sudoku_stats.json")
+        crate::persistence::app_data_dir().join("sudoku_stats.json")
     }
 
     /// Load stats from file
@@ -328,7 +326,7 @@ impl StatsManager {
     /// Save stats to file
     pub fn save(&self) {
         if let Ok(json) = serde_json::to_string_pretty(self) {
-            let _ = fs::write(Self::save_path(), json);
+            let _ = crate::persistence::atomic_write(&Self::save_path(), json.as_bytes());
         }
     }
 
@@ -347,7 +345,7 @@ impl StatsManager {
         seed: Option<u64>,
         short_code: Option<String>,
     ) -> &GameRecord {
-        let puzzle_hash = Self::hash_puzzle(puzzle);
+        let puzzle_hash = sudoku_core::canonical_puzzle_hash_str(puzzle);
 
         // Calculate move timing stats
         let moves_count = move_times_ms.len();
@@ -548,16 +546,6 @@ impl StatsManager {
     /// Get a game record by ID for replay
     pub fn get_game(&self, id: u64) -> Option<&GameRecord> {
         self.history.iter().find(|g| g.id == id)
-    }
-
-    /// Simple hash of puzzle string
-    fn hash_puzzle(puzzle: &str) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        puzzle.hash(&mut hasher);
-        format!("{:016x}", hasher.finish())
     }
 
     /// Set player name

@@ -451,7 +451,7 @@ impl GameState {
         })
     }
 
-    /// Get the puzzle as an 81-character string (givens as digits, empty as '0')
+    /// Get the puzzle as an 81-character string (givens as digits, empty as '.')
     pub fn puzzle_string(&self) -> String {
         self.puzzle.to_string_compact()
     }
