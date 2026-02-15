@@ -1,5 +1,5 @@
-use sha2::{Sha256, Digest};
 use crate::Grid;
+use sha2::{Digest, Sha256};
 
 /// Compute a canonical SHA-256 hash of a puzzle grid.
 /// Uses `Grid::to_string_compact()` (digits for filled cells, `.` for empties)
@@ -30,11 +30,13 @@ mod tests {
         assert_eq!(hash, canonical_puzzle_hash_str(&empty));
 
         // Known puzzle string
-        let puzzle = "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
+        let puzzle =
+            "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
         let hash = canonical_puzzle_hash_str(puzzle);
         assert_eq!(hash.len(), 64);
         // Different puzzle should produce different hash
-        let puzzle2 = "1.3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
+        let puzzle2 =
+            "1.3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
         assert_ne!(hash, canonical_puzzle_hash_str(puzzle2));
     }
 
@@ -42,8 +44,10 @@ mod tests {
     fn test_canonical_form_consistency() {
         // "0" format and "." format should produce different hashes
         // This tests that we're using the canonical form consistently
-        let dot_form = "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
-        let zero_form = "003020600900305001001806400008102900700000008006708200002609500800203009005010300";
+        let dot_form =
+            "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
+        let zero_form =
+            "003020600900305001001806400008102900700000008006708200002609500800203009005010300";
         assert_ne!(
             canonical_puzzle_hash_str(dot_form),
             canonical_puzzle_hash_str(zero_form),
@@ -55,14 +59,15 @@ mod tests {
     fn test_cross_platform_golden_vector() {
         // Pin the exact hash for a well-known puzzle to ensure cross-platform consistency.
         // If this test fails, a client has changed the canonical form or hashing algorithm.
-        let puzzle = "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
+        let puzzle =
+            "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..";
         let hash = canonical_puzzle_hash_str(puzzle);
         // Computed once and pinned:
         assert_eq!(
             hash,
             {
                 // Actually compute and pin it
-                use sha2::{Sha256, Digest};
+                use sha2::{Digest, Sha256};
                 let expected = Sha256::digest(puzzle.as_bytes());
                 format!("{:x}", expected)
             },

@@ -937,7 +937,8 @@ impl GameState {
         // Save for undo (including current candidates so they can be restored)
         let old_value = self.grid.get(self.cursor);
         let old_candidates = self.grid.cell(self.cursor).candidates();
-        self.undo_stack.push((self.cursor, old_value, old_candidates));
+        self.undo_stack
+            .push((self.cursor, old_value, old_candidates));
         self.redo_stack.clear();
 
         // Set the value and remove it from peer candidates
@@ -956,7 +957,8 @@ impl GameState {
 
         let old_value = self.grid.get(self.cursor);
         let old_candidates = self.grid.cell(self.cursor).candidates();
-        self.undo_stack.push((self.cursor, old_value, old_candidates));
+        self.undo_stack
+            .push((self.cursor, old_value, old_candidates));
         self.redo_stack.clear();
 
         self.grid.set_cell_unchecked(self.cursor, None);
@@ -1014,7 +1016,8 @@ impl GameState {
         if let Some((pos, old_value, old_candidates)) = self.undo_stack.pop() {
             let current_value = self.grid.get(pos);
             let current_candidates = self.grid.cell(pos).candidates();
-            self.redo_stack.push((pos, current_value, current_candidates));
+            self.redo_stack
+                .push((pos, current_value, current_candidates));
 
             self.grid.set_cell_unchecked(pos, old_value);
             // Restore the cell's own candidates from before the move
@@ -1037,7 +1040,8 @@ impl GameState {
         if let Some((pos, value, saved_candidates)) = self.redo_stack.pop() {
             let current_value = self.grid.get(pos);
             let current_candidates = self.grid.cell(pos).candidates();
-            self.undo_stack.push((pos, current_value, current_candidates));
+            self.undo_stack
+                .push((pos, current_value, current_candidates));
 
             self.grid.set_cell_unchecked(pos, value);
             // Restore the cell's candidates from the redo snapshot

@@ -457,7 +457,11 @@ fn classify_wing(chain: &[Node]) -> Option<&'static str> {
     let link_type = |i: usize| -> char {
         let (c1, _) = chain[i];
         let (c2, _) = chain[i + 1];
-        if c1 == c2 { 'V' } else { 'L' }
+        if c1 == c2 {
+            'V'
+        } else {
+            'L'
+        }
     };
     let s0 = link_type(0);
     let s1 = link_type(2);
@@ -527,8 +531,7 @@ fn find_aic_with_filter(
                         if next.1 == start.1 && next.0 != start.0 {
                             let val = start.1;
                             for idx in 0..81 {
-                                if fab.values[idx].is_some() || idx == start.0 || idx == next.0
-                                {
+                                if fab.values[idx].is_some() || idx == start.0 || idx == next.0 {
                                     continue;
                                 }
                                 if !fab.cell_cands[idx].contains(val) {
@@ -569,15 +572,14 @@ fn find_aic_with_filter(
                                         })
                                         .collect();
                                     // Classify named wings for 3-strong-link chains
-                                    let variant = if let Some(wing_name) =
-                                        classify_wing(&full_chain)
-                                    {
-                                        wing_name.to_string()
-                                    } else if single_value_only {
-                                        "X-Chain".into()
-                                    } else {
-                                        "AIC".into()
-                                    };
+                                    let variant =
+                                        if let Some(wing_name) = classify_wing(&full_chain) {
+                                            wing_name.to_string()
+                                        } else if single_value_only {
+                                            "X-Chain".into()
+                                        } else {
+                                            "AIC".into()
+                                        };
                                     return Some(Finding {
                                         technique: tech,
                                         inference: InferenceResult::Elimination {

@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use sudoku_core::{
-    BitSet, Difficulty, Generator, Grid, Hint, HintType, Polarity, Position, ProofCertificate,
-    PuzzleId, Solver, canonical_puzzle_hash_str,
+    canonical_puzzle_hash_str, BitSet, Difficulty, Generator, Grid, Hint, HintType, Polarity,
+    Position, ProofCertificate, PuzzleId, Solver,
 };
 
 uniffi::setup_scaffolding!();
@@ -264,10 +264,12 @@ impl SudokuGame {
         // Save for undo (including current candidates so they can be restored)
         let old_value = grid.get(pos);
         let old_candidates = grid.cell(pos).candidates();
-        self.undo_stack
-            .lock()
-            .unwrap()
-            .push((row as usize, col as usize, old_value, old_candidates));
+        self.undo_stack.lock().unwrap().push((
+            row as usize,
+            col as usize,
+            old_value,
+            old_candidates,
+        ));
         self.redo_stack.lock().unwrap().clear();
 
         // Check if correct
@@ -310,10 +312,12 @@ impl SudokuGame {
         }
 
         let old_candidates = grid.cell(pos).candidates();
-        self.undo_stack
-            .lock()
-            .unwrap()
-            .push((row as usize, col as usize, old_value, old_candidates));
+        self.undo_stack.lock().unwrap().push((
+            row as usize,
+            col as usize,
+            old_value,
+            old_candidates,
+        ));
         self.redo_stack.lock().unwrap().clear();
 
         grid.set_cell_unchecked(pos, None);

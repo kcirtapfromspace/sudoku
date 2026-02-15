@@ -523,7 +523,11 @@ impl LeaderboardBackend for RemoteLeaderboard {
 
         let response: RankResponse = self.request(
             "GET",
-            &format!("/api/v1/leaderboard/rank/{}/{:?}", urlencoding::encode(player_name), difficulty),
+            &format!(
+                "/api/v1/leaderboard/rank/{}/{:?}",
+                urlencoding::encode(player_name),
+                difficulty
+            ),
             None::<&()>,
         )?;
 
@@ -542,7 +546,11 @@ impl LeaderboardBackend for RemoteLeaderboard {
 
         let response: ScoresResponse = self.request(
             "GET",
-            &format!("/api/v1/leaderboard/player/{}?limit={}", urlencoding::encode(player_name), limit),
+            &format!(
+                "/api/v1/leaderboard/player/{}?limit={}",
+                urlencoding::encode(player_name),
+                limit
+            ),
             None::<&()>,
         )?;
 

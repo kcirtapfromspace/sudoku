@@ -157,7 +157,10 @@ pub fn submit_result(record: &GameRecord, se_rating: f32) {
                 #[cfg(debug_assertions)]
                 {
                     let retry_after = _resp.header("Retry-After").unwrap_or("?");
-                    eprintln!("Telemetry: 429 — rate limited, retry after {}s", retry_after);
+                    eprintln!(
+                        "Telemetry: 429 — rate limited, retry after {}s",
+                        retry_after
+                    );
                 }
             }
             Err(_e) => {

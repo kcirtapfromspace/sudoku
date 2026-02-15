@@ -2,9 +2,9 @@ mod animations;
 mod app;
 mod game;
 mod leaderboard;
+mod persistence;
 mod render;
 mod stats;
-mod persistence;
 mod telemetry;
 mod theme;
 
