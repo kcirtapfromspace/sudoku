@@ -212,6 +212,9 @@ pub struct SerializableState {
     pub mistakes: usize,
     pub hints_used: usize,
     pub message: Option<String>,
+    /// Whether secret difficulties are unlocked (backwards-compatible default)
+    #[serde(default)]
+    pub secrets_unlocked: bool,
 }
 
 /// The game state
@@ -534,6 +537,7 @@ impl GameState {
                     self.player_stats
                         .record_game(true, self.difficulty, self.elapsed_secs());
                     self.game_recorded = true;
+                    self.check_gameplay_unlock();
                 }
                 // Create win screen animation
                 let seed = (Self::now() * 1000.0) as u64;
@@ -1179,6 +1183,7 @@ impl GameState {
     pub fn load_stats_json(&mut self, json: &str) -> bool {
         if let Ok(stats) = serde_json::from_str(json) {
             self.player_stats = stats;
+            self.check_gameplay_unlock();
             true
         } else {
             false
@@ -1312,6 +1317,7 @@ impl GameState {
             mistakes: self.mistakes,
             hints_used: self.hints_used,
             message: self.message.clone(),
+            secrets_unlocked: self.secrets_unlocked,
         }
     }
 
@@ -1366,10 +1372,29 @@ impl GameState {
             game_recorded: false,
             seed: None,
             konami_progress: 0,
-            secrets_unlocked: false,
+            secrets_unlocked: state.secrets_unlocked,
             se_rating: 0.0,
             move_log: Vec::new(),
             move_seq: 0,
         }
+    }
+
+    /// Auto-unlock secret difficulties based on gameplay achievements.
+    /// Beating Expert (or higher) unlocks Master and Extreme.
+    fn check_gameplay_unlock(&mut self) {
+        if self.secrets_unlocked {
+            return;
+        }
+        if self.player_stats.best_times.contains_key("Expert")
+            || self.player_stats.best_times.contains_key("Master")
+            || self.player_stats.best_times.contains_key("Extreme")
+        {
+            self.secrets_unlocked = true;
+        }
+    }
+
+    /// Set secrets unlocked state (for JS persistence)
+    pub fn set_secrets_unlocked(&mut self, unlocked: bool) {
+        self.secrets_unlocked = unlocked;
     }
 }

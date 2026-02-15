@@ -159,6 +159,41 @@ impl Theme {
         }
     }
 
+    /// Ukodus theme — warm paper palette matching the ukodus.now site
+    pub fn ukodus() -> Self {
+        Self {
+            background: Color::new(246, 241, 231),       // --paper #f6f1e7
+            grid_lines: Color::new(190, 182, 168),
+            box_border: Color::new(100, 95, 82),
+            cell_bg: Color::new(250, 247, 240),
+            highlight_bg: Color::new(237, 228, 210),
+            cursor_bg: Color::new(200, 185, 155),
+            same_value_bg: Color::new(220, 210, 188),
+            given_text: Color::new(20, 20, 20),           // --ink
+            player_text: Color::new(10, 132, 255),        // --accent2
+            candidate_text: Color::new(150, 144, 130),
+            error_text: Color::new(255, 59, 48),          // --accent
+            completed_bg: Color::new(210, 228, 200),
+            info_text: Color::new(99, 99, 93),            // --muted
+            message_text: Color::new(180, 120, 0),
+            win_color: Color::new(50, 180, 80),
+            lose_color: Color::new(255, 59, 48),
+            hint_involved_bg: Color::new(220, 230, 200),
+            hint_target_bg: Color::new(255, 220, 180),
+            hint_chain_on: Color::new(200, 240, 210),
+            hint_chain_off: Color::new(255, 210, 210),
+            hint_fish_base: Color::new(200, 220, 245),
+            hint_fish_cover: Color::new(255, 230, 200),
+            hint_fish_fin: Color::new(255, 240, 200),
+            hint_ur_floor: Color::new(200, 220, 250),
+            hint_ur_roof: Color::new(245, 210, 230),
+            hint_als_group: Color::new(225, 215, 245),
+            hint_panel_bg: Color::new(240, 235, 225),
+            hint_technique_text: Color::new(20, 120, 60),
+            hint_explain_text: Color::new(40, 40, 40),
+        }
+    }
+
     /// High contrast theme
     pub fn high_contrast() -> Self {
         Self {

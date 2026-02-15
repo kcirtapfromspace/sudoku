@@ -182,6 +182,7 @@ impl SudokuGame {
     #[wasm_bindgen]
     pub fn set_theme(&mut self, theme_name: &str) {
         self.theme = match theme_name {
+            "ukodus" => Theme::ukodus(),
             "light" => Theme::light(),
             "high_contrast" => Theme::high_contrast(),
             _ => Theme::dark(),
@@ -283,6 +284,18 @@ impl SudokuGame {
     #[wasm_bindgen]
     pub fn get_move_log(&self) -> String {
         self.state.move_log_json()
+    }
+
+    /// Check if secret difficulties (Master/Extreme) are unlocked
+    #[wasm_bindgen]
+    pub fn is_secrets_unlocked(&self) -> bool {
+        self.state.secrets_unlocked()
+    }
+
+    /// Set secrets unlocked state (for persistence from JS)
+    #[wasm_bindgen]
+    pub fn set_secrets_unlocked(&mut self, unlocked: bool) {
+        self.state.set_secrets_unlocked(unlocked);
     }
 
     /// Toggle pause
