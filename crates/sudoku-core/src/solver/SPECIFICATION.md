@@ -603,6 +603,7 @@ Swordfish ───────┼──► Fish Engine (n=2,3,4; Basic constrai
 Jellyfish ───────┤
                  │
 Franken Fish ────┼──► Fish Engine (Franken constraint)
+Siamese Fish ────┤──► Fish Engine (overlapping finned pair)
 Mutant Fish ─────┘──► Fish Engine (Mutant constraint)
 
 XY-Wing ─────────┐
@@ -630,13 +631,13 @@ Dynamic FC ──────┘──► AIC Engine (full-propagation forcing)
 
 The solver dispatches 45 technique variants. Their engine ownership:
 
-| Engine        | Technique count | Technique variants |
-|---------------|:-:|---|
+| Engine        | Count | Technique variants |
+|---------------|:-----:|---|
 | Basic (direct) | 8 | NakedSingle, HiddenSingle, NakedPair/Triple/Quad, HiddenPair/Triple/Quad |
-| Fish          | 8+2 | PointingPair, BoxLineReduction, X-Wing (±fin), Swordfish (±fin), Jellyfish (±fin), Franken, Siamese, Mutant |
-| ALS           | 9+2 | XY/XYZ/WXYZ-Wing, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, APE, ATE |
+| Fish          | 11 | PointingPair, BoxLineReduction, X-Wing, Finned X-Wing, Swordfish, Finned Swordfish, Jellyfish, Finned Jellyfish, Franken Fish, Siamese Fish, Mutant Fish |
+| ALS           | 10 | XY-Wing, XYZ-Wing, WXYZ-Wing, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Aligned Pair Exclusion, Aligned Triplet Exclusion |
 | AIC           | 9 | W-Wing, X-Chain, 3D Medusa, AIC, Nishio FC, Kraken Fish, Cell FC, Region FC, Dynamic FC |
-| Uniqueness    | 6 | EmptyRectangle, AvoidableRectangle, UR Types 1-6, HiddenRectangle, ExtendedUR, BUG |
+| Uniqueness    | 6 | Empty Rectangle, Avoidable Rectangle, Unique Rectangle, Hidden Rectangle, Extended UR, BUG |
 | Backtracking  | 1 | Backtracking |
 
 Note: Basic techniques (singles, subsets) are direct applications of the
@@ -646,9 +647,62 @@ beyond the standard constraint set).
 
 ---
 
-## 5. Soundness Guarantees
+## 5. Hint Delivery
 
-### 5.1 Engine Soundness
+The solver exposes two hint methods with different safety properties.
+
+### 5.1 `get_hint()` — Display Hints
+
+`get_hint(grid)` returns the first applicable technique as a `Hint`.
+It may return either a `SetValue` (placement) or `EliminateCandidates`
+(elimination). **It does not verify the result against the backtracking
+solution.** This method is used for hint *display* — showing the user
+which technique applies and why — where an occasional unsound result
+is acceptable because no state is mutated.
+
+### 5.2 `get_next_placement()` — Verified Placement Hints
+
+`get_next_placement(grid)` is the safe hint path used by all frontends
+when *applying* a hint to the game state. It works as follows:
+
+1. Solve the grid once via backtracking to obtain the verified solution.
+2. Find the first applicable technique.
+3. If it is an **elimination**: verify that no eliminated candidate is
+   the solution value. If sound, apply it internally and repeat from
+   step 2 (up to 500 iterations).
+4. If it is a **placement**: verify that the placed value matches the
+   solution. If sound, return it as the hint.
+5. If any step produces an unsound result (technique bug), **stop
+   chaining** and fall back to a backtracking hint (always correct).
+
+This loop chains eliminations internally so the caller always receives
+a `SetValue` hint. The solution verification at each step ensures that
+known technique bugs (e.g., Avoidable Rectangle on given cells, W-Wing
+self-links, X-Chain conjugate errors) never produce wrong placements.
+
+### 5.3 ProofCertificate
+
+Each `Hint` carries an optional `ProofCertificate` providing structured
+metadata for visualization:
+
+| Variant        | Fields                                        |
+|---------------|-----------------------------------------------|
+| `Basic`       | involved cells                                |
+| `Fish`        | base sectors, cover sectors, fin cells, digit |
+| `Als`         | ALS chain (cells + candidates per ALS)        |
+| `Aic`         | chain of (cell, digit, polarity) nodes        |
+| `Uniqueness`  | floor cells, roof cells                       |
+| `Forcing`     | source cell, branches                         |
+| `Backtracking`| (no fields)                                   |
+
+Frontends use these to render proof-detail overlays (e.g., base/cover
+sector highlighting for fish, on/off coloring for AIC chains).
+
+---
+
+## 6. Soundness Guarantees
+
+### 6.1 Engine Soundness
 
 Each engine's eliminations are sound if the axioms hold:
 
@@ -660,19 +714,26 @@ Each engine's eliminations are sound if the axioms hold:
   semantics of strong and weak links, which are derived from all
   three axioms.
 
-### 5.2 Implementation Verification
+### 6.2 Implementation Verification
 
-The soundness test (`test_hint_soundness`) verifies empirically:
-for a battery of puzzles, every elimination produced by the solver
-is checked against the unique solution. A placement *(c, v)* must
-match the solution, and an elimination *(c, v)* must not remove the
-solution value.
+Three test suites verify soundness empirically:
 
-This is a runtime verification, not a formal proof, but it provides
+- `test_hint_soundness`: For a battery of puzzles, every hint from
+  `get_hint()` is checked against the unique solution. A placement
+  *(c, v)* must match the solution, and an elimination *(c, v)* must
+  not remove the solution value.
+- `test_hint_soundness_all_tiers`: Extends coverage across all
+  difficulty tiers.
+- `test_next_placement_soundness`: Verifies that `get_next_placement()`
+  produces correct placements for every puzzle in the battery.
+
+These are runtime verifications, not formal proofs, but they provide
 high confidence that the implementation correctly realizes the
-theorems above.
+theorems above. The `get_next_placement()` verification loop
+(Section 5.2) provides an additional per-call safety net in
+production.
 
-### 5.3 Termination
+### 6.3 Termination
 
 The solver terminates because:
 1. Each technique application either places a value (reducing
@@ -681,6 +742,71 @@ The solver terminates because:
 3. The candidate space *X* is finite and monotonically decreasing.
 4. If no technique applies, backtracking terminates in finite time
    (brute-force search over a finite space).
+5. `get_next_placement()` bounds its chaining loop to 500 iterations.
+
+---
+
+## 7. Difficulty Classification
+
+### 7.1 Eight-Tier System
+
+Puzzles are classified into eight difficulty tiers. Three independent
+mechanisms use these tiers for different purposes.
+
+| Tier         | SE Range    | Technique Hint          |
+|-------------|-------------|-------------------------|
+| Beginner    | 1.5 – 2.0   | Hidden singles          |
+| Easy        | 2.0 – 2.5   | Naked singles           |
+| Medium      | 2.5 – 3.4   | Pairs & triples         |
+| Intermediate| 3.4 – 3.8   | Hidden triples          |
+| Hard        | 3.8 – 4.5   | Box/line reduction      |
+| Expert      | 4.5 – 5.5   | Fish & rectangles       |
+| Master      | 5.5 – 7.0   | Wings & chains          |
+| Extreme     | 7.0 – 11.0  | Advanced techniques     |
+
+Master and Extreme are hidden tiers, unlocked by the player.
+
+### 7.2 Three Difficulty Axes
+
+**SE rating** (`rate_se`): The maximum SE rating among all techniques
+used to solve the puzzle. This is a continuous numerical score that
+maps directly to the Sudoku Explainer community standard.
+
+**Technique-based classification** (`technique_to_difficulty`): Maps
+the hardest technique used during solving to a difficulty tier. This
+is a discrete classification based on the *kind* of reasoning required:
+
+| Tier         | Techniques included |
+|-------------|---|
+| Beginner    | NakedSingle (≤35 empty cells) |
+| Easy        | NakedSingle (>35 empty cells) |
+| Medium      | HiddenSingle |
+| Intermediate| NakedPair, HiddenPair, NakedTriple, HiddenTriple |
+| Hard        | PointingPair, BoxLineReduction |
+| Expert      | X-Wing (±fin), Swordfish (±fin), Jellyfish (±fin), NakedQuad, HiddenQuad, EmptyRectangle, AvoidableRectangle, UniqueRectangle, HiddenRectangle |
+| Master      | XY/XYZ/WXYZ-Wing, W-Wing, X-Chain, 3D Medusa, SueDeCoq, AIC, FrankenFish, SiameseFish, ALS-XZ, ExtendedUR, BUG |
+| Extreme     | ALS-XY-Wing, ALS Chain, MutantFish, APE, ATE, DeathBlossom, Nishio/Kraken/Cell/Region/Dynamic FC, Backtracking |
+
+**Generation cap** (`max_technique`): Limits which techniques the
+generator may require. This uses the `Technique` enum ordering (not SE
+rating) to define an upper bound:
+
+| Tier         | Max technique allowed     |
+|-------------|---------------------------|
+| Beginner    | NakedSingle               |
+| Easy        | NakedSingle               |
+| Medium      | HiddenSingle              |
+| Intermediate| HiddenTriple              |
+| Hard        | BoxLineReduction          |
+| Expert      | HiddenRectangle           |
+| Master      | BivalueUniversalGrave     |
+| Extreme     | Backtracking              |
+
+The generation cap and technique classification are intentionally
+different: the generator uses a coarse enum-order gate to quickly
+reject puzzles during generation, while classification uses the full
+technique-to-tier mapping after solving. The SE range provides the
+continuous scale used by `generate_for_se()`.
 
 ---
 
