@@ -645,22 +645,26 @@ impl Game {
         hint
     }
 
-    /// Apply a hint directly
+    /// Apply a hint directly (verified against backtracking solution)
     pub fn apply_hint(&mut self) -> Option<Position> {
-        let hint = self.get_hint()?;
+        let solver = Solver::new();
+        let hint = solver.get_next_placement(&self.grid)?;
+        self.hints_used += 1;
 
         match hint.hint_type {
             sudoku_core::HintType::SetValue { pos, value } => {
-                self.set_value(pos, value);
+                // Trust the stored solution for the correct value.
+                // get_next_placement() solves the *current* grid (which may contain
+                // player mistakes), so its placement can disagree with the original
+                // solution. Always trust self.solution to avoid false "mistake" counts.
+                let correct_value = self.solution.get(pos).unwrap_or(value);
+                self.set_value(pos, correct_value);
                 Some(pos)
             }
-            sudoku_core::HintType::EliminateCandidates { pos, values } => {
-                for value in values {
-                    if self.grid.get_candidates(pos).contains(value) {
-                        self.toggle_candidate(pos, value);
-                    }
-                }
-                Some(pos)
+            sudoku_core::HintType::EliminateCandidates { .. } => {
+                // get_next_placement should always return SetValue, but
+                // handle this defensively just in case
+                None
             }
         }
     }

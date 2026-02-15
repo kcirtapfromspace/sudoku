@@ -679,41 +679,39 @@ impl SudokuGame {
         result
     }
 
-    /// Apply a hint automatically
+    /// Apply a hint automatically (verified against backtracking solution)
     pub fn apply_hint(&self) -> Option<GameHint> {
-        // Use stored hint if available, otherwise get a new one
+        let solver = Solver::new();
         let hint = {
-            let mut last = self.last_hint.lock().unwrap();
-            if let Some(h) = last.take() {
-                h
-            } else {
-                let grid = self.grid.lock().unwrap();
-                let solver = Solver::new();
-                solver.get_hint(&grid)?
-            }
+            let grid = self.grid.lock().unwrap();
+            solver.get_next_placement(&grid)?
         };
 
         *self.hints_used.lock().unwrap() += 1;
+        // Clear stale display hint (it came from unverified get_hint)
+        *self.last_hint.lock().unwrap() = None;
 
         match &hint.hint_type {
             HintType::SetValue { pos, value } => {
                 let mut grid = self.grid.lock().unwrap();
+                let solution = self.solution.lock().unwrap();
+                // Trust the stored solution for the correct value.
+                // get_next_placement() solves the *current* grid (which may contain
+                // player mistakes), so its placement can disagree with the original
+                // solution. Always trust self.solution to avoid false "mistake" counts.
+                let correct_value = solution.get(*pos).unwrap_or(*value);
                 let old_value = grid.get(*pos);
                 self.undo_stack
                     .lock()
                     .unwrap()
                     .push((pos.row, pos.col, old_value));
                 self.redo_stack.lock().unwrap().clear();
-                grid.set_cell_unchecked(*pos, Some(*value));
+                grid.set_cell_unchecked(*pos, Some(correct_value));
                 grid.recalculate_candidates();
             }
-            HintType::EliminateCandidates { pos, values } => {
-                let mut grid = self.grid.lock().unwrap();
-                for value in values {
-                    if grid.cell(*pos).has_candidate(*value) {
-                        grid.cell_mut(*pos).remove_candidate(*value);
-                    }
-                }
+            HintType::EliminateCandidates { .. } => {
+                // get_next_placement should always return SetValue, but
+                // handle this defensively just in case
             }
         }
 
