@@ -5,27 +5,19 @@ default: check
 
 # Quick compile check — no codegen, no tests
 check:
-    cargo check -p sudoku-core
+    cargo check --workspace --exclude sudoku-wasm
 
 # Check all native crates (excludes wasm)
 check-all:
     cargo check --workspace --exclude sudoku-wasm
 
-# Run only sudoku-core tests (68 of 72 tests live here)
-test-core:
-    cargo test -p sudoku-core
-
-# Run a single test by name fragment
-test name:
-    cargo test -p sudoku-core -- {{name}}
-
 # Run TUI tests only
 test-tui:
     cargo test -p sudoku-tui
 
-# Clippy on core only
+# Clippy on workspace (excludes wasm)
 lint:
-    cargo clippy -p sudoku-core -- -D warnings
+    cargo clippy --workspace --exclude sudoku-wasm -- -D warnings
 
 # Format check
 fmt:
@@ -55,9 +47,9 @@ build-ffi:
 
 # --- Full CI-equivalent targets ---
 
-# Full workspace test (mirrors CI rust job, excludes wasm)
+# Full workspace test excluding soundness (mirrors CI test job)
 test-all:
-    cargo test --workspace --exclude sudoku-wasm --all-features
+    cargo test --workspace --exclude sudoku-wasm --all-features -- --skip soundness
 
 # Full CI pipeline: fmt + clippy + test + wasm build
 ci: fmt lint-all test-all build-wasm
@@ -66,12 +58,6 @@ ci: fmt lint-all test-all build-wasm
 # Clippy on full workspace
 lint-all:
     cargo clippy --workspace --exclude sudoku-wasm --all-features -- -D warnings
-
-# --- Soundness (slow, for pre-push verification) ---
-
-# Run only the hint soundness tests
-test-soundness:
-    cargo test -p sudoku-core -- soundness
 
 # --- Convenience ---
 

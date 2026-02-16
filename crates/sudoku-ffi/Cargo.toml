@@ -13,7 +13,7 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
-sudoku-core = { path = "../sudoku-core" }
+sudoku-core.workspace = true
 uniffi = { version = "0.28", features = ["cli"] }
 serde_json = "1"
 

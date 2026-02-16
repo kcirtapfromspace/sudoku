@@ -42,7 +42,7 @@ jobs:
       - name: Clippy (workspace)
         run: cargo clippy --workspace --exclude sudoku-wasm --all-features -- -D warnings
 
-  # Workspace tests
+  # Fast tests (skip soundness — runs on every trigger)
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -66,8 +66,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-test-
 
-      - name: Run tests
-        run: cargo test --workspace --exclude sudoku-wasm --all-features
+      - name: Run tests (excluding soundness)
+        run: cargo test --workspace --exclude sudoku-wasm --all-features -- --skip soundness
 
   # WASM build
   wasm:

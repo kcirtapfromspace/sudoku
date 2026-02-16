@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/sudoku-core",
     "crates/sudoku-ffi",
     "crates/sudoku-tui",
     "crates/sudoku-wasm",
@@ -11,3 +10,6 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+
+[workspace.dependencies]
+sudoku-core = { git = "https://github.com/kcirtapfromspace/sudoku-core.git", tag = "v0.1.0" }
