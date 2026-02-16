@@ -31,7 +31,7 @@ final class PuzzleConfirmationViewModel: ObservableObject {
         self.confidences = Array(repeating: 1.0, count: 81)
     }
 
-    /// Run OCR on the captured image
+    /// Run OCR on the captured image, then auto-validate if enough digits found
     func processImage(_ image: UIImage) {
         isProcessing = true
         errorMessage = nil
@@ -43,6 +43,15 @@ final class PuzzleConfirmationViewModel: ObservableObject {
                 digits = result.cells.map { $0.digit }
                 confidences = result.cells.map { $0.confidence }
                 isProcessing = false
+
+                // If too few digits found, show a helpful error instead of an empty grid
+                if givenCount < 10 {
+                    errorMessage = "Only \(givenCount) digits recognized. Make sure the entire Sudoku grid is clearly visible."
+                    return
+                }
+
+                // Auto-validate so the user doesn't have to tap an extra button
+                validate()
             } catch {
                 errorMessage = error.localizedDescription
                 isProcessing = false

@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import UIKit
+import Vision
 
 /// Bridge object that allows SwiftUI to trigger a photo capture on the AVFoundation camera.
 final class CameraBridge: ObservableObject {
@@ -11,8 +12,8 @@ final class CameraBridge: ObservableObject {
     }
 }
 
-/// Unified camera import view that simultaneously scans QR codes and captures photos for OCR.
-/// QR codes are detected automatically on the live feed. Users tap the shutter for printed puzzles.
+/// Unified camera import view that simultaneously scans QR codes, detects Sudoku grids,
+/// and captures photos for OCR. QR codes and grids are detected automatically on the live feed.
 struct UnifiedImportView: View {
     let onPuzzleFound: (String) -> Void
     let onImageCaptured: (UIImage) -> Void
@@ -20,7 +21,15 @@ struct UnifiedImportView: View {
     @StateObject private var bridge = CameraBridge()
     @State private var errorMessage: String?
     @State private var qrDetected = false
+    @State private var gridTracking: GridTrackingState = .none
     @State private var showingPhotoLibrary = false
+
+    enum GridTrackingState: Equatable {
+        case none
+        case detected
+        case holdSteady(Int) // consecutive stable frames
+        case capturing
+    }
 
     var body: some View {
         ZStack {
@@ -33,6 +42,17 @@ struct UnifiedImportView: View {
                 },
                 onError: { message in
                     errorMessage = message
+                },
+                onGridStateChanged: { stable, count in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if !stable {
+                            gridTracking = .none
+                        } else if count >= 3 {
+                            gridTracking = .capturing
+                        } else {
+                            gridTracking = .holdSteady(count)
+                        }
+                    }
                 }
             )
             .ignoresSafeArea()
@@ -95,8 +115,34 @@ struct UnifiedImportView: View {
                     .transition(.scale.combined(with: .opacity))
                 }
 
+                // Grid tracking banner
+                if case .holdSteady = gridTracking {
+                    HStack(spacing: 8) {
+                        Image(systemName: "viewfinder")
+                        Text("Grid detected — hold steady...")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.blue.opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+                    .transition(.scale.combined(with: .opacity))
+                } else if gridTracking == .capturing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .tint(.white)
+                        Text("Capturing puzzle...")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.green.opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+                    .transition(.scale.combined(with: .opacity))
+                }
+
                 // Guidance
-                Text("Point at a QR code or Sudoku puzzle")
+                guidanceText
                     .font(.subheadline)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
@@ -104,12 +150,12 @@ struct UnifiedImportView: View {
                     .background(.black.opacity(0.6), in: Capsule())
                     .padding(.top, 12)
 
-                Text("QR codes are detected automatically")
+                Text("QR codes and grids are detected automatically")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
                     .padding(.top, 4)
 
-                // Shutter button
+                // Shutter button (manual fallback)
                 Button {
                     bridge.capture()
                 } label: {
@@ -128,11 +174,23 @@ struct UnifiedImportView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: errorMessage != nil)
         .animation(.easeInOut(duration: 0.3), value: qrDetected)
+        .animation(.easeInOut(duration: 0.3), value: gridTracking)
         .sheet(isPresented: $showingPhotoLibrary) {
             CameraCaptureView(sourceType: .photoLibrary) { image in
                 onImageCaptured(image)
                 dismiss()
             }
+        }
+    }
+
+    private var guidanceText: Text {
+        switch gridTracking {
+        case .none:
+            return Text("Point at a QR code or Sudoku puzzle")
+        case .detected, .holdSteady:
+            return Text("Hold the camera steady...")
+        case .capturing:
+            return Text("Processing...")
         }
     }
 
@@ -193,12 +251,14 @@ struct UnifiedCameraRepresentable: UIViewControllerRepresentable {
     let onQRCodeScanned: (String) -> Void
     let onPhotoCaptured: (UIImage) -> Void
     let onError: (String) -> Void
+    let onGridStateChanged: (_ stable: Bool, _ consecutiveCount: Int) -> Void
 
     func makeUIViewController(context: Context) -> UnifiedCameraController {
         let controller = UnifiedCameraController()
         controller.onQRCodeScanned = onQRCodeScanned
         controller.onPhotoCaptured = onPhotoCaptured
         controller.onError = onError
+        controller.onGridStateChanged = onGridStateChanged
         bridge.captureAction = { [weak controller] in
             controller?.takePhoto()
         }
@@ -208,30 +268,44 @@ struct UnifiedCameraRepresentable: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UnifiedCameraController, context: Context) {}
 }
 
-// MARK: - Camera Controller (AVFoundation)
+// MARK: - Camera Controller (AVFoundation + Vision grid detection)
 
 final class UnifiedCameraController: UIViewController,
     AVCaptureMetadataOutputObjectsDelegate,
-    AVCapturePhotoCaptureDelegate {
+    AVCapturePhotoCaptureDelegate,
+    AVCaptureVideoDataOutputSampleBufferDelegate {
 
     var onQRCodeScanned: ((String) -> Void)?
     var onPhotoCaptured: ((UIImage) -> Void)?
     var onError: ((String) -> Void)?
+    var onGridStateChanged: ((_ stable: Bool, _ consecutiveCount: Int) -> Void)?
 
     private var captureSession: AVCaptureSession?
     private var photoOutput: AVCapturePhotoOutput?
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var hasProcessedQR = false
 
+    // Grid detection state
+    private var gridOverlayLayer = CAShapeLayer()
+    private var consecutiveGridDetections = 0
+    private var lastGridDetectionTime: CFAbsoluteTime = 0
+    private var isProcessingGrid = false
+    private var hasAutoCapture = false
+    private let gridDetectionInterval: CFAbsoluteTime = 0.5 // seconds between detection attempts
+    private let requiredStableFrames = 3 // consecutive detections before auto-capture
+    private let gridDetectionQueue = DispatchQueue(label: "com.ukodus.gridDetection", qos: .userInitiated)
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
+        setupGridOverlay()
         requestCameraAccess()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         previewLayer?.frame = view.bounds
+        gridOverlayLayer.frame = view.bounds
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -239,6 +313,13 @@ final class UnifiedCameraController: UIViewController,
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.captureSession?.stopRunning()
         }
+    }
+
+    private func setupGridOverlay() {
+        gridOverlayLayer.fillColor = UIColor.clear.cgColor
+        gridOverlayLayer.strokeColor = UIColor.systemGreen.cgColor
+        gridOverlayLayer.lineWidth = 3
+        gridOverlayLayer.opacity = 0
     }
 
     private func requestCameraAccess() {
@@ -298,12 +379,23 @@ final class UnifiedCameraController: UIViewController,
             self.photoOutput = photo
         }
 
+        // Video output for live grid detection
+        let videoOutput = AVCaptureVideoDataOutput()
+        videoOutput.setSampleBufferDelegate(self, queue: gridDetectionQueue)
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+        if session.canAddOutput(videoOutput) {
+            session.addOutput(videoOutput)
+        }
+
         // Preview layer
         let preview = AVCaptureVideoPreviewLayer(session: session)
         preview.frame = view.bounds
         preview.videoGravity = .resizeAspectFill
         view.layer.addSublayer(preview)
         self.previewLayer = preview
+
+        // Grid overlay on top of preview
+        view.layer.addSublayer(gridOverlayLayer)
 
         self.captureSession = session
 
@@ -362,5 +454,143 @@ final class UnifiedCameraController: UIViewController,
         generator.impactOccurred()
 
         onPhotoCaptured?(image)
+    }
+
+    // MARK: - Live Grid Detection
+
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        // Throttle: only process every gridDetectionInterval seconds
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastGridDetectionTime >= gridDetectionInterval else { return }
+        guard !isProcessingGrid, !hasAutoCapture else { return }
+
+        lastGridDetectionTime = now
+        isProcessingGrid = true
+
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            isProcessingGrid = false
+            return
+        }
+
+        let request = VNDetectRectanglesRequest { [weak self] request, error in
+            guard let self = self else { return }
+            defer { self.isProcessingGrid = false }
+
+            if let error = error {
+                self.resetGridTracking()
+                return
+            }
+
+            guard let results = request.results as? [VNRectangleObservation],
+                  let best = results.max(by: { self.rectArea($0) < self.rectArea($1) }),
+                  best.confidence >= 0.5 else {
+                self.resetGridTracking()
+                return
+            }
+
+            // Check aspect ratio (grids are roughly square)
+            let w = hypot(best.topRight.x - best.topLeft.x, best.topRight.y - best.topLeft.y)
+            let h = hypot(best.bottomLeft.x - best.topLeft.x, best.bottomLeft.y - best.topLeft.y)
+            let aspect = w / h
+            guard aspect >= 0.75 && aspect <= 1.33 else {
+                self.resetGridTracking()
+                return
+            }
+
+            self.consecutiveGridDetections += 1
+
+            DispatchQueue.main.async {
+                self.showGridOverlay(for: best)
+                self.onGridStateChanged?(true, self.consecutiveGridDetections)
+
+                if self.consecutiveGridDetections >= self.requiredStableFrames && !self.hasAutoCapture {
+                    self.hasAutoCapture = true
+                    // Haptic
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    // Auto-capture via photo output for best quality
+                    self.takePhoto()
+                }
+            }
+        }
+
+        request.minimumAspectRatio = 0.7
+        request.maximumAspectRatio = 1.3
+        request.minimumSize = 0.2
+        request.maximumObservations = 3
+        request.minimumConfidence = 0.5
+
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+        try? handler.perform([request])
+    }
+
+    private func rectArea(_ rect: VNRectangleObservation) -> CGFloat {
+        let w = hypot(rect.topRight.x - rect.topLeft.x, rect.topRight.y - rect.topLeft.y)
+        let h = hypot(rect.bottomLeft.x - rect.topLeft.x, rect.bottomLeft.y - rect.topLeft.y)
+        return w * h
+    }
+
+    private func resetGridTracking() {
+        if consecutiveGridDetections > 0 {
+            consecutiveGridDetections = 0
+            DispatchQueue.main.async { [weak self] in
+                self?.hideGridOverlay()
+                self?.onGridStateChanged?(false, 0)
+            }
+        }
+    }
+
+    private func showGridOverlay(for rect: VNRectangleObservation) {
+        guard let previewLayer = previewLayer else { return }
+        let bounds = previewLayer.bounds
+
+        // Convert normalized Vision coordinates (origin bottom-left) to view coordinates
+        func toViewPoint(_ p: CGPoint) -> CGPoint {
+            CGPoint(x: p.x * bounds.width, y: (1 - p.y) * bounds.height)
+        }
+
+        let path = UIBezierPath()
+        path.move(to: toViewPoint(rect.topLeft))
+        path.addLine(to: toViewPoint(rect.topRight))
+        path.addLine(to: toViewPoint(rect.bottomRight))
+        path.addLine(to: toViewPoint(rect.bottomLeft))
+        path.close()
+
+        gridOverlayLayer.path = path.cgPath
+        gridOverlayLayer.frame = bounds
+
+        // Animate in if not visible
+        if gridOverlayLayer.opacity == 0 {
+            let animation = CABasicAnimation(keyPath: "opacity")
+            animation.fromValue = 0
+            animation.toValue = 1
+            animation.duration = 0.2
+            gridOverlayLayer.add(animation, forKey: "fadeIn")
+            gridOverlayLayer.opacity = 1
+        }
+
+        // Pulse color based on stability
+        let progress = min(CGFloat(consecutiveGridDetections) / CGFloat(requiredStableFrames), 1.0)
+        let color = UIColor(
+            red: 0.2 * (1 - progress),
+            green: 0.8,
+            blue: 0.2 + 0.6 * (1 - progress),
+            alpha: 1.0
+        )
+        gridOverlayLayer.strokeColor = color.cgColor
+        gridOverlayLayer.lineWidth = 3 + progress * 2
+    }
+
+    private func hideGridOverlay() {
+        let animation = CABasicAnimation(keyPath: "opacity")
+        animation.fromValue = gridOverlayLayer.opacity
+        animation.toValue = 0
+        animation.duration = 0.3
+        gridOverlayLayer.add(animation, forKey: "fadeOut")
+        gridOverlayLayer.opacity = 0
     }
 }
