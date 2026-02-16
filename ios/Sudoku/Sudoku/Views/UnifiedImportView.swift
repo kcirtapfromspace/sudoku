@@ -30,6 +30,9 @@ struct UnifiedImportView: View {
                 onPhotoCaptured: { image in
                     onImageCaptured(image)
                     dismiss()
+                },
+                onError: { message in
+                    errorMessage = message
                 }
             )
             .ignoresSafeArea()
@@ -189,11 +192,13 @@ struct UnifiedCameraRepresentable: UIViewControllerRepresentable {
     let bridge: CameraBridge
     let onQRCodeScanned: (String) -> Void
     let onPhotoCaptured: (UIImage) -> Void
+    let onError: (String) -> Void
 
     func makeUIViewController(context: Context) -> UnifiedCameraController {
         let controller = UnifiedCameraController()
         controller.onQRCodeScanned = onQRCodeScanned
         controller.onPhotoCaptured = onPhotoCaptured
+        controller.onError = onError
         bridge.captureAction = { [weak controller] in
             controller?.takePhoto()
         }
@@ -211,6 +216,7 @@ final class UnifiedCameraController: UIViewController,
 
     var onQRCodeScanned: ((String) -> Void)?
     var onPhotoCaptured: ((UIImage) -> Void)?
+    var onError: ((String) -> Void)?
 
     private var captureSession: AVCaptureSession?
     private var photoOutput: AVCapturePhotoOutput?
@@ -220,7 +226,7 @@ final class UnifiedCameraController: UIViewController,
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
-        setupCamera()
+        requestCameraAccess()
     }
 
     override func viewDidLayoutSubviews() {
@@ -235,12 +241,41 @@ final class UnifiedCameraController: UIViewController,
         }
     }
 
+    private func requestCameraAccess() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            setupCamera()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self?.setupCamera()
+                    } else {
+                        self?.onError?("Camera access denied. Enable it in Settings > Privacy > Camera.")
+                    }
+                }
+            }
+        case .denied, .restricted:
+            onError?("Camera access denied. Enable it in Settings > Privacy > Camera.")
+        @unknown default:
+            onError?("Camera is not available.")
+        }
+    }
+
     private func setupCamera() {
         let session = AVCaptureSession()
         session.sessionPreset = .photo
 
-        guard let device = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: device) else {
+        guard let device = AVCaptureDevice.default(for: .video) else {
+            onError?("No camera found on this device.")
+            return
+        }
+
+        let input: AVCaptureDeviceInput
+        do {
+            input = try AVCaptureDeviceInput(device: device)
+        } catch {
+            onError?("Could not access camera: \(error.localizedDescription)")
             return
         }
 
