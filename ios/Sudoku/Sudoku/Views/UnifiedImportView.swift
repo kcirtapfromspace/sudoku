@@ -294,6 +294,7 @@ final class UnifiedCameraController: UIViewController,
     private let gridDetectionInterval: CFAbsoluteTime = 0.5 // seconds between detection attempts
     private let requiredStableFrames = 3 // consecutive detections before auto-capture
     private let gridDetectionQueue = DispatchQueue(label: "com.ukodus.gridDetection", qos: .userInitiated)
+    private let ciContext = CIContext()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -463,7 +464,6 @@ final class UnifiedCameraController: UIViewController,
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        // Throttle: only process every gridDetectionInterval seconds
         let now = CFAbsoluteTimeGetCurrent()
         guard now - lastGridDetectionTime >= gridDetectionInterval else { return }
         guard !isProcessingGrid, !hasAutoCapture else { return }
@@ -476,6 +476,8 @@ final class UnifiedCameraController: UIViewController,
             return
         }
 
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+
         let request = VNDetectRectanglesRequest { [weak self] request, error in
             guard let self = self else { return }
             defer { self.isProcessingGrid = false }
@@ -486,17 +488,35 @@ final class UnifiedCameraController: UIViewController,
             }
 
             guard let results = request.results as? [VNRectangleObservation],
-                  let best = results.max(by: { self.rectArea($0) < self.rectArea($1) }),
-                  best.confidence >= 0.5 else {
+                  !results.isEmpty else {
                 self.resetGridTracking()
                 return
             }
 
-            // Check aspect ratio (grids are roughly square)
-            let w = hypot(best.topRight.x - best.topLeft.x, best.topRight.y - best.topLeft.y)
-            let h = hypot(best.bottomLeft.x - best.topLeft.x, best.bottomLeft.y - best.topLeft.y)
-            let aspect = w / h
-            guard aspect >= 0.75 && aspect <= 1.33 else {
+            // Find the best candidate that passes grid structure verification
+            var bestRect: VNRectangleObservation?
+            var bestScore: Float = 0
+
+            for candidate in results {
+                guard candidate.confidence >= 0.5 else { continue }
+                let w = hypot(candidate.topRight.x - candidate.topLeft.x,
+                              candidate.topRight.y - candidate.topLeft.y)
+                let h = hypot(candidate.bottomLeft.x - candidate.topLeft.x,
+                              candidate.bottomLeft.y - candidate.topLeft.y)
+                let aspect = w / h
+                guard aspect >= 0.75 && aspect <= 1.33 else { continue }
+
+                let score = PuzzleOCRService.gridStructureScore(
+                    image: ciImage, rect: candidate, context: self.ciContext
+                )
+                if score > bestScore {
+                    bestScore = score
+                    bestRect = candidate
+                }
+            }
+
+            // Require minimum grid structure score — reject random rectangles
+            guard let best = bestRect, bestScore >= 0.25 else {
                 self.resetGridTracking()
                 return
             }
@@ -509,10 +529,8 @@ final class UnifiedCameraController: UIViewController,
 
                 if self.consecutiveGridDetections >= self.requiredStableFrames && !self.hasAutoCapture {
                     self.hasAutoCapture = true
-                    // Haptic
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
-                    // Auto-capture via photo output for best quality
                     self.takePhoto()
                 }
             }
@@ -521,8 +539,8 @@ final class UnifiedCameraController: UIViewController,
         request.minimumAspectRatio = 0.7
         request.maximumAspectRatio = 1.3
         request.minimumSize = 0.2
-        request.maximumObservations = 3
-        request.minimumConfidence = 0.5
+        request.maximumObservations = 5
+        request.minimumConfidence = 0.4
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         try? handler.perform([request])

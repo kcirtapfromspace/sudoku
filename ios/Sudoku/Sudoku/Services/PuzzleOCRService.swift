@@ -21,6 +21,7 @@ final class PuzzleOCRService {
 
     /// Minimum confidence threshold to accept a digit recognition
     private static let confidenceThreshold: Float = 0.5
+    private let ciContext = CIContext()
 
     /// Process a photo of a Sudoku puzzle and extract the digit grid.
     func recognizePuzzle(from image: UIImage) async throws -> OCRResult {
@@ -52,9 +53,9 @@ final class PuzzleOCRService {
         let request = VNDetectRectanglesRequest()
         request.minimumAspectRatio = 0.7
         request.maximumAspectRatio = 1.3
-        request.minimumSize = 0.3
-        request.maximumObservations = 5
-        request.minimumConfidence = 0.5
+        request.minimumSize = 0.2
+        request.maximumObservations = 10
+        request.minimumConfidence = 0.4
 
         let handler = VNImageRequestHandler(ciImage: image, options: [:])
         try handler.perform([request])
@@ -63,15 +64,102 @@ final class PuzzleOCRService {
             throw OCRError.noGridFound
         }
 
-        // Pick the largest rectangle by area
-        let best = results.max(by: { area(of: $0) < area(of: $1) })!
-        return best
+        // Score each candidate by internal grid structure, pick the best verified one
+        let minimumGridScore: Float = 0.375
+        var bestRect: VNRectangleObservation?
+        var bestScore: Float = 0
+
+        for rect in results {
+            let score = Self.gridStructureScore(image: image, rect: rect, context: ciContext)
+            if score > bestScore {
+                bestScore = score
+                bestRect = rect
+            }
+        }
+
+        if let verified = bestRect, bestScore >= minimumGridScore {
+            return verified
+        }
+
+        // Fallback: largest rectangle (user took photo deliberately)
+        return results.max(by: { area(of: $0) < area(of: $1) })!
     }
 
     private func area(of rect: VNRectangleObservation) -> CGFloat {
         let w = hypot(rect.topRight.x - rect.topLeft.x, rect.topRight.y - rect.topLeft.y)
         let h = hypot(rect.bottomLeft.x - rect.topLeft.x, rect.bottomLeft.y - rect.topLeft.y)
         return w * h
+    }
+
+    /// Check whether a detected rectangle contains internal grid structure consistent
+    /// with a Sudoku puzzle. Perspective-corrects the region to a small bitmap, then
+    /// samples brightness at expected line positions (1/9 … 8/9) and compares with
+    /// neighboring cell interiors. Returns fraction of the 16 expected lines detected.
+    static func gridStructureScore(image: CIImage, rect: VNRectangleObservation, context: CIContext) -> Float {
+        let imageSize = image.extent.size
+
+        let filter = CIFilter.perspectiveCorrection()
+        filter.inputImage = image
+        filter.topLeft = CGPoint(x: rect.topLeft.x * imageSize.width, y: rect.topLeft.y * imageSize.height)
+        filter.topRight = CGPoint(x: rect.topRight.x * imageSize.width, y: rect.topRight.y * imageSize.height)
+        filter.bottomLeft = CGPoint(x: rect.bottomLeft.x * imageSize.width, y: rect.bottomLeft.y * imageSize.height)
+        filter.bottomRight = CGPoint(x: rect.bottomRight.x * imageSize.width, y: rect.bottomRight.y * imageSize.height)
+
+        guard let corrected = filter.outputImage else { return 0 }
+
+        // Render to 180x180 bitmap for fast pixel sampling (20px per cell)
+        let sz = 180
+        let ext = corrected.extent
+        guard ext.width > 0, ext.height > 0 else { return 0 }
+        let translated = corrected.transformed(by: CGAffineTransform(translationX: -ext.origin.x, y: -ext.origin.y))
+        let scaled = translated.transformed(by: CGAffineTransform(scaleX: CGFloat(sz) / ext.width, scaleY: CGFloat(sz) / ext.height))
+
+        guard let cgImage = context.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
+              let dp = cgImage.dataProvider,
+              let data = dp.data else { return 0 }
+
+        let ptr = CFDataGetBytePtr(data)!
+        let bpp = cgImage.bitsPerPixel / 8
+        let bpr = cgImage.bytesPerRow
+
+        func gray(_ x: Int, _ y: Int) -> Float {
+            let cx = min(max(x, 0), sz - 1)
+            let cy = min(max(y, 0), sz - 1)
+            let off = cy * bpr + cx * bpp
+            return (Float(ptr[off]) + Float(ptr[off + 1]) + Float(ptr[off + 2])) / (3.0 * 255.0)
+        }
+
+        let cell = sz / 9  // 20px per cell
+        let half = cell / 2 // 10px — center of cell
+        var found = 0
+
+        for i in 1...8 {
+            let pos = i * sz / 9
+
+            // Vertical line: sample 9 points, compare with left/right cell centers
+            var vHits = 0
+            for s in 0..<9 {
+                let sy = s * cell + half
+                let lineVal = gray(pos, sy)
+                let leftVal = gray(pos - half, sy)
+                let rightVal = gray(pos + half, sy)
+                if lineVal < (leftVal + rightVal) / 2.0 - 0.08 { vHits += 1 }
+            }
+            if vHits >= 5 { found += 1 }
+
+            // Horizontal line: sample 9 points, compare with above/below cell centers
+            var hHits = 0
+            for s in 0..<9 {
+                let sx = s * cell + half
+                let lineVal = gray(sx, pos)
+                let aboveVal = gray(sx, pos - half)
+                let belowVal = gray(sx, pos + half)
+                if lineVal < (aboveVal + belowVal) / 2.0 - 0.08 { hHits += 1 }
+            }
+            if hHits >= 5 { found += 1 }
+        }
+
+        return Float(found) / 16.0
     }
 
     // MARK: - Step 2: Perspective Correction
