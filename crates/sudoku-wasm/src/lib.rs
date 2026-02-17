@@ -3,7 +3,7 @@
 //! This crate provides a browser-based Sudoku game that looks and feels
 //! like the terminal UI version.
 
-use sudoku_core::{Difficulty, PuzzleId, Solver};
+use sudoku_core::{canonical_puzzle_hash_str, Difficulty, PuzzleId, Solver};
 use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, KeyboardEvent};
 
@@ -433,7 +433,7 @@ fn parse_difficulty(s: &str) -> Difficulty {
 }
 
 /// Generate a puzzle in the background (no canvas required).
-/// Returns JSON: {puzzle_string, solution_string, difficulty, se_rating, short_code}
+/// Returns JSON: {puzzle_hash, puzzle_string, solution_string, difficulty, se_rating, short_code}
 #[wasm_bindgen]
 pub fn generate_puzzle_json(difficulty: &str) -> String {
     let diff = parse_difficulty(difficulty);
@@ -443,6 +443,7 @@ pub fn generate_puzzle_json(difficulty: &str) -> String {
     let solution = solver.solve(&puzzle).expect("generated puzzle should be solvable");
     let (rated_difficulty, se_rating) = solver.analyze(&puzzle);
     serde_json::json!({
+        "puzzle_hash": canonical_puzzle_hash_str(&puzzle.to_string()),
         "puzzle_string": puzzle.to_string(),
         "solution_string": solution.to_string(),
         "difficulty": format!("{}", rated_difficulty),
