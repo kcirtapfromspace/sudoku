@@ -106,21 +106,86 @@ final class ConsolidatedMenuTests: XCTestCase {
         let importButton = app.buttons["Import"]
         XCTAssertTrue(importButton.waitForExistence(timeout: 5), "Import button should exist")
         importButton.tap()
+        sleep(3)
+
+        // On simulator, should see the "No Camera Available" fallback
+        let noCameraText = app.staticTexts["No Camera Available"]
+        let photoLibButton = app.buttons["Choose from Photo Library"]
+
+        if noCameraText.waitForExistence(timeout: 5) {
+            // No-camera fallback is showing — take screenshot
+            let screenshot1 = XCUIScreen.main.screenshot()
+            let attach1 = XCTAttachment(screenshot: screenshot1)
+            attach1.name = "06_Import_NoCameraFallback"
+            attach1.lifetime = .keepAlways
+            add(attach1)
+
+            XCTAssertTrue(photoLibButton.exists, "Photo library button should exist")
+
+            #if DEBUG
+            let testPuzzleButton = app.buttons["Use Test Puzzle Image"]
+            XCTAssertTrue(testPuzzleButton.exists, "Test puzzle button should exist in DEBUG")
+            #endif
+        } else {
+            // Real camera view (on device)
+            let screenshot1 = XCUIScreen.main.screenshot()
+            let attach1 = XCTAttachment(screenshot: screenshot1)
+            attach1.name = "06_Import_UnifiedCamera"
+            attach1.lifetime = .keepAlways
+            add(attach1)
+        }
+
+        // Dismiss
+        let cancelButton = app.buttons["Cancel"]
+        let closeButton = app.buttons["xmark"]
+        if cancelButton.waitForExistence(timeout: 2) {
+            cancelButton.tap()
+        } else if closeButton.exists {
+            closeButton.tap()
+        }
+        sleep(1)
+    }
+
+    // MARK: - Test 4: Import Test Puzzle Image (end-to-end OCR)
+
+    func testImportTestPuzzle() throws {
+        let importButton = app.buttons["Import"]
+        XCTAssertTrue(importButton.waitForExistence(timeout: 5), "Import button should exist")
+        importButton.tap()
         sleep(2)
 
-        // Should see the unified camera full-screen cover
-        // On simulator there's no real camera, but the view should appear
-        let screenshot1 = XCUIScreen.main.screenshot()
-        let attach1 = XCTAttachment(screenshot: screenshot1)
-        attach1.name = "06_Import_UnifiedCamera"
-        attach1.lifetime = .keepAlways
-        add(attach1)
-
-        // Dismiss via X button
-        let closeButton = app.buttons["xmark"]
-        if closeButton.waitForExistence(timeout: 3) {
-            closeButton.tap()
-            sleep(1)
+        // On simulator, tap "Use Test Puzzle Image"
+        let testPuzzleButton = app.buttons["Use Test Puzzle Image"]
+        guard testPuzzleButton.waitForExistence(timeout: 5) else {
+            // Not on simulator or not a DEBUG build — skip
+            return
         }
+
+        let ss1 = XCUIScreen.main.screenshot()
+        let a1 = XCTAttachment(screenshot: ss1)
+        a1.name = "07_TestPuzzle_BeforeTap"
+        a1.lifetime = .keepAlways
+        add(a1)
+
+        testPuzzleButton.tap()
+
+        // Wait for OCR to process — the confirmation view should appear
+        // Look for typical confirmation UI elements
+        sleep(8)
+
+        let ss2 = XCUIScreen.main.screenshot()
+        let a2 = XCTAttachment(screenshot: ss2)
+        a2.name = "08_TestPuzzle_AfterOCR"
+        a2.lifetime = .keepAlways
+        add(a2)
+
+        // Wait a bit more in case OCR is still running
+        sleep(5)
+
+        let ss3 = XCUIScreen.main.screenshot()
+        let a3 = XCTAttachment(screenshot: ss3)
+        a3.name = "09_TestPuzzle_Final"
+        a3.lifetime = .keepAlways
+        add(a3)
     }
 }

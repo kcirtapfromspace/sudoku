@@ -16,13 +16,15 @@ final class CameraBridge: ObservableObject {
 /// and captures photos for OCR. QR codes and grids are detected automatically on the live feed.
 struct UnifiedImportView: View {
     let onPuzzleFound: (String) -> Void
-    let onImageCaptured: (UIImage) -> Void
+    let onImportComplete: (ImportedPuzzleData) -> Void
     @Environment(\.dismiss) var dismiss
     @StateObject private var bridge = CameraBridge()
     @State private var errorMessage: String?
     @State private var qrDetected = false
     @State private var gridTracking: GridTrackingState = .none
     @State private var showingPhotoLibrary = false
+    @State private var cameraUnavailable = !UIImagePickerController.isSourceTypeAvailable(.camera)
+    @State private var capturedImage: UIImage?
 
     enum GridTrackingState: Equatable {
         case none
@@ -33,14 +35,101 @@ struct UnifiedImportView: View {
 
     var body: some View {
         ZStack {
+            if let image = capturedImage {
+                PuzzleConfirmationView(image: image) { importData in
+                    dismiss()
+                    onImportComplete(importData)
+                }
+            } else if cameraUnavailable {
+                noCameraFallback
+            } else {
+                cameraView
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: errorMessage != nil)
+        .animation(.easeInOut(duration: 0.3), value: qrDetected)
+        .animation(.easeInOut(duration: 0.3), value: gridTracking)
+        .sheet(isPresented: $showingPhotoLibrary) {
+            CameraCaptureView(sourceType: .photoLibrary) { image in
+                capturedImage = image
+            }
+        }
+    }
+
+    // MARK: - No Camera Fallback (Simulator)
+
+    private var noCameraFallback: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
+
+                Text("No Camera Available")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                Text("Select a photo of a Sudoku puzzle\nfrom your photo library.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+
+                Button {
+                    showingPhotoLibrary = true
+                } label: {
+                    Label("Choose from Photo Library", systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal, 40)
+
+                #if DEBUG
+                Button {
+                    capturedImage = Self.generateTestPuzzleImage()
+                } label: {
+                    Label("Use Test Puzzle Image", systemImage: "testtube.2")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .controlSize(.large)
+                .padding(.horizontal, 40)
+                #endif
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Cancel")
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .padding(.bottom, 40)
+            }
+        }
+    }
+
+    // MARK: - Live Camera View
+
+    private var cameraView: some View {
+        ZStack {
             UnifiedCameraRepresentable(
                 bridge: bridge,
                 onQRCodeScanned: handleQRCode,
                 onPhotoCaptured: { image in
-                    onImageCaptured(image)
+                    capturedImage = image
                 },
                 onError: { message in
-                    errorMessage = message
+                    if message.contains("No camera") || message.contains("not available") {
+                        cameraUnavailable = true
+                    } else {
+                        errorMessage = message
+                    }
                 },
                 onGridStateChanged: { stable, count in
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -171,15 +260,6 @@ struct UnifiedImportView: View {
                 .padding(.bottom, 40)
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: errorMessage != nil)
-        .animation(.easeInOut(duration: 0.3), value: qrDetected)
-        .animation(.easeInOut(duration: 0.3), value: gridTracking)
-        .sheet(isPresented: $showingPhotoLibrary) {
-            CameraCaptureView(sourceType: .photoLibrary) { image in
-                onImageCaptured(image)
-                dismiss()
-            }
-        }
     }
 
     private var guidanceText: Text {
@@ -241,6 +321,138 @@ struct UnifiedImportView: View {
 
         return nil
     }
+
+    #if DEBUG
+    /// Generate a synthetic Sudoku puzzle image for simulator testing.
+    /// Draws a 9x9 grid with digits from a known valid puzzle.
+    static func generateTestPuzzleImage() -> UIImage {
+        let gridSize: CGFloat = 900
+        let padding: CGFloat = 80  // White margin so grid detector can find the rectangle
+        let totalSize = gridSize + padding * 2
+        let cellSize = gridSize / 9.0
+
+        // A known valid Sudoku puzzle (0 = empty)
+        let puzzle: [[Int]] = [
+            [5,3,0, 0,7,0, 0,0,0],
+            [6,0,0, 1,9,5, 0,0,0],
+            [0,9,8, 0,0,0, 0,6,0],
+
+            [8,0,0, 0,6,0, 0,0,3],
+            [4,0,0, 8,0,3, 0,0,1],
+            [7,0,0, 0,2,0, 0,0,6],
+
+            [0,6,0, 0,0,0, 2,8,0],
+            [0,0,0, 4,1,9, 0,0,5],
+            [0,0,0, 0,8,0, 0,7,9],
+        ]
+
+        // Player-filled digits (blue) — simulates a game in progress
+        let playerMoves: [(row: Int, col: Int, digit: Int)] = [
+            (0, 3, 6),  // row 0, col 3 → 6
+            (1, 1, 7),  // row 1, col 1 → 7
+        ]
+
+        // Pencil marks in empty cells — 3x3 sub-grid layout:
+        // [1][2][3]
+        // [4][5][6]
+        // [7][8][9]
+        let pencilMarks: [(row: Int, col: Int, notes: [Int])] = [
+            (0, 2, [1, 2, 4]),      // row 0, col 2
+            (0, 5, [4, 8]),          // row 0, col 5
+            (2, 0, [1, 2]),          // row 2, col 0
+            (2, 3, [2, 3, 4]),       // row 2, col 3
+        ]
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: totalSize, height: totalSize))
+        return renderer.image { ctx in
+            // White background (including padding)
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: totalSize, height: totalSize))
+
+            // Translate to draw grid inside padding
+            ctx.cgContext.translateBy(x: padding, y: padding)
+
+            // Draw thin cell lines
+            UIColor.gray.setStroke()
+            let thinPath = UIBezierPath()
+            thinPath.lineWidth = 2
+            for i in 1..<9 {
+                let pos = CGFloat(i) * cellSize
+                thinPath.move(to: CGPoint(x: pos, y: 0))
+                thinPath.addLine(to: CGPoint(x: pos, y: gridSize))
+                thinPath.move(to: CGPoint(x: 0, y: pos))
+                thinPath.addLine(to: CGPoint(x: gridSize, y: pos))
+            }
+            thinPath.stroke()
+
+            // Draw thick box lines
+            UIColor.black.setStroke()
+            let thickPath = UIBezierPath()
+            thickPath.lineWidth = 6
+            for i in 0...3 {
+                let pos = CGFloat(i) * cellSize * 3
+                thickPath.move(to: CGPoint(x: pos, y: 0))
+                thickPath.addLine(to: CGPoint(x: pos, y: gridSize))
+                thickPath.move(to: CGPoint(x: 0, y: pos))
+                thickPath.addLine(to: CGPoint(x: gridSize, y: pos))
+            }
+            thickPath.stroke()
+
+            // Draw given digits (black, bold)
+            let givenFont = UIFont.systemFont(ofSize: cellSize * 0.65, weight: .bold)
+            let givenAttrs: [NSAttributedString.Key: Any] = [
+                .font: givenFont,
+                .foregroundColor: UIColor.black,
+            ]
+            for row in 0..<9 {
+                for col in 0..<9 {
+                    let digit = puzzle[row][col]
+                    guard digit != 0 else { continue }
+                    let text = "\(digit)" as NSString
+                    let textSize = text.size(withAttributes: givenAttrs)
+                    let x = CGFloat(col) * cellSize + (cellSize - textSize.width) / 2
+                    let y = CGFloat(row) * cellSize + (cellSize - textSize.height) / 2
+                    text.draw(at: CGPoint(x: x, y: y), withAttributes: givenAttrs)
+                }
+            }
+
+            // Draw player-filled digits (blue)
+            let playerFont = UIFont.systemFont(ofSize: cellSize * 0.65, weight: .medium)
+            let playerAttrs: [NSAttributedString.Key: Any] = [
+                .font: playerFont,
+                .foregroundColor: UIColor.systemBlue,
+            ]
+            for move in playerMoves {
+                let text = "\(move.digit)" as NSString
+                let textSize = text.size(withAttributes: playerAttrs)
+                let x = CGFloat(move.col) * cellSize + (cellSize - textSize.width) / 2
+                let y = CGFloat(move.row) * cellSize + (cellSize - textSize.height) / 2
+                text.draw(at: CGPoint(x: x, y: y), withAttributes: playerAttrs)
+            }
+
+            // Draw pencil marks (small gray digits in 3x3 sub-grid)
+            let noteFont = UIFont.systemFont(ofSize: cellSize * 0.22, weight: .regular)
+            let noteAttrs: [NSAttributedString.Key: Any] = [
+                .font: noteFont,
+                .foregroundColor: UIColor.darkGray,
+            ]
+            let subCellSize = cellSize / 3.0
+            for mark in pencilMarks {
+                let cellX = CGFloat(mark.col) * cellSize
+                let cellY = CGFloat(mark.row) * cellSize
+                for note in mark.notes {
+                    let subRow = (note - 1) / 3
+                    let subCol = (note - 1) % 3
+                    let text = "\(note)" as NSString
+                    let textSize = text.size(withAttributes: noteAttrs)
+                    let x = cellX + CGFloat(subCol) * subCellSize + (subCellSize - textSize.width) / 2
+                    let y = cellY + CGFloat(subRow) * subCellSize + (subCellSize - textSize.height) / 2
+                    text.draw(at: CGPoint(x: x, y: y), withAttributes: noteAttrs)
+                }
+            }
+        }
+    }
+    #endif
 }
 
 // MARK: - Camera UIViewControllerRepresentable

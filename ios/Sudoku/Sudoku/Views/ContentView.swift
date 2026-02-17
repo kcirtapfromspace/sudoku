@@ -74,9 +74,6 @@ struct MenuView: View {
     @State private var showingSettings = false
     @State private var showingProgress = false
     @State private var showingImport = false
-    @State private var capturedImage: UIImage?
-    @State private var showingConfirmation = false
-    @State private var pendingImageCapture = false
 
     var body: some View {
         NavigationStack {
@@ -176,36 +173,17 @@ struct MenuView: View {
             .sheet(isPresented: $showingProgress) {
                 ProgressHubView()
             }
-            .fullScreenCover(isPresented: $showingImport, onDismiss: {
-                if pendingImageCapture {
-                    pendingImageCapture = false
-                    // Delay sheet presentation to avoid SwiftUI bug where presenting
-                    // a modal immediately in onDismiss of another modal causes a
-                    // black screen or fails to present.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        showingConfirmation = true
-                    }
-                }
-            }) {
+            .fullScreenCover(isPresented: $showingImport) {
                 UnifiedImportView(
                     onPuzzleFound: { puzzleString in
                         showingImport = false
                         gameManager.loadSharedPuzzle(puzzleString)
                     },
-                    onImageCaptured: { image in
-                        capturedImage = image
-                        pendingImageCapture = true
+                    onImportComplete: { importData in
                         showingImport = false
-                    }
-                )
-            }
-            .sheet(isPresented: $showingConfirmation) {
-                if let image = capturedImage {
-                    PuzzleConfirmationView(image: image) { importData in
-                        showingConfirmation = false
                         gameManager.loadImportedPuzzle(importData)
                     }
-                }
+                )
             }
         }
     }

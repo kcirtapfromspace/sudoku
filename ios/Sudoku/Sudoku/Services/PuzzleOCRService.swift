@@ -299,9 +299,9 @@ final class PuzzleOCRService {
     // MARK: - Step 3: Cell Extraction
 
     private func extractCells(from image: CIImage, insetFraction: CGFloat) -> [CIImage] {
-        let size = image.extent.size
-        let cellW = size.width / 9.0
-        let cellH = size.height / 9.0
+        let extent = image.extent
+        let cellW = extent.width / 9.0
+        let cellH = extent.height / 9.0
 
         var cells: [CIImage] = []
         cells.reserveCapacity(81)
@@ -310,8 +310,8 @@ final class PuzzleOCRService {
             for col in 0..<9 {
                 // CIImage origin is bottom-left; row 0 is the top of the puzzle
                 let flippedRow = 8 - row
-                let x = CGFloat(col) * cellW
-                let y = CGFloat(flippedRow) * cellH
+                let x = extent.origin.x + CGFloat(col) * cellW
+                let y = extent.origin.y + CGFloat(flippedRow) * cellH
 
                 let insetX = cellW * insetFraction
                 let insetY = cellH * insetFraction
