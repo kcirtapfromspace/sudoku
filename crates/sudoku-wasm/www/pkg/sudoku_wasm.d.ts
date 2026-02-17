@@ -80,6 +80,11 @@ export class SudokuGame {
      */
     is_secrets_unlocked(): boolean;
     /**
+     * Load a pre-generated puzzle from JSON, skipping solve/rating. Returns true on success.
+     * JSON must contain: puzzle_string, solution_string, difficulty, se_rating
+     */
+    load_pregenerated(json: string): boolean;
+    /**
      * Load a puzzle from an 81-character string, returns true on success
      */
     load_puzzle_string(puzzle: string): boolean;
@@ -112,6 +117,10 @@ export class SudokuGame {
      */
     resize(width: number, height: number): void;
     /**
+     * Get the current screen state (Playing, Paused, Win, Lose, Menu, Stats, Loading)
+     */
+    screen_state(): string;
+    /**
      * Get Sudoku Explainer (SE) numerical rating for the current puzzle
      */
     se_rating(): number;
@@ -124,6 +133,13 @@ export class SudokuGame {
      */
     set_theme(theme_name: string): void;
     /**
+     * Take the pending new-game difficulty (if any). Returns the difficulty string
+     * or empty string if no new game is pending.
+     * The host should generate a puzzle for this difficulty and call load_pregenerated(),
+     * or fall back to new_game() for synchronous generation.
+     */
+    take_pending_difficulty(): string;
+    /**
      * Update game state (call from requestAnimationFrame)
      */
     tick(): void;
@@ -133,6 +149,12 @@ export class SudokuGame {
     toggle_pause(): void;
 }
 
+/**
+ * Generate a puzzle in the background (no canvas required).
+ * Returns JSON: {puzzle_hash, puzzle_string, solution_string, difficulty, se_rating, short_code}
+ */
+export function generate_puzzle_json(difficulty: string): string;
+
 export function init(): void;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -140,6 +162,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_sudokugame_free: (a: number, b: number) => void;
+    readonly generate_puzzle_json: (a: number, b: number) => [number, number];
     readonly sudokugame_difficulty: (a: number) => [number, number];
     readonly sudokugame_elapsed_secs: (a: number) => number;
     readonly sudokugame_elapsed_string: (a: number) => [number, number];
@@ -158,6 +181,7 @@ export interface InitOutput {
     readonly sudokugame_is_game_over: (a: number) => number;
     readonly sudokugame_is_paused: (a: number) => number;
     readonly sudokugame_is_secrets_unlocked: (a: number) => number;
+    readonly sudokugame_load_pregenerated: (a: number, b: number, c: number) => number;
     readonly sudokugame_load_puzzle_string: (a: number, b: number, c: number) => number;
     readonly sudokugame_load_short_code: (a: number, b: number, c: number) => number;
     readonly sudokugame_load_state_json: (a: number, b: number, c: number) => number;
@@ -166,9 +190,11 @@ export interface InitOutput {
     readonly sudokugame_new: (a: number, b: number) => [number, number, number];
     readonly sudokugame_new_game: (a: number, b: number, c: number) => void;
     readonly sudokugame_resize: (a: number, b: number, c: number) => void;
+    readonly sudokugame_screen_state: (a: number) => [number, number];
     readonly sudokugame_se_rating: (a: number) => number;
     readonly sudokugame_set_secrets_unlocked: (a: number, b: number) => void;
     readonly sudokugame_set_theme: (a: number, b: number, c: number) => void;
+    readonly sudokugame_take_pending_difficulty: (a: number) => [number, number];
     readonly sudokugame_tick: (a: number) => void;
     readonly sudokugame_toggle_pause: (a: number) => void;
     readonly init: () => void;

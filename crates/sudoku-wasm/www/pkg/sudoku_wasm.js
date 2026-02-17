@@ -216,6 +216,18 @@ export class SudokuGame {
         return ret !== 0;
     }
     /**
+     * Load a pre-generated puzzle from JSON, skipping solve/rating. Returns true on success.
+     * JSON must contain: puzzle_string, solution_string, difficulty, se_rating
+     * @param {string} json
+     * @returns {boolean}
+     */
+    load_pregenerated(json) {
+        const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sudokugame_load_pregenerated(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * Load a puzzle from an 81-character string, returns true on success
      * @param {string} puzzle
      * @returns {boolean}
@@ -300,6 +312,22 @@ export class SudokuGame {
         wasm.sudokugame_resize(this.__wbg_ptr, width, height);
     }
     /**
+     * Get the current screen state (Playing, Paused, Win, Lose, Menu, Stats, Loading)
+     * @returns {string}
+     */
+    screen_state() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.sudokugame_screen_state(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Get Sudoku Explainer (SE) numerical rating for the current puzzle
      * @returns {number}
      */
@@ -324,6 +352,25 @@ export class SudokuGame {
         wasm.sudokugame_set_theme(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Take the pending new-game difficulty (if any). Returns the difficulty string
+     * or empty string if no new game is pending.
+     * The host should generate a puzzle for this difficulty and call load_pregenerated(),
+     * or fall back to new_game() for synchronous generation.
+     * @returns {string}
+     */
+    take_pending_difficulty() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.sudokugame_take_pending_difficulty(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Update game state (call from requestAnimationFrame)
      */
     tick() {
@@ -337,6 +384,27 @@ export class SudokuGame {
     }
 }
 if (Symbol.dispose) SudokuGame.prototype[Symbol.dispose] = SudokuGame.prototype.free;
+
+/**
+ * Generate a puzzle in the background (no canvas required).
+ * Returns JSON: {puzzle_hash, puzzle_string, solution_string, difficulty, se_rating, short_code}
+ * @param {string} difficulty
+ * @returns {string}
+ */
+export function generate_puzzle_json(difficulty) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(difficulty, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.generate_puzzle_json(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
 
 export function init() {
     wasm.init();

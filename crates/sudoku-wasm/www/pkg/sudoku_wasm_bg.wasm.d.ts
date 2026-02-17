@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_sudokugame_free: (a: number, b: number) => void;
+export const generate_puzzle_json: (a: number, b: number) => [number, number];
 export const sudokugame_difficulty: (a: number) => [number, number];
 export const sudokugame_elapsed_secs: (a: number) => number;
 export const sudokugame_elapsed_string: (a: number) => [number, number];
@@ -20,6 +21,7 @@ export const sudokugame_is_complete: (a: number) => number;
 export const sudokugame_is_game_over: (a: number) => number;
 export const sudokugame_is_paused: (a: number) => number;
 export const sudokugame_is_secrets_unlocked: (a: number) => number;
+export const sudokugame_load_pregenerated: (a: number, b: number, c: number) => number;
 export const sudokugame_load_puzzle_string: (a: number, b: number, c: number) => number;
 export const sudokugame_load_short_code: (a: number, b: number, c: number) => number;
 export const sudokugame_load_state_json: (a: number, b: number, c: number) => number;
@@ -28,9 +30,11 @@ export const sudokugame_mistakes: (a: number) => number;
 export const sudokugame_new: (a: number, b: number) => [number, number, number];
 export const sudokugame_new_game: (a: number, b: number, c: number) => void;
 export const sudokugame_resize: (a: number, b: number, c: number) => void;
+export const sudokugame_screen_state: (a: number) => [number, number];
 export const sudokugame_se_rating: (a: number) => number;
 export const sudokugame_set_secrets_unlocked: (a: number, b: number) => void;
 export const sudokugame_set_theme: (a: number, b: number, c: number) => void;
+export const sudokugame_take_pending_difficulty: (a: number) => [number, number];
 export const sudokugame_tick: (a: number) => void;
 export const sudokugame_toggle_pause: (a: number) => void;
 export const init: () => void;
