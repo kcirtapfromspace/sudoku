@@ -179,7 +179,12 @@ struct MenuView: View {
             .fullScreenCover(isPresented: $showingImport, onDismiss: {
                 if pendingImageCapture {
                     pendingImageCapture = false
-                    showingConfirmation = true
+                    // Delay sheet presentation to avoid SwiftUI bug where presenting
+                    // a modal immediately in onDismiss of another modal causes a
+                    // black screen or fails to present.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        showingConfirmation = true
+                    }
                 }
             }) {
                 UnifiedImportView(

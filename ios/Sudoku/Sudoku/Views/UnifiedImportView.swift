@@ -497,7 +497,7 @@ final class UnifiedCameraController: UIViewController,
             var bestScore: Float = 0
 
             for candidate in results {
-                guard candidate.confidence >= 0.5 else { continue }
+                guard candidate.confidence >= 0.3 else { continue }
                 let w = hypot(candidate.topRight.x - candidate.topLeft.x,
                               candidate.topRight.y - candidate.topLeft.y)
                 let h = hypot(candidate.bottomLeft.x - candidate.topLeft.x,
@@ -515,7 +515,7 @@ final class UnifiedCameraController: UIViewController,
             }
 
             // Require minimum grid structure score — reject random rectangles
-            guard let best = bestRect, bestScore >= 0.25 else {
+            guard let best = bestRect, bestScore >= 0.15 else {
                 self.resetGridTracking()
                 return
             }
