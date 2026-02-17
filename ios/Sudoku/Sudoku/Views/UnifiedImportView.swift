@@ -290,7 +290,7 @@ final class UnifiedCameraController: UIViewController,
     private var lastGridDetectionTime: CFAbsoluteTime = 0
     private var isProcessingGrid = false
     private var hasAutoCapture = false
-    private let gridDetectionInterval: CFAbsoluteTime = 0.5 // seconds between detection attempts
+    private let gridDetectionInterval: CFAbsoluteTime = 0.3 // seconds between detection attempts
     private let requiredStableFrames = 3 // consecutive detections before auto-capture
     private let gridDetectionQueue = DispatchQueue(label: "com.ukodus.gridDetection", qos: .userInitiated)
     private let ciContext = CIContext()
@@ -449,11 +449,11 @@ final class UnifiedCameraController: UIViewController,
             return
         }
 
-        // Haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-
-        onPhotoCaptured?(image)
+        DispatchQueue.main.async { [weak self] in
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            self?.onPhotoCaptured?(image)
+        }
     }
 
     // MARK: - Live Grid Detection
@@ -537,9 +537,9 @@ final class UnifiedCameraController: UIViewController,
 
         request.minimumAspectRatio = 0.7
         request.maximumAspectRatio = 1.3
-        request.minimumSize = 0.2
+        request.minimumSize = 0.1
         request.maximumObservations = 5
-        request.minimumConfidence = 0.4
+        request.minimumConfidence = 0.3
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         try? handler.perform([request])
@@ -553,21 +553,25 @@ final class UnifiedCameraController: UIViewController,
 
     private func resetGridTracking() {
         if consecutiveGridDetections > 0 {
-            consecutiveGridDetections = 0
-            DispatchQueue.main.async { [weak self] in
-                self?.hideGridOverlay()
-                self?.onGridStateChanged?(false, 0)
+            consecutiveGridDetections = max(0, consecutiveGridDetections - 1)
+            if consecutiveGridDetections == 0 {
+                DispatchQueue.main.async { [weak self] in
+                    self?.hideGridOverlay()
+                    self?.onGridStateChanged?(false, 0)
+                }
             }
         }
     }
 
     private func showGridOverlay(for rect: VNRectangleObservation) {
         guard let previewLayer = previewLayer else { return }
-        let bounds = previewLayer.bounds
 
-        // Convert normalized Vision coordinates (origin bottom-left) to view coordinates
+        // Convert Vision coordinates to view coordinates using the preview layer's
+        // built-in transform, which correctly accounts for resizeAspectFill video gravity.
+        // Vision coordinates have origin at bottom-left (y-up); the API expects top-left (y-down).
         func toViewPoint(_ p: CGPoint) -> CGPoint {
-            CGPoint(x: p.x * bounds.width, y: (1 - p.y) * bounds.height)
+            let flipped = CGPoint(x: p.x, y: 1 - p.y)
+            return previewLayer.layerPointConverted(fromCaptureDevicePoint: flipped)
         }
 
         let path = UIBezierPath()
@@ -578,7 +582,7 @@ final class UnifiedCameraController: UIViewController,
         path.close()
 
         gridOverlayLayer.path = path.cgPath
-        gridOverlayLayer.frame = bounds
+        gridOverlayLayer.frame = previewLayer.bounds
 
         // Animate in if not visible
         if gridOverlayLayer.opacity == 0 {
