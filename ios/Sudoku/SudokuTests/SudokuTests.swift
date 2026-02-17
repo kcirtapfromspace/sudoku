@@ -4,7 +4,7 @@ import XCTest
 final class SudokuTests: XCTestCase {
 
     func testDifficultyAllCases() {
-        XCTAssertEqual(Difficulty.allCases.count, 6)
+        XCTAssertEqual(Difficulty.allCases.count, 8)
     }
 
     func testCellModelCreation() {

@@ -207,9 +207,8 @@ final class PuzzleOCRService {
 
         guard let cgImage = context.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
               let dp = cgImage.dataProvider,
-              let data = dp.data else { return 0 }
-
-        let ptr = CFDataGetBytePtr(data)!
+              let data = dp.data,
+              let ptr = CFDataGetBytePtr(data) else { return 0 }
         let bpp = cgImage.bitsPerPixel / 8
         let bpr = cgImage.bytesPerRow
 
@@ -390,9 +389,8 @@ final class PuzzleOCRService {
 
         guard let cgImage = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
               let dp = cgImage.dataProvider,
-              let data = dp.data else { return .ambiguous }
-
-        let ptr = CFDataGetBytePtr(data)!
+              let data = dp.data,
+              let ptr = CFDataGetBytePtr(data) else { return .ambiguous }
         let bpp = cgImage.bitsPerPixel / 8
         let bpr = cgImage.bytesPerRow
 
@@ -559,9 +557,8 @@ final class PuzzleOCRService {
 
         guard let cgImage = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
               let dp = cgImage.dataProvider,
-              let data = dp.data else { return false }
-
-        let ptr = CFDataGetBytePtr(data)!
+              let data = dp.data,
+              let ptr = CFDataGetBytePtr(data) else { return false }
         let bpp = cgImage.bitsPerPixel / 8
         let bpr = cgImage.bytesPerRow
 
