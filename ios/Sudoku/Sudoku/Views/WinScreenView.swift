@@ -74,7 +74,8 @@ struct WinScreenView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 2)
+                    .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 2)
+                    .shadow(color: .black.opacity(0.5), radius: 8, x: 0, y: 4)
                     .multilineTextAlignment(.center)
 
                 // Stats card
@@ -94,13 +95,17 @@ struct WinScreenView: View {
                         .foregroundStyle(.yellow)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .background(
+                            Capsule()
+                                .fill(.black.opacity(0.4))
+                                .overlay(Capsule().strokeBorder(.yellow.opacity(0.5), lineWidth: 1))
+                        )
                 }
 
                 // Tap to continue
                 Text("Tap anywhere to continue")
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(.white.opacity(0.9))
                     .padding(.bottom, 40)
             }
             .padding()
@@ -166,8 +171,12 @@ private struct StatsCard: View {
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.2), radius: 10)
+                .fill(.black.opacity(0.5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.3), radius: 10)
         )
     }
 
@@ -193,7 +202,7 @@ private struct WinStatItem: View {
                 .foregroundStyle(.white)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.9))
         }
         .frame(minWidth: 80)
     }
@@ -207,9 +216,9 @@ private struct AnimatedGradientBackground: View {
     var body: some View {
         LinearGradient(
             colors: [
-                Color(hue: animateGradient ? 0.7 : 0.8, saturation: 0.8, brightness: 0.3),
-                Color(hue: animateGradient ? 0.85 : 0.75, saturation: 0.7, brightness: 0.2),
-                Color(hue: animateGradient ? 0.6 : 0.9, saturation: 0.9, brightness: 0.15)
+                Color(hue: animateGradient ? 0.7 : 0.8, saturation: 0.8, brightness: 0.22),
+                Color(hue: animateGradient ? 0.85 : 0.75, saturation: 0.7, brightness: 0.14),
+                Color(hue: animateGradient ? 0.6 : 0.9, saturation: 0.9, brightness: 0.08)
             ],
             startPoint: animateGradient ? .topLeading : .bottomTrailing,
             endPoint: animateGradient ? .bottomTrailing : .topLeading

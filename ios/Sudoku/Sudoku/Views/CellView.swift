@@ -30,6 +30,7 @@ struct CellView: View {
     let showGhosts: Bool
     let showErrors: Bool  // Whether to show error indication
     var hintRole: HintCellRole = .none
+    var highlightedNumber: Int = 0
     let size: CGFloat
 
     private var backgroundColor: Color {
@@ -105,9 +106,10 @@ struct CellView: View {
                 HStack(spacing: 0) {
                     ForEach(0..<3, id: \.self) { col in
                         let num = row * 3 + col + 1
+                        let isHighlighted = candidates.contains(num) && highlightedNumber > 0 && num == highlightedNumber
                         Text(candidates.contains(num) ? "\(num)" : " ")
-                            .font(.system(size: fontSize, weight: .medium, design: .monospaced))
-                            .foregroundStyle(Color.secondary.opacity(opacity))
+                            .font(.system(size: fontSize, weight: isHighlighted ? .bold : .medium, design: .monospaced))
+                            .foregroundStyle(isHighlighted ? Color.accentColor : Color.secondary.opacity(opacity))
                             .frame(width: size / 3, height: size / 3)
                     }
                 }

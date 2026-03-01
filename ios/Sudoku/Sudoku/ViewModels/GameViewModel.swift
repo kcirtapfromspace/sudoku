@@ -82,6 +82,12 @@ class GameViewModel: ObservableObject {
         Set(numberCounts.enumerated().compactMap { $0.element >= 9 ? $0.offset + 1 : nil })
     }
 
+    /// Value of the currently selected cell (0 if no selection or cell is empty)
+    var selectedValue: Int {
+        guard let selected = selectedCell else { return 0 }
+        return cells[selected.row][selected.col].value
+    }
+
     // MARK: - Initialization
 
     init(difficulty: Difficulty) {

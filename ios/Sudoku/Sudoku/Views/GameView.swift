@@ -12,6 +12,7 @@ struct GameView: View {
     @State private var lastMistakeCount = 0
     @State private var showingCheckResult = false  // Temporarily reveal errors on "Check"
     @State private var showingShareSheet = false
+    @State private var showCompletionOverlay = false
     #if DEBUG
     @State private var showingDebugMenu = false
     #endif
@@ -54,6 +55,36 @@ struct GameView: View {
                     .transition(.scale.combined(with: .opacity))
                     .zIndex(100)
             }
+
+            // Completion overlay — let the user admire the board before transitioning
+            if showCompletionOverlay {
+                VStack {
+                    Spacer()
+                    Button {
+                        gameManager.endGame(won: true)
+                    } label: {
+                        Text("Continue")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 14)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.purple, .pink],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .shadow(color: .purple.opacity(0.4), radius: 8, x: 0, y: 4)
+                            )
+                    }
+                    .padding(.bottom, 60)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(99)
+            }
         }
         .simultaneousGesture(konamiGesture)
         .onChange(of: konamiDetector.isActivated) { activated in
@@ -68,9 +99,11 @@ struct GameView: View {
         }
         .onChange(of: game.isComplete) { complete in
             if complete {
-                // Delay slightly so celebration shows first
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    gameManager.endGame(won: true)
+                // Give the user time to admire the completed board, then show Continue button
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        showCompletionOverlay = true
+                    }
                 }
             }
         }
@@ -127,28 +160,24 @@ struct GameView: View {
 
         switch event {
         case .rowComplete(let row, let isSequential):
-            // Use subtle wiggle instead of overlay
             game.triggerRowCelebration(row)
-            // Stronger haptic for sequential completion
-            hapticFeedback(isSequential ? .medium : .light)
+            successHaptic()
             if isSequential {
                 gameManager.statistics.recordSequentialCompletion()
             }
             game.clearCelebration()
             return
         case .columnComplete(let col, let isSequential):
-            // Use subtle wiggle instead of overlay
             game.triggerColumnCelebration(col)
-            hapticFeedback(isSequential ? .medium : .light)
+            successHaptic()
             if isSequential {
                 gameManager.statistics.recordSequentialCompletion()
             }
             game.clearCelebration()
             return
         case .boxComplete(let box, let isSequential):
-            // Use subtle wiggle instead of overlay
             game.triggerBoxCelebration(box)
-            hapticFeedback(isSequential ? .medium : .light)
+            successHaptic()
             if isSequential {
                 gameManager.statistics.recordSequentialCompletion()
             }
@@ -247,6 +276,15 @@ struct GameView: View {
 
     private var headerSection: some View {
         HStack {
+            // Close / menu button
+            Button { gameManager.pauseGame() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+            }
+            .disabled(game.isComplete)
+
             // Timer
             if gameManager.settings.timerVisible {
                 Label(game.elapsedTimeString, systemImage: "clock")
@@ -449,6 +487,8 @@ struct GameView: View {
                 Image(systemName: "pause")
             }
         }
+        .font(.body)
+        .imageScale(.medium)
         .buttonStyle(.bordered)
         .controlSize(.regular)
     }
@@ -474,6 +514,12 @@ struct GameView: View {
         guard gameManager.settings.hapticsEnabled else { return }
         UIImpactFeedbackGenerator(style: style).impactOccurred()
     }
+
+    /// Smooth success haptic for segment (row/col/box) completion — distinct from the error double-buzz
+    private func successHaptic() {
+        guard gameManager.settings.hapticsEnabled else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
 }
 
 // MARK: - Hint Panel
@@ -483,6 +529,8 @@ struct HintPanelView: View {
     let detailLevel: HintDetailLevel
     let onUpgrade: () -> Void
     let onDismiss: () -> Void
+
+    @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -510,7 +558,21 @@ struct HintPanelView: View {
             Text(hint.explanation)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(3)
+                .lineLimit(isExpanded ? nil : 3)
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded.toggle()
+                    }
+                }
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                Text(isExpanded ? "Show less" : "Show more")
+                    .font(.caption2)
+                    .foregroundStyle(Color.accentColor)
+            }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))

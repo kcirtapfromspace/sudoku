@@ -78,9 +78,39 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             2>&1 | tee build.log
 
+  # Generate changelog from recent commits
+  changelog:
+    name: Generate Changelog
+    runs-on: macos-15
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy_testflight)
+    outputs:
+      text: ${{ steps.log.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+      - name: Build changelog from recent commits
+        id: log
+        run: |
+          set -euo pipefail
+          TAG=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo "")
+          if [ -n "$TAG" ]; then
+            LOG=$(git log "$TAG"..HEAD --pretty=format:"- %s" --no-merges | head -10)
+          else
+            LOG=$(git log -5 --pretty=format:"- %s" --no-merges)
+          fi
+          if [ -z "$LOG" ]; then
+            LOG="- Bug fixes and improvements"
+          fi
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "changelog<<$EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
+
   # Deploy to TestFlight on main branch pushes
   deploy-testflight:
     name: Deploy to TestFlight
+    needs: changelog
     runs-on: macos-15
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy_testflight)
     defaults:
@@ -234,9 +264,10 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
           FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 5
+          CHANGELOG: ${{ needs.changelog.outputs.text }}
         run: |
           bundle exec fastlane beta_manual \
-            changelog:"Automated build from CI"
+            changelog:"$CHANGELOG"
 
       - name: Clean up
         if: always()

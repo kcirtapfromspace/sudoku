@@ -32,6 +32,7 @@ struct GridView: View {
                                 showGhosts: gameManager.settings.ghostHintsEnabled,
                                 showErrors: forceShowErrors || gameManager.settings.showErrorsImmediately,
                                 hintRole: game.hintCellRole(row: row, col: col),
+                                highlightedNumber: game.selectedValue,
                                 size: cellSize
                             )
                             .modifier(WiggleModifier(
@@ -104,8 +105,13 @@ struct WiggleEffect: GeometryEffect {
     }
 
     func effectValue(size: CGSize) -> ProjectionTransform {
-        let shake = sin(progress * .pi * 6) * 4 * (1 - progress)
-        return ProjectionTransform(CGAffineTransform(translationX: shake, y: 0))
+        let scale = 1.0 + sin(progress * .pi) * 0.08 * (1 - progress)
+        let offsetX = size.width / 2 * (1 - scale)
+        let offsetY = size.height / 2 * (1 - scale)
+        return ProjectionTransform(
+            CGAffineTransform(translationX: offsetX, y: offsetY)
+                .scaledBy(x: scale, y: scale)
+        )
     }
 }
 
