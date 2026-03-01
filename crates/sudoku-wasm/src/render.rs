@@ -600,7 +600,11 @@ fn render_loading_screen(
     ctx.set_fill_style_str(&theme.message_text.as_css());
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
-    let _ = ctx.fill_text("Generating puzzle...", width as f64 / 2.0, height as f64 / 2.0);
+    let _ = ctx.fill_text(
+        "Generating puzzle...",
+        width as f64 / 2.0,
+        height as f64 / 2.0,
+    );
 }
 
 fn render_pause_overlay(

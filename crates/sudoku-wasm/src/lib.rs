@@ -311,8 +311,12 @@ impl SudokuGame {
         let Ok(val) = serde_json::from_str::<serde_json::Value>(json) else {
             return false;
         };
-        let Some(puzzle_str) = val["puzzle_string"].as_str() else { return false };
-        let Some(solution_str) = val["solution_string"].as_str() else { return false };
+        let Some(puzzle_str) = val["puzzle_string"].as_str() else {
+            return false;
+        };
+        let Some(solution_str) = val["solution_string"].as_str() else {
+            return false;
+        };
         let difficulty_str = val["difficulty"].as_str().unwrap_or("medium");
         let se_rating = val["se_rating"].as_f64().unwrap_or(0.0) as f32;
 
@@ -440,7 +444,9 @@ pub fn generate_puzzle_json(difficulty: &str) -> String {
     let puzzle_id = PuzzleId::random(diff);
     let puzzle = puzzle_id.generate();
     let solver = Solver::new();
-    let solution = solver.solve(&puzzle).expect("generated puzzle should be solvable");
+    let solution = solver
+        .solve(&puzzle)
+        .expect("generated puzzle should be solvable");
     let (rated_difficulty, se_rating) = solver.analyze(&puzzle);
     let puzzle_string = puzzle.to_string_compact();
     let solution_string = solution.to_string_compact();
