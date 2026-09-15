@@ -28,6 +28,22 @@ class CoverageTests(unittest.TestCase):
         return coverage.collect(self.root, self.archive, self.report, self.declarations,
                                 critical_files=kwargs.pop("critical_files", ()), **kwargs)
 
+    def test_all_authored_swift_sources_parse_before_app_build(self):
+        # test-coverage.sh runs this suite before building Rust or launching
+        # Xcode tests. Exercise the exact full source inventory on the runner's
+        # compiler so toolchain incompatibilities fail during this preflight.
+        source_root = Path(__file__).resolve().parents[2] / coverage.APP_SOURCE
+        paths = coverage.inventory(source_root)
+        self.assertTrue(paths)
+        for path in paths:
+            with self.subTest(source=str(path.relative_to(source_root))):
+                declarations = coverage.source_declarations(path)
+                if not declarations:
+                    coverage.has_initializers_or_macros(path)
+                source_lines = len(path.read_text().splitlines())
+                for declaration in declarations:
+                    self.assertLessEqual(declaration.end, source_lines)
+
     def test_complete_coverage_passes(self):
         self.assertTrue(self.collect()["passed"])
 
@@ -281,6 +297,15 @@ var count: Int { 42 }
         caret_only = "    | `- error: cannot find type 'Difficulty' in scope\n"
         self.assertFalse(coverage.known_dump_type_errors(caret_only))
 
+    def test_standard_main_actor_dumper_error_does_not_allow_unknown_attributes(self):
+        fixture = Path(__file__).with_name("fixtures") / "swift-6.2-win-screen.stderr.txt"
+        stderr = fixture.read_text()
+        self.assertTrue(coverage.known_dump_type_errors(stderr))
+        for attribute in ("MainActorr", "Mainactor", "CustomActor", "Unknown"):
+            with self.subTest(attribute=attribute):
+                self.assertFalse(coverage.known_dump_type_errors(
+                    stderr.replace("unknown attribute 'MainActor'", f"unknown attribute '{attribute}'")))
+
     def test_dumper_compatibility_rejects_unknown_errors_crashes_and_partial_trees(self):
         ast = '''(source_file "<stdin>"
   (struct_decl range=[<stdin>:5:1 - line:5:29] "__CoverageParserEOF"))'''
@@ -316,6 +341,21 @@ var count: Int { 42 }
                 # Keep the real AST, including its unbalanced attributed-property
                 # output, and emulate Swift 6.2's extra semantic diagnostics.
                 fixture = Path(__file__).with_name("fixtures") / "swift-6.2-default-closure.stderr.txt"
+                return subprocess.CompletedProcess(command, 1, result.stdout, fixture.read_text())
+            return result
+
+        with patch.object(coverage.subprocess, "run", side_effect=older_dumper):
+            self.assertEqual(coverage.source_declarations(path), expected)
+
+    def test_actual_win_screen_ast_survives_standard_actor_dumper_error(self):
+        path = Path(__file__).resolve().parents[1] / "Sudoku/Sudoku/Views/WinScreenView.swift"
+        expected = coverage.source_declarations(path)
+        actual_run = subprocess.run
+        fixture = Path(__file__).with_name("fixtures") / "swift-6.2-win-screen.stderr.txt"
+
+        def older_dumper(command, **kwargs):
+            result = actual_run(command, **kwargs)
+            if "-dump-parse" in command and result.returncode == 0:
                 return subprocess.CompletedProcess(command, 1, result.stdout, fixture.read_text())
             return result
 

@@ -198,7 +198,7 @@ def known_dump_type_errors(stderr: str) -> bool:
     """Only recognize the Swift 6.2 default-closure dumper compatibility errors."""
     primary = re.compile(
         r"^<stdin>:\d+:\d+: error: (cannot find type '[^'\n]+' in scope|"
-        r"@escaping attribute only applies to function types)$")
+        r"@escaping attribute only applies to function types|unknown attribute 'MainActor')$")
     source_context = re.compile(r"^\s*\d+\s+\|")
     caret_context = re.compile(r"^\s*\|\s+`- error: (.+)$")
     seen = set()
@@ -230,7 +230,8 @@ def parse_source(path: Path) -> str:
     ast = without_parse_sentinel(result.stdout, marker_line)
     if result.returncode:
         # Swift 6.2's AST dumper computes default-closure discriminators even in
-        # -dump-parse mode, which resolves parameter types from other files.
+        # -dump-parse mode, which resolves parameter types from other files and
+        # the standard MainActor attribute without loading their modules.
         # Swift 6.3 avoids that work for parsed trees. For the older dumper's
         # known semantic errors only, validate syntax independently and require
         # a complete dump. Never suppress syntax errors, unknown diagnostics,

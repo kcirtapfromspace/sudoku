@@ -1,0 +1,88 @@
+<stdin>:40:41: error: cannot find type 'String' in scope
+ 38 |     private let schedule: (@escaping () -> Void) -> Timer
+ 39 | 
+ 40 |     init(chooseMessage: @escaping () -> String = { winMessages.randomElement()! },
+    |                                         `- error: cannot find type 'String' in scope
+ 41 |          schedule: @escaping (@escaping () -> Void) -> Timer = { callback in
+ 42 |              Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in callback() }
+
+<stdin>:40:25: error: @escaping attribute only applies to function types
+ 38 |     private let schedule: (@escaping () -> Void) -> Timer
+ 39 | 
+ 40 |     init(chooseMessage: @escaping () -> String = { winMessages.randomElement()! },
+    |                         `- error: @escaping attribute only applies to function types
+ 41 |          schedule: @escaping (@escaping () -> Void) -> Timer = { callback in
+ 42 |              Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in callback() }
+
+<stdin>:41:47: error: cannot find type 'Void' in scope
+ 39 | 
+ 40 |     init(chooseMessage: @escaping () -> String = { winMessages.randomElement()! },
+ 41 |          schedule: @escaping (@escaping () -> Void) -> Timer = { callback in
+    |                                               `- error: cannot find type 'Void' in scope
+ 42 |              Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in callback() }
+ 43 |          }) {
+
+<stdin>:41:31: error: @escaping attribute only applies to function types
+ 39 | 
+ 40 |     init(chooseMessage: @escaping () -> String = { winMessages.randomElement()! },
+ 41 |          schedule: @escaping (@escaping () -> Void) -> Timer = { callback in
+    |                               `- error: @escaping attribute only applies to function types
+ 42 |              Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in callback() }
+ 43 |          }) {
+
+<stdin>:41:56: error: cannot find type 'Timer' in scope
+ 39 | 
+ 40 |     init(chooseMessage: @escaping () -> String = { winMessages.randomElement()! },
+ 41 |          schedule: @escaping (@escaping () -> Void) -> Timer = { callback in
+    |                                                        `- error: cannot find type 'Timer' in scope
+ 42 |              Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in callback() }
+ 43 |          }) {
+
+<stdin>:41:20: error: @escaping attribute only applies to function types
+ 39 | 
+ 40 |     init(chooseMessage: @escaping () -> String = { winMessages.randomElement()! },
+ 41 |          schedule: @escaping (@escaping () -> Void) -> Timer = { callback in
+    |                    `- error: @escaping attribute only applies to function types
+ 42 |              Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in callback() }
+ 43 |          }) {
+
+<stdin>:123:52: error: cannot find type 'Void' in scope
+121 |     init(time: TimeInterval, difficulty: Difficulty, hintsUsed: Int, mistakes: Int, seRating: Float,
+122 |          onDismiss: @escaping () -> Void,
+123 |          onLeaderboard: @escaping @MainActor () -> Void = { GameCenterManager.shared.showLeaderboards() },
+    |                                                    `- error: cannot find type 'Void' in scope
+124 |          messageCycle: WinMessageCycle = WinMessageCycle(),
+125 |          presentation: CompletionScenePresentation = CompletionScenePresentation(makeScene: { WinParticleScene() })) {
+
+<stdin>:123:35: error: unknown attribute 'MainActor'
+121 |     init(time: TimeInterval, difficulty: Difficulty, hintsUsed: Int, mistakes: Int, seRating: Float,
+122 |          onDismiss: @escaping () -> Void,
+123 |          onLeaderboard: @escaping @MainActor () -> Void = { GameCenterManager.shared.showLeaderboards() },
+    |                                   `- error: unknown attribute 'MainActor'
+124 |          messageCycle: WinMessageCycle = WinMessageCycle(),
+125 |          presentation: CompletionScenePresentation = CompletionScenePresentation(makeScene: { WinParticleScene() })) {
+
+<stdin>:123:25: error: @escaping attribute only applies to function types
+121 |     init(time: TimeInterval, difficulty: Difficulty, hintsUsed: Int, mistakes: Int, seRating: Float,
+122 |          onDismiss: @escaping () -> Void,
+123 |          onLeaderboard: @escaping @MainActor () -> Void = { GameCenterManager.shared.showLeaderboards() },
+    |                         `- error: @escaping attribute only applies to function types
+124 |          messageCycle: WinMessageCycle = WinMessageCycle(),
+125 |          presentation: CompletionScenePresentation = CompletionScenePresentation(makeScene: { WinParticleScene() })) {
+
+<stdin>:71:37: error: cannot find type 'SKScene' in scope
+ 69 |     private let makeScene: () -> SKScene
+ 70 | 
+ 71 |     init(makeScene: @escaping () -> SKScene) { self.makeScene = makeScene }
+    |                                     `- error: cannot find type 'SKScene' in scope
+ 72 | 
+ 73 |     func start(animation: Animation) {
+
+
+<stdin>:71:21: error: @escaping attribute only applies to function types
+ 69 |     private let makeScene: () -> SKScene
+ 70 | 
+ 71 |     init(makeScene: @escaping () -> SKScene) { self.makeScene = makeScene }
+    |                     `- error: @escaping attribute only applies to function types
+ 72 | 
+ 73 |     func start(animation: Animation) {
