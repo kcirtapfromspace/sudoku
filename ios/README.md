@@ -174,6 +174,21 @@ For App Store submission, ensure you:
 2. Set your development team in Xcode
 3. Configure App Store Connect for Game Center and iCloud
 
+### TestFlight versioning
+
+Set `MARKETING_VERSION` in `Sudoku/project.yml` to the next app version when
+the previous version has been approved and closed to new TestFlight uploads.
+Regenerate the project from the repository root and commit both files:
+
+```sh
+xcodegen generate --spec ios/Sudoku/project.yml
+```
+
+CI regenerates the Xcode project from this spec. Changing only the generated
+project, including through Fastlane's version-bump lanes, will be overwritten.
+The `beta_manual` lane increments the build number automatically; it does not
+advance the app version. A newer build number cannot reopen a closed version.
+
 ## License
 
 MIT License - see the root LICENSE file.
