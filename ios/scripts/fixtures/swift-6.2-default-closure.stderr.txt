@@ -1,0 +1,48 @@
+<stdin>:13:38: error: cannot find type 'Difficulty' in scope
+ 11 |     private let generate: @Sendable (Difficulty) async -> SudokuGame
+ 12 | 
+ 13 |     init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+    |                                      `- error: cannot find type 'Difficulty' in scope
+ 14 |         await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+ 15 |     }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+
+<stdin>:13:59: error: cannot find type 'SudokuGame' in scope
+ 11 |     private let generate: @Sendable (Difficulty) async -> SudokuGame
+ 12 | 
+ 13 |     init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+    |                                                           `- error: cannot find type 'SudokuGame' in scope
+ 14 |         await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+ 15 |     }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+
+<stdin>:13:17: error: @escaping attribute only applies to function types
+ 11 |     private let generate: @Sendable (Difficulty) async -> SudokuGame
+ 12 | 
+ 13 |     init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+    |                 `- error: @escaping attribute only applies to function types
+ 14 |         await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+ 15 |     }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+
+<stdin>:15:39: error: cannot find type 'Difficulty' in scope
+ 13 |     init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+ 14 |         await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+ 15 |     }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+    |                                       `- error: cannot find type 'Difficulty' in scope
+ 16 |         await Task.detached(priority: .utility) {
+ 17 |             SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
+
+<stdin>:15:60: error: cannot find type 'SudokuGame' in scope
+ 13 |     init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+ 14 |         await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+ 15 |     }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+    |                                                            `- error: cannot find type 'SudokuGame' in scope
+ 16 |         await Task.detached(priority: .utility) {
+ 17 |             SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
+
+
+<stdin>:15:18: error: @escaping attribute only applies to function types
+ 13 |     init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+ 14 |         await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+ 15 |     }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+    |                  `- error: @escaping attribute only applies to function types
+ 16 |         await Task.detached(priority: .utility) {
+ 17 |             SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())

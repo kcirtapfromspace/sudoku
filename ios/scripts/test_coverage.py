@@ -264,6 +264,23 @@ var count: Int { 42 }
                 self.assertEqual(run.call_args.kwargs["input"],
                                  self.path.read_text() + "\nstruct __CoverageParserEOF {}\n")
 
+    def test_actual_swift_62_diagnostic_context_preserves_unknown_error_rejection(self):
+        fixture = Path(__file__).with_name("fixtures") / "swift-6.2-default-closure.stderr.txt"
+        stderr = fixture.read_text()
+        self.assertTrue(coverage.known_dump_type_errors(stderr))
+        # Source excerpts may contain arbitrary authored strings. They are not
+        # compiler diagnostics, unlike primary errors and repeated caret errors.
+        self.assertTrue(coverage.known_dump_type_errors(
+            stderr + '\n 18 | let message = "error: expected expression"\n'))
+        for extra in ("<stdin>:20:1: error: expected expression\n",
+                      "error: unknown argument: '-dump-parse'\n",
+                      "<unknown>:0: error: missing required module 'Foundation'\n",
+                      "    |              `- error: expected expression\n"):
+            with self.subTest(extra=extra):
+                self.assertFalse(coverage.known_dump_type_errors(stderr + extra))
+        caret_only = "    | `- error: cannot find type 'Difficulty' in scope\n"
+        self.assertFalse(coverage.known_dump_type_errors(caret_only))
+
     def test_dumper_compatibility_rejects_unknown_errors_crashes_and_partial_trees(self):
         ast = '''(source_file "<stdin>"
   (struct_decl range=[<stdin>:5:1 - line:5:29] "__CoverageParserEOF"))'''
@@ -298,8 +315,8 @@ var count: Int { 42 }
             if "-dump-parse" in command and result.returncode == 0:
                 # Keep the real AST, including its unbalanced attributed-property
                 # output, and emulate Swift 6.2's extra semantic diagnostics.
-                return subprocess.CompletedProcess(command, 1, result.stdout,
-                    "<stdin>:13:38: error: cannot find type 'Difficulty' in scope\n")
+                fixture = Path(__file__).with_name("fixtures") / "swift-6.2-default-closure.stderr.txt"
+                return subprocess.CompletedProcess(command, 1, result.stdout, fixture.read_text())
             return result
 
         with patch.object(coverage.subprocess, "run", side_effect=older_dumper):

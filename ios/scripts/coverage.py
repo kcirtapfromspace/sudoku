@@ -196,11 +196,26 @@ def without_parse_sentinel(ast: str, line: int) -> str | None:
 
 def known_dump_type_errors(stderr: str) -> bool:
     """Only recognize the Swift 6.2 default-closure dumper compatibility errors."""
-    errors = [line for line in stderr.splitlines() if "error:" in line]
-    allowed = re.compile(
-        r"^<stdin>:\d+:\d+: error: (?:cannot find type '[^'\n]+' in scope|"
+    primary = re.compile(
+        r"^<stdin>:\d+:\d+: error: (cannot find type '[^'\n]+' in scope|"
         r"@escaping attribute only applies to function types)$")
-    return bool(errors) and all(allowed.fullmatch(line) for line in errors)
+    source_context = re.compile(r"^\s*\d+\s+\|")
+    caret_context = re.compile(r"^\s*\|\s+`- error: (.+)$")
+    seen = set()
+    for line in stderr.splitlines():
+        if "error:" not in line or source_context.match(line):
+            continue
+        if match := primary.fullmatch(line):
+            seen.add(match[1])
+            continue
+        # Swift repeats each diagnostic beside a caret under the source line.
+        # Accept only exact repetitions of an already validated primary error;
+        # unlocated/unknown diagnostics and unmatched caret errors remain fatal.
+        if match := caret_context.fullmatch(line):
+            if match[1] in seen:
+                continue
+        return False
+    return bool(seen)
 
 
 def parse_source(path: Path) -> str:
