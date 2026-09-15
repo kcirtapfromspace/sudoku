@@ -1,6 +1,8 @@
 #!/bin/bash
 # Full simulator acceptance run. Each invocation owns fresh profiles and a new
 # simulator; old test hits cannot satisfy a later run. Artifacts remain on failure.
+# Opt-in CI knobs: SUDOKU_CI_REUSE_SIM=1 reuses an existing simulator instead of
+# creating one; SUDOKU_CI_PARALLEL_TESTS=1 lets xcodebuild parallelize tests.
 set -euo pipefail
 
 TASK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -8,14 +10,16 @@ TASK_OUTPUT_BASE="${IOS_COVERAGE_DIR:-$TASK_ROOT/ios/Sudoku/build/coverage}"
 mkdir -p "$TASK_OUTPUT_BASE"
 TASK_RUN_DIR="$(mktemp -d "$TASK_OUTPUT_BASE/run.XXXXXX")"
 TASK_SIMULATOR=""
+TASK_SIMULATOR_CREATED=""
 printf '%s\n' "$TASK_RUN_DIR" > "$TASK_OUTPUT_BASE/latest-run.txt"
 
 # shellcheck disable=SC2317 # Invoked indirectly by the EXIT trap.
 cleanup() {
     local status=$?
-    if [ -n "$TASK_SIMULATOR" ]; then
-        xcrun simctl shutdown "$TASK_SIMULATOR" >/dev/null 2>&1 || true
-        xcrun simctl delete "$TASK_SIMULATOR" >/dev/null 2>&1 || true
+    # Only tear down a simulator this run created; a reused one is left as found.
+    if [ -n "$TASK_SIMULATOR_CREATED" ]; then
+        xcrun simctl shutdown "$TASK_SIMULATOR_CREATED" >/dev/null 2>&1 || true
+        xcrun simctl delete "$TASK_SIMULATOR_CREATED" >/dev/null 2>&1 || true
     fi
     printf 'Acceptance artifacts: %s\n' "$TASK_RUN_DIR"
     exit "$status"
@@ -55,8 +59,32 @@ python3 ios/scripts/coverage.py --write-manifest "$TASK_RUN_DIR/source-manifest.
 
 # Select a device/runtime combination already supported by the installed Xcode,
 # then create our own empty simulator instead of erasing an existing device.
+# SUDOKU_CI_REUSE_SIM=1 instead reuses an existing iPhone simulator as-is:
+# create+boot of a fresh device costs minutes on an ephemeral CI runner.
 xcrun simctl list devices available --json > "$TASK_RUN_DIR/available-simulators.json"
-python3 - "$TASK_RUN_DIR/available-simulators.json" > "$TASK_RUN_DIR/simulator-config.txt" <<'PY'
+if [ "${SUDOKU_CI_REUSE_SIM:-0}" = "1" ]; then
+    python3 - "$TASK_RUN_DIR/available-simulators.json" > "$TASK_RUN_DIR/simulator-config.txt" <<'PY'
+import json, re, sys
+devices = json.load(open(sys.argv[1]))["devices"]
+def version(runtime):
+    return tuple(map(int, re.findall(r"\d+", runtime)))
+for runtime in sorted(devices, key=version, reverse=True):
+    if ".iOS-" not in runtime:
+        continue
+    for device in devices[runtime]:
+        if device.get("isAvailable") and device["name"].startswith("iPhone") and device.get("udid"):
+            print(device["udid"])
+            print(device.get("state", "Shutdown"))
+            raise SystemExit(0)
+raise SystemExit("No available iPhone simulator; install an iOS runtime in Xcode settings.")
+PY
+    TASK_SIMULATOR="$(sed -n '1p' "$TASK_RUN_DIR/simulator-config.txt")"
+    TASK_SIMULATOR_STATE="$(sed -n '2p' "$TASK_RUN_DIR/simulator-config.txt")"
+    if [ "$TASK_SIMULATOR_STATE" != "Booted" ]; then
+        xcrun simctl boot "$TASK_SIMULATOR"
+    fi
+else
+    python3 - "$TASK_RUN_DIR/available-simulators.json" > "$TASK_RUN_DIR/simulator-config.txt" <<'PY'
 import json, re, sys
 devices = json.load(open(sys.argv[1]))["devices"]
 def version(runtime):
@@ -71,12 +99,19 @@ for runtime in sorted(devices, key=version, reverse=True):
             raise SystemExit(0)
 raise SystemExit("No available iPhone simulator; install an iOS runtime in Xcode settings.")
 PY
-TASK_DEVICE_TYPE="$(sed -n '1p' "$TASK_RUN_DIR/simulator-config.txt")"
-TASK_RUNTIME="$(sed -n '2p' "$TASK_RUN_DIR/simulator-config.txt")"
-TASK_SIMULATOR="$(xcrun simctl create "Sudoku coverage $(basename "$TASK_RUN_DIR")" "$TASK_DEVICE_TYPE" "$TASK_RUNTIME")"
+    TASK_DEVICE_TYPE="$(sed -n '1p' "$TASK_RUN_DIR/simulator-config.txt")"
+    TASK_RUNTIME="$(sed -n '2p' "$TASK_RUN_DIR/simulator-config.txt")"
+    TASK_SIMULATOR="$(xcrun simctl create "Sudoku coverage $(basename "$TASK_RUN_DIR")" "$TASK_DEVICE_TYPE" "$TASK_RUNTIME")"
+    TASK_SIMULATOR_CREATED="$TASK_SIMULATOR"
+    xcrun simctl boot "$TASK_SIMULATOR"
+fi
 printf '%s\n' "$TASK_SIMULATOR" > "$TASK_RUN_DIR/simulator-udid.txt"
-xcrun simctl boot "$TASK_SIMULATOR"
 xcrun simctl bootstatus "$TASK_SIMULATOR" -b
+
+TASK_PARALLEL_TESTS=NO
+if [ "${SUDOKU_CI_PARALLEL_TESTS:-0}" = "1" ]; then
+    TASK_PARALLEL_TESTS=YES
+fi
 
 set +e
 xcodebuild test \
@@ -84,7 +119,7 @@ xcodebuild test \
     -configuration Debug -destination "platform=iOS Simulator,id=$TASK_SIMULATOR" \
     -derivedDataPath "$TASK_RUN_DIR/DerivedData" \
     -resultBundlePath "$TASK_RUN_DIR/tests.xcresult" \
-    -enableCodeCoverage YES -parallel-testing-enabled NO \
+    -enableCodeCoverage YES -parallel-testing-enabled "$TASK_PARALLEL_TESTS" \
     CODE_SIGNING_ALLOWED=NO \
     2>&1 | tee "$TASK_RUN_DIR/xcodebuild.log"
 TASK_TEST_STATUS=${PIPESTATUS[0]}
