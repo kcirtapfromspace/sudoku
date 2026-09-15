@@ -178,16 +178,58 @@ def flatten_conditionals(source: str) -> str:
     return "".join(result)
 
 
+def without_parse_sentinel(ast: str, line: int) -> str | None:
+    """Verify that the dumper reached EOF, then remove our declaration-only marker.
+
+    Swift's text AST does not consistently balance delimiters for attributed
+    stored properties, so counting parentheses cannot detect a truncated dump.
+    A final empty struct has a stable one-line representation and no function or
+    initializer bodies. Its exact source location prevents matching authored text.
+    """
+    marker = re.search(
+        rf'^  \(struct_decl\b[^\n]*range=\[<stdin>:{line}:1 - (?:line:)?{line}:29\] '
+        r'"__CoverageParserEOF"\)\)\s*\Z', ast, re.MULTILINE)
+    if not ast.startswith('(source_file "<stdin>"\n') or not marker:
+        return None
+    return ast[:marker.start()] + ")"
+
+
+def known_dump_type_errors(stderr: str) -> bool:
+    """Only recognize the Swift 6.2 default-closure dumper compatibility errors."""
+    errors = [line for line in stderr.splitlines() if "error:" in line]
+    allowed = re.compile(
+        r"^<stdin>:\d+:\d+: error: (?:cannot find type '[^'\n]+' in scope|"
+        r"@escaping attribute only applies to function types)$")
+    return bool(errors) and all(allowed.fullmatch(line) for line in errors)
+
+
 def parse_source(path: Path) -> str:
     # -dump-parse defers #if bodies. Parse all authored conditional bodies so
     # moving code behind #if DEBUG cannot conceal a missing coverage mapping.
     # This is syntax parsing only: duplicate alternatives need no type checking.
     source = flatten_conditionals(path.read_text())
+    marker_line = source.count("\n") + 2
+    source += "\nstruct __CoverageParserEOF {}\n"
     result = subprocess.run(["xcrun", "swiftc", "-frontend", "-dump-parse", "-"],
                             input=source, text=True, capture_output=True)
+    ast = without_parse_sentinel(result.stdout, marker_line)
     if result.returncode:
-        raise CoverageError(f"Could not parse {path}: {result.stderr.strip()}")
-    return result.stdout
+        # Swift 6.2's AST dumper computes default-closure discriminators even in
+        # -dump-parse mode, which resolves parameter types from other files.
+        # Swift 6.3 avoids that work for parsed trees. For the older dumper's
+        # known semantic errors only, validate syntax independently and require
+        # a complete dump. Never suppress syntax errors, unknown diagnostics,
+        # crashes or incomplete trees; mapping validation still runs unchanged.
+        if (result.returncode != 1 or not known_dump_type_errors(result.stderr)
+                or ast is None):
+            raise CoverageError(f"Could not parse {path}: {result.stderr.strip()}")
+        syntax = subprocess.run(["xcrun", "swiftc", "-frontend", "-parse", "-"],
+                                input=source, text=True, capture_output=True)
+        if syntax.returncode:
+            raise CoverageError(f"Could not parse {path}: {syntax.stderr.strip()}")
+    if ast is None:
+        raise CoverageError(f"Incomplete Swift parser output for {path}")
+    return ast
 
 
 def source_declarations(path: Path) -> list[Declaration]:

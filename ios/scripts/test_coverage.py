@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import coverage
 
@@ -218,6 +219,91 @@ var count: Int { 42 }
 ''')
         declared = coverage.source_declarations(self.path)
         self.assertEqual([decl.name for decl in declared], ["actual(_:)", "nested()", "count"])
+
+    def test_parser_inventories_async_default_closures_with_types_in_another_file(self):
+        if subprocess.run(["/usr/bin/which", "xcrun"], capture_output=True).returncode:
+            self.skipTest("Swift parser integration requires Xcode")
+        (self.root / "Models.swift").write_text("enum Difficulty {}\nstruct SudokuGame {}\n")
+        self.path.write_text('''actor PuzzleCache {
+    private let fetch: @Sendable (Difficulty) async -> SudokuGame?
+    private let generate: @Sendable (Difficulty) async -> SudokuGame
+    init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+        func nested() -> SudokuGame? { nil }
+        return nested()
+    }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+        await Task.detached { SudokuGame.newClassic(difficulty: difficulty) }.value
+    }) {}
+    func afterDefaultClosure() {}
+}
+''')
+        self.assertEqual([decl.name for decl in coverage.source_declarations(self.path)],
+                         ["init(fetch:generate:)", "nested()", "afterDefaultClosure()"])
+
+    def test_parser_still_rejects_invalid_swift_syntax(self):
+        self.path.write_text("func broken( {\n")
+        with self.assertRaisesRegex(coverage.CoverageError, "Could not parse"):
+            coverage.source_declarations(self.path)
+
+    def test_known_dumper_type_errors_require_independent_syntax_validation(self):
+        ast = '''(source_file "<stdin>"
+  (func_decl range=[<stdin>:1:1 - line:3:1] "play()"
+    (brace_stmt range=[<stdin>:1:13 - line:3:1]))
+  (struct_decl range=[<stdin>:5:1 - line:5:29] "__CoverageParserEOF"))'''
+        error = "<stdin>:1:1: error: cannot find type 'Difficulty' in scope\n"
+        error += "<stdin>:1:2: error: @escaping attribute only applies to function types\n"
+        for syntax_exit in (0, 1):
+            with self.subTest(syntax_exit=syntax_exit), patch.object(coverage.subprocess, "run") as run:
+                run.side_effect = [subprocess.CompletedProcess([], 1, ast, error),
+                                   subprocess.CompletedProcess([], syntax_exit, "", "syntax error")]
+                if syntax_exit:
+                    with self.assertRaisesRegex(coverage.CoverageError, "syntax error"):
+                        coverage.parse_source(self.path)
+                else:
+                    self.assertEqual(coverage.source_declarations(self.path), self.declarations[self.path])
+                self.assertEqual(run.call_args.args[0], ["xcrun", "swiftc", "-frontend", "-parse", "-"])
+                self.assertEqual(run.call_args.kwargs["input"],
+                                 self.path.read_text() + "\nstruct __CoverageParserEOF {}\n")
+
+    def test_dumper_compatibility_rejects_unknown_errors_crashes_and_partial_trees(self):
+        ast = '''(source_file "<stdin>"
+  (struct_decl range=[<stdin>:5:1 - line:5:29] "__CoverageParserEOF"))'''
+        known = "<stdin>:1:1: error: cannot find type 'Difficulty' in scope\n"
+        self.assertEqual(coverage.without_parse_sentinel(ast, 5), '(source_file "<stdin>"\n)')
+        cases = [(1, ast, known + "<stdin>:1:2: error: expected expression\n"),
+                 (1, ast, "error: unknown argument: '-dump-parse'\n"),
+                 (-11, ast, known), (2, ast, known), (1, "", known),
+                 (1, ast[:-1], known), (1, ast.replace(":5:", ":4:"), known),
+                 (1, ast.replace("  (struct_decl", "    (struct_decl"), known),
+                 (1, ast + "\n(source_file \"<stdin>\")", known)]
+        for code, output, error in cases:
+            with self.subTest(code=code, output=output, error=error), patch.object(coverage.subprocess, "run") as run:
+                run.return_value = subprocess.CompletedProcess([], code, output, error)
+                with self.assertRaisesRegex(coverage.CoverageError, "Could not parse"):
+                    coverage.parse_source(self.path)
+                self.assertEqual(run.call_count, 1)
+
+    def test_successful_dump_must_still_reach_the_source_end(self):
+        with patch.object(coverage.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess([], 0, '(source_file "<stdin>")', "")
+            with self.assertRaisesRegex(coverage.CoverageError, "Incomplete Swift parser output"):
+                coverage.parse_source(self.path)
+
+    def test_actual_puzzle_cache_ast_survives_older_dumper_type_errors(self):
+        path = Path(__file__).resolve().parents[1] / "Sudoku/Sudoku/Services/PuzzleCache.swift"
+        expected = coverage.source_declarations(path)
+        actual_run = subprocess.run
+
+        def older_dumper(command, **kwargs):
+            result = actual_run(command, **kwargs)
+            if "-dump-parse" in command and result.returncode == 0:
+                # Keep the real AST, including its unbalanced attributed-property
+                # output, and emulate Swift 6.2's extra semantic diagnostics.
+                return subprocess.CompletedProcess(command, 1, result.stdout,
+                    "<stdin>:13:38: error: cannot find type 'Difficulty' in scope\n")
+            return result
+
+        with patch.object(coverage.subprocess, "run", side_effect=older_dumper):
+            self.assertEqual(coverage.source_declarations(path), expected)
 
     def test_test_framework_inside_application_source_is_rejected(self):
         self.path.write_text("import XCTest\nfunc testGame() {}\n")
