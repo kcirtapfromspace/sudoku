@@ -7,7 +7,19 @@ actor PuzzleCache {
     private var cache: [Difficulty: SudokuGame] = [:]
     private var generatingDifficulties: Set<Difficulty> = []
 
-    private init() {}
+    private let fetch: @Sendable (Difficulty) async -> SudokuGame?
+    private let generate: @Sendable (Difficulty) async -> SudokuGame
+
+    init(fetch: @escaping @Sendable (Difficulty) async -> SudokuGame? = {
+        await PuzzleAPIService.shared.fetchPuzzle(difficulty: $0)
+    }, generate: @escaping @Sendable (Difficulty) async -> SudokuGame = { difficulty in
+        await Task.detached(priority: .utility) {
+            SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
+        }.value
+    }) {
+        self.fetch = fetch
+        self.generate = generate
+    }
 
     /// Prefetch puzzles for all difficulty levels
     func prefetchAll() async {
@@ -37,7 +49,7 @@ actor PuzzleCache {
         // For Hard+ difficulties, try fetching a pre-mined puzzle from the API.
         // This is much faster than local generation for these expensive difficulties.
         if PuzzleAPIService.eligibleDifficulties.contains(difficulty) {
-            if let apiPuzzle = await PuzzleAPIService.shared.fetchPuzzle(difficulty: difficulty) {
+            if let apiPuzzle = await fetch(difficulty) {
                 // Start local generation in background as a cache warm-up
                 Task {
                     await ensureCached(difficulty: difficulty)
@@ -51,7 +63,7 @@ actor PuzzleCache {
     }
 
     /// Ensure a puzzle is cached for the given difficulty
-    private func ensureCached(difficulty: Difficulty) async {
+    func ensureCached(difficulty: Difficulty) async {
         // Don't generate if already cached or already generating
         guard cache[difficulty] == nil,
               !generatingDifficulties.contains(difficulty) else {
@@ -62,7 +74,7 @@ actor PuzzleCache {
 
         // For Hard+ difficulties, try the API first for cache warm-up too
         if PuzzleAPIService.eligibleDifficulties.contains(difficulty),
-           let apiPuzzle = await PuzzleAPIService.shared.fetchPuzzle(difficulty: difficulty) {
+           let apiPuzzle = await fetch(difficulty) {
             cache[difficulty] = apiPuzzle
             generatingDifficulties.remove(difficulty)
             return
@@ -75,13 +87,12 @@ actor PuzzleCache {
 
     /// Generate a puzzle on a background thread
     private func generatePuzzle(difficulty: Difficulty) async -> SudokuGame {
-        await Task.detached(priority: .utility) {
-            SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
-        }.value
+        await generate(difficulty)
     }
 
     /// Prefetch a specific difficulty (call during gameplay)
-    nonisolated func prefetch(difficulty: Difficulty) {
+    @discardableResult
+    nonisolated func prefetch(difficulty: Difficulty) -> Task<Void, Never> {
         Task {
             await ensureCached(difficulty: difficulty)
         }

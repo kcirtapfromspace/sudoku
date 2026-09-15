@@ -1,290 +1,147 @@
 import XCTest
 
-/// App Store screenshot automation tests
-/// Run with: ./scripts/capture_screenshots.sh
+/// Captures only after asserting each important screen/interaction.
 final class ScreenshotTests: XCTestCase {
-
-    var app: XCUIApplication!
-    var screenshotDir: URL!
+    private var app: XCUIApplication!
+    private let puzzle = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
+    private let almostComplete = "034678912672195348198342567859761423426853791713924856961537284287419635345286179"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-
-        // Create screenshots directory
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        screenshotDir = documentsPath.appendingPathComponent("Screenshots")
-        try? FileManager.default.createDirectory(at: screenshotDir, withIntermediateDirectories: true)
-
-        // Launch with clean state
-        app.launchArguments = ["--reset-state", "--screenshot-mode"]
-        app.launch()
     }
 
     override func tearDownWithError() throws {
-        app = nil
+        app.terminate()
+        XCUIDevice.shared.orientation = .portrait
     }
 
-    // MARK: - Screenshot Capture Tests
-
-    /// Capture all screenshots for App Store submission
-    func testCaptureAllScreenshots() throws {
-        // 1. Main Menu
-        captureScreenshot(named: "01_MainMenu")
-
-        // 2. Difficulty Picker
-        let newGameButton = app.buttons["New Game"]
-        XCTAssertTrue(newGameButton.waitForExistence(timeout: 5))
-        newGameButton.tap()
-        sleep(1)
-        captureScreenshot(named: "02_DifficultyPicker")
-
-        // Select Medium difficulty
-        let mediumButton = app.buttons["Medium"]
-        if mediumButton.exists {
-            mediumButton.tap()
-        } else {
-            // Fallback: tap first available difficulty
-            app.cells.element(boundBy: 2).tap()
-        }
-
-        // Wait for game to load
-        sleep(2)
-
-        // 3. Gameplay - Light Mode
-        captureScreenshot(named: "03_Gameplay_Light")
-
-        // 4. Tap a cell to show highlighting
-        tapCell(row: 4, col: 4)
-        sleep(1)
-        captureScreenshot(named: "04_Gameplay_Highlighted")
-
-        // 5. Toggle to Notes mode
-        let notesButton = app.buttons["Notes Mode"]
-        if notesButton.exists {
-            notesButton.tap()
-        } else {
-            // Find button with pencil icon
-            let pencilButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Notes' OR label CONTAINS 'Candidates'")).firstMatch
-            if pencilButton.exists {
-                pencilButton.tap()
-            }
-        }
-        sleep(1)
-        captureScreenshot(named: "05_NotesMode")
-
-        // 6. Pause the game
-        let pauseButton = app.buttons["pause"]
-        if pauseButton.exists {
-            pauseButton.tap()
-            sleep(1)
-            captureScreenshot(named: "06_Paused")
-
-            // Resume
-            let resumeButton = app.buttons["Resume"]
-            if resumeButton.exists {
-                resumeButton.tap()
-            }
-        }
-
-        // 7. Open Settings via pause menu
-        pauseButton.tap()
-        sleep(1)
-        let saveExitButton = app.buttons["Save & Exit"]
-        if saveExitButton.exists {
-            saveExitButton.tap()
-            sleep(1)
-        }
-
-        // Open Settings from menu
-        let settingsButton = app.buttons["Settings"]
-        if settingsButton.waitForExistence(timeout: 3) {
-            settingsButton.tap()
-            sleep(1)
-            captureScreenshot(named: "07_Settings")
-
-            // Enable Dark Mode for next screenshots
-            let themePicker = app.buttons["Theme"]
-            if themePicker.exists {
-                themePicker.tap()
-                let darkOption = app.buttons["Dark"]
-                if darkOption.exists {
-                    darkOption.tap()
-                }
-            }
-
-            // Close settings
-            let doneButton = app.buttons["Done"]
-            if doneButton.exists {
-                doneButton.tap()
-            }
-        }
-
-        // 8. Stats
-        let statsButton = app.buttons["Stats"]
-        if statsButton.waitForExistence(timeout: 3) {
-            statsButton.tap()
-            sleep(1)
-            captureScreenshot(named: "08_Statistics")
-
-            // Close stats
-            let closeButton = app.buttons["Done"]
-            if closeButton.exists {
-                closeButton.tap()
-            } else {
-                // Swipe down to dismiss
-                app.swipeDown()
-            }
-        }
-
-        // 9. Start new game in Dark Mode
-        sleep(1)
-        if newGameButton.waitForExistence(timeout: 3) {
-            newGameButton.tap()
-            sleep(1)
-            app.cells.element(boundBy: 3).tap() // Intermediate
-            sleep(2)
-            captureScreenshot(named: "09_Gameplay_Dark")
-        }
-
-        print("Screenshots saved to: \(screenshotDir.path)")
+    private func launch(puzzle: String? = nil, reset: Bool = true) {
+        app.launchArguments = ["--ui-testing"]
+        if reset { app.launchArguments.append("--reset-state") }
+        if let puzzle { app.launchArguments += ["--puzzle", puzzle] }
+        app.launch()
     }
 
-    /// Test to capture win screen - requires debug mode to fill puzzle
-    func testCaptureWinScreen() throws {
-        // Start a new game
-        let newGameButton = app.buttons["New Game"]
-        XCTAssertTrue(newGameButton.waitForExistence(timeout: 5))
-        newGameButton.tap()
-
-        // Select Beginner for faster testing
-        sleep(1)
-        let beginnerButton = app.buttons["Beginner"]
-        if beginnerButton.exists {
-            beginnerButton.tap()
-        } else {
-            app.cells.element(boundBy: 0).tap()
-        }
-
-        sleep(2)
-
-        // In debug mode, long press for 2 seconds to open debug menu
-        #if DEBUG
-        let grid = app.otherElements["SudokuGrid"]
-        if grid.exists {
-            grid.press(forDuration: 2.5)
-            sleep(1)
-
-            // Select "Fill All (leave 1 cell)"
-            let fillButton = app.buttons["Fill All (leave 1 cell) - Win Test"]
-            if fillButton.exists {
-                fillButton.tap()
-                sleep(1)
-
-                // Find and tap the remaining empty cell
-                // Then enter the correct number
-                captureScreenshot(named: "10_AlmostComplete")
-            }
-        }
-        #endif
-
-        // Note: For actual win screen, you'll need to manually complete a puzzle
-        // or use the debug menu
+    func testCaptureAllScreenshots() {
+        launch(puzzle: puzzle)
+        XCTAssertTrue(app.buttons["Cell_0_2"].waitForExistence(timeout: 10))
+        capture("Gameplay Portrait")
+        app.buttons["Cell_0_2"].tap()
+        app.buttons["NotesMode"].tap()
+        app.buttons["Digit2"].tap()
+        XCTAssertTrue((app.buttons["Cell_0_2"].value as? String)?.contains("Notes 2") == true)
+        capture("Manual Notes")
+        app.buttons["SharePuzzle"].tap()
+        XCTAssertTrue(app.staticTexts["Share This Puzzle"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        XCTAssertTrue((app.buttons["Cell_0_2"].value as? String)?.contains("Notes 2") == true)
+        app.buttons["Pause"].tap()
+        XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+        let hiddenBoard = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == NO"), object: app.buttons["Cell_0_2"])
+        XCTAssertEqual(XCTWaiter.wait(for: [hiddenBoard], timeout: 5), .completed, app.debugDescription)
+        XCTAssertFalse(app.buttons["Digit2"].exists)
+        capture("Paused")
+        app.buttons["Save & Exit"].tap()
+        app.terminate()
+        launch(reset: false)
+        XCTAssertTrue(app.buttons["Continue"].waitForExistence(timeout: 10))
+        app.buttons["Continue"].tap()
+        XCTAssertTrue((app.buttons["Cell_0_2"].value as? String)?.contains("Notes 2") == true)
+        app.buttons["Cell_0_2"].tap()
+        app.buttons["KeypadErase"].tap()
+        XCTAssertEqual(app.buttons["Cell_0_2"].value as? String, "Empty")
+        app.buttons["Undo"].tap()
+        XCTAssertTrue((app.buttons["Cell_0_2"].value as? String)?.contains("Notes 2") == true)
     }
 
-    /// Capture celebration toast by completing a row
-    func testCaptureCelebration() throws {
-        // This requires debug mode or manual setup
-        // The celebration overlay appears briefly when completing a row/column/box
-
-        let newGameButton = app.buttons["New Game"]
-        XCTAssertTrue(newGameButton.waitForExistence(timeout: 5))
-        newGameButton.tap()
-
-        sleep(1)
-        app.cells.element(boundBy: 0).tap() // Beginner
-        sleep(2)
-
-        captureScreenshot(named: "11_Gameplay_Ready")
-
-        // Note: To capture celebration:
-        // 1. Run app manually
-        // 2. Use debug menu (long press 2s) to fill row except 1 cell
-        // 3. Complete the row
-        // 4. Screenshot the celebration toast quickly
+    func testCaptureWinScreen() {
+        launch(puzzle: almostComplete)
+        XCTAssertTrue(app.buttons["Cell_0_0"].waitForExistence(timeout: 10))
+        app.buttons["Cell_0_0"].tap()
+        app.buttons["Digit5"].tap()
+        let continueButton = app.buttons["Continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        continueButton.tap()
+        XCTAssertTrue(app.staticTexts["Game Stats"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["View Leaderboard"].exists)
+        capture("Completed Game")
     }
 
-    // MARK: - Helpers
+    func testLandscapeKeepsNumberEntryAndHintsReachable() {
+        launch(puzzle: puzzle)
+        XCTAssertTrue(app.buttons["Digit1"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        for digit in 1...9 {
+            let key = app.buttons["Digit\(digit)"]
+            let reachable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == YES"), object: key)
+            XCTAssertEqual(XCTWaiter.wait(for: [reachable], timeout: 5), .completed, "Digit \(digit) must remain reachable in landscape")
+        }
+        app.buttons["Cell_0_2"].tap()
+        app.buttons["Digit4"].tap()
+        XCTAssertEqual(app.buttons["Cell_0_2"].value as? String, "4")
+        app.buttons["Hint"].tap()
+        XCTAssertTrue(app.buttons["Details"].waitForExistence(timeout: 5))
+        app.buttons["Show more"].tap()
+        XCTAssertTrue(app.buttons["Show less"].exists)
+        app.buttons["Show less"].tap()
+        XCTAssertTrue(app.buttons["Show more"].exists)
+        app.staticTexts["HintExplanation"].tap()
+        XCTAssertTrue(app.buttons["Show less"].exists)
+        app.staticTexts["HintExplanation"].tap()
+        XCTAssertTrue(app.buttons["Show more"].exists)
+        capture("Gameplay Landscape")
+        XCUIDevice.shared.orientation = .portrait
+        let portraitReady = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == YES"), object: app.buttons["Digit4"])
+        XCTAssertEqual(XCTWaiter.wait(for: [portraitReady], timeout: 5), .completed)
+        capture("Gameplay Portrait With Hint")
+        XCTAssertEqual(app.buttons["Cell_0_2"].value as? String, "4")
+    }
 
-    private func captureScreenshot(named name: String) {
-        let screenshot = app.screenshot()
-        let attachment = XCTAttachment(screenshot: screenshot)
+    func testMenuSettingsAndStatisticsScreens() {
+        launch()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.switches["Mistake Limit"].waitForExistence(timeout: 5))
+        capture("Settings")
+        app.buttons["Done"].tap()
+        app.buttons["Progress"].tap()
+        XCTAssertTrue(app.navigationBars["Statistics"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Games Played"].exists)
+        capture("Statistics")
+    }
+
+    @available(iOS 16.4, *)
+    func testSharedLinkOpensPuzzleAndQuitRequiresConfirmation() {
+        launch()
+        app.launchArguments = ["--ui-testing"]
+        app.open(URL(string: "https://ukodus.now/play/?p=invalid")!)
+        XCTAssertTrue(app.buttons["New Game"].waitForExistence(timeout: 5))
+        app.open(URL(string: "https://ukodus.now/play/?p=" + puzzle)!)
+        XCTAssertTrue(app.buttons["Cell_0_2"].waitForExistence(timeout: 10))
+        app.buttons["Cell_0_2"].tap()
+        app.buttons["Digit4"].tap()
+        XCTAssertEqual(app.buttons["Cell_0_2"].value as? String, "4")
+        app.buttons["Pause"].tap()
+        app.buttons["Quit Game"].tap()
+        XCTAssertTrue(app.buttons["Quit"].waitForExistence(timeout: 5))
+        app.staticTexts["PAUSED"].tap()
+        XCTAssertFalse(app.buttons["Quit"].exists)
+        XCTAssertTrue(app.buttons["Resume"].exists)
+        app.buttons["Resume"].tap()
+        XCTAssertEqual(app.buttons["Cell_0_2"].value as? String, "4")
+        app.buttons["Pause"].tap()
+        app.buttons["Quit Game"].tap()
+        app.buttons["Quit"].tap()
+        XCTAssertTrue(app.buttons["New Game"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Continue"].exists)
+    }
+
+    private func capture(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-
-        // Also save to disk
-        let fileURL = screenshotDir.appendingPathComponent("\(name).png")
-        try? screenshot.pngRepresentation.write(to: fileURL)
-
-        print("Captured: \(name)")
-    }
-
-    private func tapCell(row: Int, col: Int) {
-        // Try to find the grid and tap within it
-        let grid = app.otherElements["SudokuGrid"]
-        if grid.exists {
-            let frame = grid.frame
-            let cellWidth = frame.width / 9
-            let cellHeight = frame.height / 9
-
-            let x = frame.origin.x + (CGFloat(col) + 0.5) * cellWidth
-            let y = frame.origin.y + (CGFloat(row) + 0.5) * cellHeight
-
-            let coordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
-                .withOffset(CGVector(dx: x, dy: y))
-            coordinate.tap()
-        }
-    }
-}
-
-// MARK: - Manual Screenshot Mode
-
-extension ScreenshotTests {
-
-    /// Run this test in the simulator, then manually navigate to capture screenshots
-    /// Press Cmd+S in simulator to save screenshots
-    func testManualScreenshotMode() throws {
-        // Just launch the app and wait
-        // Use Cmd+S in simulator to capture manually
-
-        print("""
-
-        ========================================
-        MANUAL SCREENSHOT MODE
-        ========================================
-
-        The app is now running. Navigate to each screen
-        and press Cmd+S in the Simulator to capture.
-
-        Recommended screenshots:
-        1. Main Menu
-        2. Difficulty Selection
-        3. Gameplay (light mode, with highlighting)
-        4. Gameplay (dark mode)
-        5. Notes/Candidates mode
-        6. Win Screen (complete a puzzle)
-        7. Settings
-        8. Statistics
-
-        Screenshots are saved to Desktop by default.
-
-        Press any key in the test console to end...
-        ========================================
-
-        """)
-
-        // Keep the app running for manual screenshots
-        sleep(300) // 5 minutes
     }
 }

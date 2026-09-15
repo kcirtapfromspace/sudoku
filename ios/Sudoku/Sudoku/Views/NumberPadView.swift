@@ -26,6 +26,8 @@ struct NumberPadView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(NumberPadButtonStyle(isCompleted: false))
+                .accessibilityLabel("Erase cell")
+                .accessibilityIdentifier("KeypadErase")
             }
         }
     }
@@ -45,6 +47,7 @@ struct NumberPadView: View {
         }
         .buttonStyle(NumberPadButtonStyle(isCompleted: isCompleted))
         .disabled(isCompleted && game.inputMode == .normal)
+        .accessibilityIdentifier("Digit\(number)")
     }
 
     private func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {

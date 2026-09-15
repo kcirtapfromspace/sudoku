@@ -148,6 +148,21 @@ if let hint = game.getHint() {
 
 ## Development Notes
 
+### Tests and coverage
+
+Run the complete simulator acceptance suite from the repository root:
+
+```sh
+./ios/scripts/test-coverage.sh
+```
+
+It builds the simulator FFI dependency, regenerates the project, runs unit and UI
+tests on a disposable simulator, and checks 95% authored Swift line/function
+coverage plus 100% critical gameplay coverage. Each run starts with fresh
+profiles and retains test/coverage artifacts on failure. See
+[iOS coverage goals and verification](../docs/ios-coverage-goals.md) for scope,
+measurement details and prerequisites.
+
 ### Rebuilding Rust vs Iterating on SwiftUI
 
 Run `./build.sh` when you change Rust code or the UniFFI interface. If you're only changing SwiftUI/view code, you can usually just build/run from Xcode without regenerating bindings.

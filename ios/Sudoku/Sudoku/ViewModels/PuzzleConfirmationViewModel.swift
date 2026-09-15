@@ -42,9 +42,16 @@ final class PuzzleConfirmationViewModel: ObservableObject {
     /// Confidence threshold below which cells are highlighted
     static let lowConfidenceThreshold: Float = 0.7
 
-    private let ocrService = PuzzleOCRService()
+    private let recognize: (UIImage) async throws -> OCRResult
+    private let validateString: (String) -> PuzzleValidation
 
-    init() {
+    init(recognize: @escaping (UIImage) async throws -> OCRResult = {
+        try await PuzzleOCRService().recognizePuzzle(from: $0)
+    }, validateString: @escaping (String) -> PuzzleValidation = {
+        validatePuzzleString(puzzle: $0)
+    }) {
+        self.recognize = recognize
+        self.validateString = validateString
         self.digits = Array(repeating: 0, count: 81)
         self.confidences = Array(repeating: 1.0, count: 81)
         self.classifications = Array(repeating: .empty, count: 81)
@@ -52,14 +59,15 @@ final class PuzzleConfirmationViewModel: ObservableObject {
     }
 
     /// Run OCR on the captured image, then auto-validate if enough digits found
-    func processImage(_ image: UIImage) {
+    @discardableResult
+    func processImage(_ image: UIImage) -> Task<Void, Never> {
         isProcessing = true
         errorMessage = nil
         validationResult = .notValidated
 
-        Task {
+        return Task {
             do {
-                let result = try await ocrService.recognizePuzzle(from: image)
+                let result = try await recognize(image)
                 digits = result.cells.map { $0.digit }
                 confidences = result.cells.map { $0.confidence }
                 classifications = result.cells.map { $0.classification }
@@ -96,6 +104,7 @@ final class PuzzleConfirmationViewModel: ObservableObject {
 
     /// Select a cell
     func selectCell(at index: Int) {
+        guard (0..<81).contains(index) else { return }
         selectedCell = (selectedCell == index) ? nil : index
     }
 
@@ -163,7 +172,7 @@ final class PuzzleConfirmationViewModel: ObservableObject {
 
     /// Validate the puzzle via FFI — always validates against givens-only string
     func validate() {
-        let result = validatePuzzleString(puzzle: givensOnlyString)
+        let result = validateString(givensOnlyString)
         switch result {
         case .valid:
             validationResult = .valid

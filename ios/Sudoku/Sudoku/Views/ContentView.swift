@@ -18,6 +18,8 @@ struct ContentView: View {
                 if let game = gameManager.currentGame {
                     GameView(game: game)
                         .blur(radius: 10)
+                        .allowsHitTesting(false)
+                        .accessibilityRepresentation { EmptyView() }
                         .overlay {
                             PauseOverlay()
                         }
@@ -197,8 +199,12 @@ struct NewGamePickerView: View {
     let onPlay: (Float) -> Void
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var gameManager: GameManager
-    @State private var expanded: Difficulty?
-    @State private var targetSE: Float = 2.0
+    @StateObject private var selection: NewGameSelection
+
+    init(selection: NewGameSelection? = nil, onPlay: @escaping (Float) -> Void) {
+        _selection = StateObject(wrappedValue: selection ?? NewGameSelection())
+        self.onPlay = onPlay
+    }
 
     var body: some View {
         NavigationStack {
@@ -206,7 +212,7 @@ struct NewGamePickerView: View {
                 ForEach(gameManager.statistics.availableDifficulties) { difficulty in
                     difficultyRow(difficulty)
 
-                    if expanded == difficulty {
+                    if selection.expanded == difficulty {
                         seSlider(for: difficulty)
                     }
                 }
@@ -224,20 +230,20 @@ struct NewGamePickerView: View {
     @ViewBuilder
     private func difficultyRow(_ diff: Difficulty) -> some View {
         Button {
-            if expanded == diff {
+            if selection.expanded == diff {
                 // Already expanded — play with current SE
-                onPlay(targetSE)
+                onPlay(selection.targetSE)
             } else {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    expanded = diff
-                    targetSE = diff.defaultSE
+                    selection.expanded = diff
+                    selection.targetSE = diff.defaultSE
                 }
             }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(diff.displayName)
-                        .font(.body.weight(expanded == diff ? .semibold : .regular))
+                        .font(.body.weight(selection.expanded == diff ? .semibold : .regular))
                         .foregroundStyle(.primary)
                     Text(diff.seDescription)
                         .font(.caption)
@@ -259,15 +265,15 @@ struct NewGamePickerView: View {
                 Text(String(format: "%.1f", range.lowerBound))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Slider(value: $targetSE, in: range, step: 0.1)
+                Slider(value: $selection.targetSE, in: range, step: 0.1)
                 Text(String(format: "%.1f", range.upperBound))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Button {
-                onPlay(targetSE)
+                onPlay(selection.targetSE)
             } label: {
-                Text("Play (SE \(String(format: "%.1f", targetSE)))")
+                Text("Play (SE \(String(format: "%.1f", selection.targetSE)))")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -305,6 +311,7 @@ struct NewGamePickerView: View {
 // MARK: - Progress Hub (Stats + Library + Leaderboard)
 
 struct ProgressHubView: View {
+    @EnvironmentObject var gameManager: GameManager
     @State private var tab: ProgressTab = .stats
 
     enum ProgressTab: String, CaseIterable {
@@ -321,7 +328,7 @@ struct ProgressHubView: View {
                     Label("Stats", systemImage: "chart.bar.fill")
                 }
 
-            GameHistoryView()
+            GameHistoryView(historyManager: gameManager.historyManager)
                 .tag(ProgressTab.library)
                 .tabItem {
                     Label("Library", systemImage: "book.fill")

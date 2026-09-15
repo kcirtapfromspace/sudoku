@@ -55,7 +55,25 @@ class GameCenterManager: NSObject, ObservableObject {
 
     // MARK: - Private Properties
 
-    private var gameCenterViewController: GKGameCenterViewController?
+    struct Dependencies {
+        var authenticate: (@escaping (UIViewController?, Error?, Bool, GKLocalPlayer?) -> Void) -> Void = { completion in
+            GKLocalPlayer.local.authenticateHandler = { controller, error in
+                completion(controller, error, GKLocalPlayer.local.isAuthenticated, GKLocalPlayer.local)
+            }
+        }
+        var submitScore: (Int, String) async throws -> Void = { value, leaderboard in
+            try await GKLeaderboard.submitScore(value, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [leaderboard])
+        }
+        var reportAchievement: (GKAchievement) async throws -> Void = { try await GKAchievement.report([$0]) }
+        var rootController: @MainActor () -> UIViewController? = {
+            (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.rootViewController
+        }
+        var present: @MainActor (UIViewController, UIViewController) -> Void = { $0.present($1, animated: true) }
+        var dismiss: @MainActor (UIViewController) -> Void = { $0.dismiss(animated: true) }
+    }
+
+    private let dependencies: Dependencies
+    private let defaults: UserDefaults
 
     // Track achievement progress locally
     private let achievementProgressKey = "gc_achievement_progress"
@@ -63,7 +81,9 @@ class GameCenterManager: NSObject, ObservableObject {
 
     // MARK: - Initialization
 
-    override init() {
+    init(defaults: UserDefaults = .standard, dependencies: Dependencies = Dependencies()) {
+        self.defaults = defaults
+        self.dependencies = dependencies
         super.init()
         loadAchievementProgress()
     }
@@ -71,7 +91,7 @@ class GameCenterManager: NSObject, ObservableObject {
     // MARK: - Authentication
 
     func authenticate() {
-        GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
+        dependencies.authenticate { [weak self] viewController, error, authenticated, player in
             Task { @MainActor in
                 if let error = error {
                     print("Game Center auth error: \(error.localizedDescription)")
@@ -82,10 +102,10 @@ class GameCenterManager: NSObject, ObservableObject {
                 if viewController != nil {
                     // Player needs to log in - iOS will handle presenting this
                     self?.isAuthenticated = false
-                } else if GKLocalPlayer.local.isAuthenticated {
+                } else if authenticated {
                     self?.isAuthenticated = true
-                    self?.localPlayer = GKLocalPlayer.local
-                    print("Game Center authenticated: \(GKLocalPlayer.local.displayName)")
+                    self?.localPlayer = player
+                    print("Game Center authenticated")
                 } else {
                     self?.isAuthenticated = false
                 }
@@ -95,21 +115,17 @@ class GameCenterManager: NSObject, ObservableObject {
 
     // MARK: - Leaderboards
 
-    func submitScore(time: TimeInterval, difficulty: Difficulty) {
-        guard isAuthenticated else { return }
+    @discardableResult
+    func submitScore(time: TimeInterval, difficulty: Difficulty) -> Task<Void, Never>? {
+        guard isAuthenticated, time.isFinite, time >= 0, time * 100 < Double(Int.max) else { return nil }
 
         let leaderboardID = LeaderboardID.forDifficulty(difficulty)
         // Convert time to centiseconds for precision (Game Center uses integers)
         let scoreValue = Int(time * 100)
 
-        Task {
+        return Task {
             do {
-                try await GKLeaderboard.submitScore(
-                    scoreValue,
-                    context: 0,
-                    player: GKLocalPlayer.local,
-                    leaderboardIDs: [leaderboardID]
-                )
+                try await dependencies.submitScore(scoreValue, leaderboardID)
                 print("Submitted score \(scoreValue) to \(leaderboardID)")
             } catch {
                 print("Failed to submit score: \(error.localizedDescription)")
@@ -117,17 +133,13 @@ class GameCenterManager: NSObject, ObservableObject {
         }
     }
 
-    func submitWinStreak(_ streak: Int) {
-        guard isAuthenticated else { return }
+    @discardableResult
+    func submitWinStreak(_ streak: Int) -> Task<Void, Never>? {
+        guard isAuthenticated, streak >= 0 else { return nil }
 
-        Task {
+        return Task {
             do {
-                try await GKLeaderboard.submitScore(
-                    streak,
-                    context: 0,
-                    player: GKLocalPlayer.local,
-                    leaderboardIDs: [LeaderboardID.winStreak]
-                )
+                try await dependencies.submitScore(streak, LeaderboardID.winStreak)
                 print("Submitted win streak: \(streak)")
             } catch {
                 print("Failed to submit win streak: \(error.localizedDescription)")
@@ -137,16 +149,17 @@ class GameCenterManager: NSObject, ObservableObject {
 
     // MARK: - Achievements
 
-    func unlockAchievement(_ achievementID: String, percentComplete: Double = 100.0) {
-        guard isAuthenticated else { return }
+    @discardableResult
+    func unlockAchievement(_ achievementID: String, percentComplete: Double = 100.0) -> Task<Void, Never>? {
+        guard isAuthenticated, percentComplete.isFinite else { return nil }
 
-        Task {
+        return Task {
             let achievement = GKAchievement(identifier: achievementID)
-            achievement.percentComplete = percentComplete
+            achievement.percentComplete = min(100, max(0, percentComplete))
             achievement.showsCompletionBanner = true
 
             do {
-                try await GKAchievement.report([achievement])
+                try await dependencies.reportAchievement(achievement)
                 print("Unlocked achievement: \(achievementID)")
             } catch {
                 print("Failed to report achievement: \(error.localizedDescription)")
@@ -225,13 +238,12 @@ class GameCenterManager: NSObject, ObservableObject {
         gcViewController.gameCenterDelegate = self
 
         // Get the root view controller to present from
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootViewController = windowScene.windows.first?.rootViewController {
+        if let rootViewController = dependencies.rootController() {
             var topController = rootViewController
             while let presented = topController.presentedViewController {
                 topController = presented
             }
-            topController.present(gcViewController, animated: true)
+            dependencies.present(topController, gcViewController)
         } else {
             print("Could not find root view controller to present Game Center")
         }
@@ -240,7 +252,7 @@ class GameCenterManager: NSObject, ObservableObject {
     // MARK: - Persistence
 
     private func loadAchievementProgress() {
-        if let data = UserDefaults.standard.data(forKey: achievementProgressKey),
+        if let data = defaults.data(forKey: achievementProgressKey),
            let counts = try? JSONDecoder().decode([String: Int].self, from: data) {
             for (key, value) in counts {
                 if let difficulty = Difficulty(rawValue: key) {
@@ -256,7 +268,7 @@ class GameCenterManager: NSObject, ObservableObject {
             stringCounts[difficulty.rawValue] = count
         }
         if let data = try? JSONEncoder().encode(stringCounts) {
-            UserDefaults.standard.set(data, forKey: achievementProgressKey)
+            defaults.set(data, forKey: achievementProgressKey)
         }
     }
 }
@@ -266,7 +278,7 @@ class GameCenterManager: NSObject, ObservableObject {
 extension GameCenterManager: GKGameCenterControllerDelegate {
     nonisolated func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
         Task { @MainActor in
-            gameCenterViewController.dismiss(animated: true)
+            self.dependencies.dismiss(gameCenterViewController)
         }
     }
 }

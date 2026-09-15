@@ -5,11 +5,20 @@ on:
     branches: [main]
     paths:
       - 'ios/**'
+      - 'crates/sudoku-ffi/**'
+      - 'crates/sudoku-core/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
       - '.github/workflows/build-ios.yml'
   pull_request:
     branches: [main]
     paths:
       - 'ios/**'
+      - 'crates/sudoku-ffi/**'
+      - 'crates/sudoku-core/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/build-ios.yml'
   workflow_dispatch:
     inputs:
       deploy_testflight:
@@ -24,26 +33,28 @@ env:
   BUNDLE_ID: com.ukodus.app
 
 jobs:
-  # Build and test on PRs
+  # A fresh simulator test run gates pull requests and TestFlight deployment.
   build:
-    name: Build & Test
+    name: iOS tests and coverage
     runs-on: macos-15
-    if: github.event_name == 'pull_request'
-    defaults:
-      run:
-        working-directory: ios/Sudoku
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache DerivedData
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ios/Sudoku/build/DerivedData
-          key: ${{ runner.os }}-deriveddata-${{ hashFiles('ios/Sudoku/**/*.swift', 'ios/Sudoku/**/*.xcodeproj/**') }}
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            target/
+          key: ${{ runner.os }}-${{ runner.arch }}-ios-test-rust-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-deriveddata-
+            ${{ runner.os }}-${{ runner.arch }}-ios-test-rust-
 
       - name: Cache SPM packages
         uses: actions/cache@v4
@@ -54,29 +65,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      - name: Select Xcode
-        run: |
-          XCODE_PATH=$(ls -d /Applications/Xcode*.app | tail -1)
-          echo "Using Xcode at: $XCODE_PATH"
-          sudo xcode-select -s "$XCODE_PATH"
-          xcodebuild -version
+      - name: Select current stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
-      - name: Build for testing
-        run: |
-          SIMULATOR_NAME=$(xcrun simctl list devices available | grep -m 1 "iPhone" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
-          echo "Using simulator: $SIMULATOR_NAME"
+      - name: Install XcodeGen
+        run: brew install xcodegen
 
-          xcodebuild build \
-            -project Sudoku.xcodeproj \
-            -scheme $SCHEME \
-            -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
-            -configuration Debug \
-            -derivedDataPath ./build/DerivedData \
-            -parallelizeTargets \
-            -jobs $(sysctl -n hw.ncpu) \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            2>&1 | tee build.log
+      - name: Test all iOS suites and enforce production coverage
+        run: ./ios/scripts/test-coverage.sh
+
+      - name: Upload test results and coverage, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-coverage
+          path: |
+            ios/Sudoku/build/coverage/latest-run.txt
+            ios/Sudoku/build/coverage/run.*/*.json
+            ios/Sudoku/build/coverage/run.*/*.txt
+            ios/Sudoku/build/coverage/run.*/*.log
+            ios/Sudoku/build/coverage/run.*/tests.xcresult/
+          if-no-files-found: warn
+          retention-days: 14
 
   # Generate changelog from recent commits
   changelog:
@@ -110,7 +122,7 @@ jobs:
   # Deploy to TestFlight on main branch pushes
   deploy-testflight:
     name: Deploy to TestFlight
-    needs: changelog
+    needs: [changelog, build]
     runs-on: macos-15
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy_testflight)
     defaults:
@@ -152,7 +164,7 @@ jobs:
             ${{ runner.os }}-spm-
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.95.0
         with:
           targets: aarch64-apple-ios
 
@@ -160,10 +172,10 @@ jobs:
         working-directory: .
         run: |
           echo "Building Rust library for iOS device..."
-          cargo build -p sudoku-ffi --release --target aarch64-apple-ios
+          cargo build --locked -p sudoku-ffi --release --target aarch64-apple-ios
 
           echo "Building for native (for uniffi-bindgen)..."
-          cargo build -p sudoku-ffi --release
+          cargo build --locked -p sudoku-ffi --release
 
           echo "Copying libraries..."
           mkdir -p ios/Frameworks
@@ -191,12 +203,15 @@ jobs:
           echo "Done! Libraries at:"
           ls -la ios/Frameworks/
 
-      - name: Select Xcode
+      - name: Select current stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Generate the tested project definition
         run: |
-          XCODE_PATH=$(ls -d /Applications/Xcode*.app | tail -1)
-          echo "Using Xcode at: $XCODE_PATH"
-          sudo xcode-select -s "$XCODE_PATH"
-          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate --spec project.yml
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1

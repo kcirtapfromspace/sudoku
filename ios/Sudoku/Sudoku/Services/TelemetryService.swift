@@ -4,22 +4,27 @@ import UIKit
 #endif
 
 /// Manages auth tokens for the telemetry API.
-private actor TokenManager {
-    private let tokenEndpoint = URL(string: "https://ukodus.now/api/v1/token")!
+actor TokenManager {
+    private let tokenEndpoint: URL
+    private let now: @Sendable () -> Date
     private let session: URLSession
 
     private var cachedToken: String?
     private var expiresAt: Date = .distantPast
 
-    init(session: URLSession) {
+    init(session: URLSession,
+         endpoint: URL = URL(string: "https://ukodus.now/api/v1/token")!,
+         now: @escaping @Sendable () -> Date = { Date() }) {
         self.session = session
+        self.tokenEndpoint = endpoint
+        self.now = now
     }
 
     /// Get a valid token, fetching a new one if the cached one is expired.
     /// Returns nil during migration period (server doesn't support tokens yet).
     func getToken(playerId: String) async -> String? {
         // Check if cached token is still valid (with 60s buffer)
-        if let token = cachedToken, Date() < expiresAt.addingTimeInterval(-60) {
+        if let token = cachedToken, now() < expiresAt.addingTimeInterval(-60) {
             return token
         }
 
@@ -65,19 +70,25 @@ private actor TokenManager {
 
 /// Fire-and-forget telemetry that submits game results to the ukodus API.
 /// Results populate the Galaxy visualization and leaderboards alongside web games.
-final class TelemetryService: Sendable {
+// URLSession and UserDefaults support concurrent access; token state is actor isolated.
+final class TelemetryService: @unchecked Sendable {
     static let shared = TelemetryService()
 
-    private let endpoint = URL(string: "https://ukodus.now/api/v1/results")!
+    private let endpoint: URL
+    private let defaults: UserDefaults
     private let session: URLSession
     private let tokenManager: TokenManager
 
-    private init() {
+    init(session: URLSession? = nil, defaults: UserDefaults = .standard,
+         endpoint: URL = URL(string: "https://ukodus.now/api/v1/results")!,
+         tokenEndpoint: URL = URL(string: "https://ukodus.now/api/v1/token")!) {
+        self.defaults = defaults
+        self.endpoint = endpoint
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 10
         config.waitsForConnectivity = false
-        self.session = URLSession(configuration: config)
-        self.tokenManager = TokenManager(session: self.session)
+        self.session = session ?? URLSession(configuration: config)
+        self.tokenManager = TokenManager(session: self.session, endpoint: tokenEndpoint)
     }
 
     // MARK: - Player ID
@@ -85,11 +96,11 @@ final class TelemetryService: Sendable {
     private static let playerIdKey = "ukodus_player_id"
 
     var playerId: String {
-        if let existing = UserDefaults.standard.string(forKey: Self.playerIdKey) {
+        if let existing = defaults.string(forKey: Self.playerIdKey) {
             return existing
         }
         let id = UUID().uuidString
-        UserDefaults.standard.set(id, forKey: Self.playerIdKey)
+        defaults.set(id, forKey: Self.playerIdKey)
         return id
     }
 
@@ -97,7 +108,8 @@ final class TelemetryService: Sendable {
 
     /// Collect data on the main thread, then fire a detached network task.
     @MainActor
-    func submitResult(game: GameViewModel, won: Bool) {
+    @discardableResult
+    func submitResult(game: GameViewModel, won: Bool) -> Task<Void, Never> {
         let puzzleString = game.getPuzzleString()
         let puzzleHash = hashPuzzle(puzzleString)
         let shortCode = game.getShortCode()
@@ -112,7 +124,7 @@ final class TelemetryService: Sendable {
         let osVersion = Self.osVersion()
         let appVersion = Self.appVersion()
 
-        Task.detached(priority: .utility) { [endpoint, session, tokenManager] in
+        return Task.detached(priority: .utility) { [endpoint, session, tokenManager] in
             var body: [String: Any] = [
                 "puzzle_hash": puzzleHash,
                 "puzzle_string": puzzleString,

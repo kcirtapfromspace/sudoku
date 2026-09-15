@@ -2,9 +2,14 @@ import SwiftUI
 
 struct GameHistoryView: View {
     @EnvironmentObject var gameManager: GameManager
-    @StateObject private var historyManager = GameHistoryManager.shared
+    @StateObject private var historyManager: GameHistoryManager
     @State private var selectedDifficulty: Difficulty?
     @Environment(\.dismiss) private var dismiss
+
+    init(historyManager: GameHistoryManager? = nil, selectedDifficulty: Difficulty? = nil) {
+        _historyManager = StateObject(wrappedValue: historyManager ?? .shared)
+        _selectedDifficulty = State(initialValue: selectedDifficulty)
+    }
 
     var body: some View {
         NavigationStack {

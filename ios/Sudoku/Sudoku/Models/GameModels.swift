@@ -157,15 +157,9 @@ struct GameStatistics: Codable {
         // Easter egg unlocks everything
         if easterEggUnlocked { return true }
 
-        // Always-available difficulties
-        if !difficulty.requiresUnlock { return true }
-
-        // Check unlock requirement
-        if let requirement = difficulty.unlockRequirement {
-            return wins(for: requirement.difficulty) >= requirement.wins
-        }
-
-        return false
+        // A difficulty without an unlock requirement is available immediately.
+        guard let requirement = difficulty.unlockRequirement else { return true }
+        return wins(for: requirement.difficulty) >= requirement.wins
     }
 
     /// Get all currently available difficulties

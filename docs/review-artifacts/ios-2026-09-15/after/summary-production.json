@@ -1,0 +1,4210 @@
+{
+  "schema_version": 1,
+  "measurement": "unique authored Swift source lines and mapped functions",
+  "source_root": "/Users/thinkstudio/Documents/ChatGPT/sudoku/ios/Sudoku/Sudoku",
+  "thresholds": {
+    "lines": 95,
+    "functions": 95,
+    "critical_gameplay": 100
+  },
+  "excluded": [
+    "Generated/ (UniFFI)",
+    "separate test targets"
+  ],
+  "totals": {
+    "lines": {
+      "covered": 5962,
+      "total": 6007,
+      "percent": 99.25087398035625
+    },
+    "functions": {
+      "covered": 1205,
+      "total": 1245,
+      "percent": 96.78714859437751
+    }
+  },
+  "critical": [
+    {
+      "path": "Services/GameManager.swift",
+      "lines": {
+        "covered": 301,
+        "total": 301,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 71,
+        "total": 71,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "ViewModels/GameViewModel.swift",
+      "lines": {
+        "covered": 732,
+        "total": 732,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 181,
+        "total": 181,
+        "percent": 100.0
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "Models/GameHistory.swift",
+      "lines": {
+        "covered": 41,
+        "total": 41,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 10,
+        "total": 10,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "id",
+          "kind": "accessor_decl",
+          "start": 7,
+          "body_start": 7,
+          "end": 7,
+          "accessor": "get"
+        },
+        {
+          "name": "hasBeenSolved",
+          "kind": "accessor_decl",
+          "start": 37,
+          "body_start": 37,
+          "end": 37,
+          "accessor": "get"
+        },
+        {
+          "name": "init(puzzleString:difficulty:now:)",
+          "kind": "constructor_decl",
+          "start": 40,
+          "body_start": 40,
+          "end": 50,
+          "accessor": ""
+        },
+        {
+          "name": "generateHash(from:)",
+          "kind": "func_decl",
+          "start": 53,
+          "body_start": 53,
+          "end": 57,
+          "accessor": ""
+        },
+        {
+          "name": "recordResult(won:time:now:)",
+          "kind": "func_decl",
+          "start": 60,
+          "body_start": 60,
+          "end": 75,
+          "accessor": ""
+        },
+        {
+          "name": "completionRate",
+          "kind": "accessor_decl",
+          "start": 84,
+          "body_start": 84,
+          "end": 87,
+          "accessor": "get"
+        }
+      ]
+    },
+    {
+      "path": "Models/GameModels.swift",
+      "lines": {
+        "covered": 170,
+        "total": 170,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 58,
+        "total": 58,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "id",
+          "kind": "accessor_decl",
+          "start": 15,
+          "body_start": 15,
+          "end": 15,
+          "accessor": "get"
+        },
+        {
+          "name": "displayName",
+          "kind": "accessor_decl",
+          "start": 17,
+          "body_start": 17,
+          "end": 17,
+          "accessor": "get"
+        },
+        {
+          "name": "alwaysUnlocked",
+          "kind": "accessor_decl",
+          "start": 20,
+          "body_start": 20,
+          "end": 22,
+          "accessor": "get"
+        },
+        {
+          "name": "requiresUnlock",
+          "kind": "accessor_decl",
+          "start": 25,
+          "body_start": 25,
+          "end": 27,
+          "accessor": "get"
+        },
+        {
+          "name": "unlockRequirement",
+          "kind": "accessor_decl",
+          "start": 30,
+          "body_start": 30,
+          "end": 36,
+          "accessor": "get"
+        },
+        {
+          "name": "seRange",
+          "kind": "accessor_decl",
+          "start": 39,
+          "body_start": 39,
+          "end": 50,
+          "accessor": "get"
+        },
+        {
+          "name": "defaultSE",
+          "kind": "accessor_decl",
+          "start": 53,
+          "body_start": 53,
+          "end": 56,
+          "accessor": "get"
+        },
+        {
+          "name": "seDescription",
+          "kind": "accessor_decl",
+          "start": 59,
+          "body_start": 59,
+          "end": 70,
+          "accessor": "get"
+        },
+        {
+          "name": "id",
+          "kind": "accessor_decl",
+          "start": 92,
+          "body_start": 92,
+          "end": 92,
+          "accessor": "get"
+        },
+        {
+          "name": "isEmpty",
+          "kind": "accessor_decl",
+          "start": 93,
+          "body_start": 93,
+          "end": 93,
+          "accessor": "get"
+        },
+        {
+          "name": "position",
+          "kind": "accessor_decl",
+          "start": 94,
+          "body_start": 94,
+          "end": 94,
+          "accessor": "get"
+        },
+        {
+          "name": "boxIndex",
+          "kind": "accessor_decl",
+          "start": 97,
+          "body_start": 97,
+          "end": 99,
+          "accessor": "get"
+        },
+        {
+          "name": "empty(row:col:)",
+          "kind": "func_decl",
+          "start": 101,
+          "body_start": 101,
+          "end": 103,
+          "accessor": ""
+        },
+        {
+          "name": "winRate",
+          "kind": "accessor_decl",
+          "start": 145,
+          "body_start": 145,
+          "end": 148,
+          "accessor": "get"
+        },
+        {
+          "name": "wins(for:)",
+          "kind": "func_decl",
+          "start": 151,
+          "body_start": 151,
+          "end": 153,
+          "accessor": ""
+        },
+        {
+          "name": "isUnlocked(_:)",
+          "kind": "func_decl",
+          "start": 156,
+          "body_start": 156,
+          "end": 163,
+          "accessor": ""
+        },
+        {
+          "name": "availableDifficulties",
+          "kind": "accessor_decl",
+          "start": 166,
+          "body_start": 166,
+          "end": 168,
+          "accessor": "get"
+        },
+        {
+          "name": "unlockProgress(for:)",
+          "kind": "func_decl",
+          "start": 171,
+          "body_start": 171,
+          "end": 175,
+          "accessor": ""
+        },
+        {
+          "name": "recordWin(difficulty:time:)",
+          "kind": "func_decl",
+          "start": 177,
+          "body_start": 177,
+          "end": 192,
+          "accessor": ""
+        },
+        {
+          "name": "recordLoss(time:)",
+          "kind": "func_decl",
+          "start": 194,
+          "body_start": 194,
+          "end": 198,
+          "accessor": ""
+        },
+        {
+          "name": "recordSequentialCompletion()",
+          "kind": "func_decl",
+          "start": 200,
+          "body_start": 200,
+          "end": 202,
+          "accessor": ""
+        },
+        {
+          "name": "activateEasterEgg()",
+          "kind": "func_decl",
+          "start": 204,
+          "body_start": 204,
+          "end": 206,
+          "accessor": ""
+        },
+        {
+          "name": "displayName",
+          "kind": "accessor_decl",
+          "start": 216,
+          "body_start": 216,
+          "end": 222,
+          "accessor": "get"
+        },
+        {
+          "name": "toggle()",
+          "kind": "func_decl",
+          "start": 224,
+          "body_start": 224,
+          "end": 226,
+          "accessor": ""
+        },
+        {
+          "name": "isNotesMode",
+          "kind": "accessor_decl",
+          "start": 228,
+          "body_start": 228,
+          "end": 230,
+          "accessor": "get"
+        },
+        {
+          "name": "input(_:)",
+          "kind": "func_decl",
+          "start": 293,
+          "body_start": 293,
+          "end": 317,
+          "accessor": ""
+        },
+        {
+          "name": "reset()",
+          "kind": "func_decl",
+          "start": 319,
+          "body_start": 319,
+          "end": 323,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Services/GameCenterManager.swift",
+      "lines": {
+        "covered": 189,
+        "total": 192,
+        "percent": 98.4375
+      },
+      "functions": {
+        "covered": 33,
+        "total": 35,
+        "percent": 94.28571428571429
+      },
+      "uncovered_lines": [
+        61,
+        62,
+        66
+      ],
+      "uncovered_functions": [
+        {
+          "line": 60,
+          "name": "closure #1 in closure #1 in variable initialization expression of GameCenterManager.Dependencies.authenticate"
+        },
+        {
+          "line": 211,
+          "name": "implicit closure #3 in implicit closure #2 in GameCenterManager.checkAchievements(difficulty:time:mistakes:currentStreak:totalWins:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "forDifficulty(_:)",
+          "kind": "func_decl",
+          "start": 29,
+          "body_start": 29,
+          "end": 40,
+          "accessor": ""
+        },
+        {
+          "name": "init(defaults:dependencies:)",
+          "kind": "constructor_decl",
+          "start": 84,
+          "body_start": 84,
+          "end": 89,
+          "accessor": ""
+        },
+        {
+          "name": "authenticate()",
+          "kind": "func_decl",
+          "start": 93,
+          "body_start": 93,
+          "end": 114,
+          "accessor": ""
+        },
+        {
+          "name": "submitScore(time:difficulty:)",
+          "kind": "func_decl",
+          "start": 119,
+          "body_start": 119,
+          "end": 134,
+          "accessor": ""
+        },
+        {
+          "name": "submitWinStreak(_:)",
+          "kind": "func_decl",
+          "start": 137,
+          "body_start": 137,
+          "end": 148,
+          "accessor": ""
+        },
+        {
+          "name": "unlockAchievement(_:percentComplete:)",
+          "kind": "func_decl",
+          "start": 153,
+          "body_start": 153,
+          "end": 168,
+          "accessor": ""
+        },
+        {
+          "name": "checkAchievements(difficulty:time:mistakes:currentStreak:totalWins:)",
+          "kind": "func_decl",
+          "start": 171,
+          "body_start": 177,
+          "end": 214,
+          "accessor": ""
+        },
+        {
+          "name": "unlockKonamiAchievement()",
+          "kind": "func_decl",
+          "start": 217,
+          "body_start": 217,
+          "end": 219,
+          "accessor": ""
+        },
+        {
+          "name": "showLeaderboards()",
+          "kind": "func_decl",
+          "start": 223,
+          "body_start": 223,
+          "end": 225,
+          "accessor": ""
+        },
+        {
+          "name": "showAchievements()",
+          "kind": "func_decl",
+          "start": 227,
+          "body_start": 227,
+          "end": 229,
+          "accessor": ""
+        },
+        {
+          "name": "showGameCenter()",
+          "kind": "func_decl",
+          "start": 231,
+          "body_start": 231,
+          "end": 233,
+          "accessor": ""
+        },
+        {
+          "name": "showGameCenterViewController(state:)",
+          "kind": "func_decl",
+          "start": 235,
+          "body_start": 235,
+          "end": 250,
+          "accessor": ""
+        },
+        {
+          "name": "loadAchievementProgress()",
+          "kind": "func_decl",
+          "start": 254,
+          "body_start": 254,
+          "end": 263,
+          "accessor": ""
+        },
+        {
+          "name": "saveAchievementProgress()",
+          "kind": "func_decl",
+          "start": 265,
+          "body_start": 265,
+          "end": 273,
+          "accessor": ""
+        },
+        {
+          "name": "gameCenterViewControllerDidFinish(_:)",
+          "kind": "func_decl",
+          "start": 279,
+          "body_start": 279,
+          "end": 283,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Services/GameHistoryManager.swift",
+      "lines": {
+        "covered": 106,
+        "total": 106,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 22,
+        "total": 24,
+        "percent": 91.66666666666667
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [
+        {
+          "line": 38,
+          "name": "closure #2 in GameHistoryManager.puzzles(for:)"
+        },
+        {
+          "line": 45,
+          "name": "closure #2 in GameHistoryManager.unsolvedPuzzles.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(defaults:)",
+          "kind": "constructor_decl",
+          "start": 22,
+          "body_start": 22,
+          "end": 25,
+          "accessor": ""
+        },
+        {
+          "name": "recentPuzzles",
+          "kind": "accessor_decl",
+          "start": 30,
+          "body_start": 30,
+          "end": 32,
+          "accessor": "get"
+        },
+        {
+          "name": "puzzles(for:)",
+          "kind": "func_decl",
+          "start": 35,
+          "body_start": 35,
+          "end": 39,
+          "accessor": ""
+        },
+        {
+          "name": "unsolvedPuzzles",
+          "kind": "accessor_decl",
+          "start": 42,
+          "body_start": 42,
+          "end": 46,
+          "accessor": "get"
+        },
+        {
+          "name": "recordPuzzleStart(puzzleString:difficulty:)",
+          "kind": "func_decl",
+          "start": 51,
+          "body_start": 51,
+          "end": 69,
+          "accessor": ""
+        },
+        {
+          "name": "recordResult(puzzleHash:won:time:)",
+          "kind": "func_decl",
+          "start": 72,
+          "body_start": 72,
+          "end": 85,
+          "accessor": ""
+        },
+        {
+          "name": "getPuzzle(hash:)",
+          "kind": "func_decl",
+          "start": 88,
+          "body_start": 88,
+          "end": 90,
+          "accessor": ""
+        },
+        {
+          "name": "hasPlayed(puzzleString:)",
+          "kind": "func_decl",
+          "start": 93,
+          "body_start": 93,
+          "end": 96,
+          "accessor": ""
+        },
+        {
+          "name": "extractPuzzleFingerprint(from:)",
+          "kind": "func_decl",
+          "start": 100,
+          "body_start": 100,
+          "end": 113,
+          "accessor": ""
+        },
+        {
+          "name": "clearHistory()",
+          "kind": "func_decl",
+          "start": 116,
+          "body_start": 116,
+          "end": 120,
+          "accessor": ""
+        },
+        {
+          "name": "save()",
+          "kind": "func_decl",
+          "start": 124,
+          "body_start": 124,
+          "end": 134,
+          "accessor": ""
+        },
+        {
+          "name": "load()",
+          "kind": "func_decl",
+          "start": 136,
+          "body_start": 136,
+          "end": 150,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Services/GameManager.swift",
+      "lines": {
+        "covered": 301,
+        "total": 301,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 71,
+        "total": 71,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "isEnabled",
+          "kind": "accessor_decl",
+          "start": 7,
+          "body_start": 7,
+          "end": 15,
+          "accessor": "get"
+        },
+        {
+          "name": "live",
+          "kind": "accessor_decl",
+          "start": 35,
+          "body_start": 35,
+          "end": 37,
+          "accessor": "get"
+        },
+        {
+          "name": "connected(cache:gameCenter:history:telemetry:)",
+          "kind": "func_decl",
+          "start": 39,
+          "body_start": 40,
+          "end": 60,
+          "accessor": ""
+        },
+        {
+          "name": "isolated",
+          "kind": "accessor_decl",
+          "start": 63,
+          "body_start": 63,
+          "end": 69,
+          "accessor": "get"
+        },
+        {
+          "name": "currentGame",
+          "kind": "accessor_decl",
+          "start": 73,
+          "body_start": 73,
+          "end": 73,
+          "accessor": "didSet"
+        },
+        {
+          "name": "settings",
+          "kind": "accessor_decl",
+          "start": 77,
+          "body_start": 77,
+          "end": 77,
+          "accessor": "didSet"
+        },
+        {
+          "name": "init(defaults:dependencies:historyManager:authenticateOnLaunch:now:)",
+          "kind": "constructor_decl",
+          "start": 94,
+          "body_start": 96,
+          "end": 111,
+          "accessor": ""
+        },
+        {
+          "name": "applyGameSettings()",
+          "kind": "func_decl",
+          "start": 113,
+          "body_start": 113,
+          "end": 115,
+          "accessor": ""
+        },
+        {
+          "name": "newGame(difficulty:)",
+          "kind": "func_decl",
+          "start": 118,
+          "body_start": 118,
+          "end": 134,
+          "accessor": ""
+        },
+        {
+          "name": "newGameWithSE(targetSE:)",
+          "kind": "func_decl",
+          "start": 137,
+          "body_start": 137,
+          "end": 148,
+          "accessor": ""
+        },
+        {
+          "name": "start(_:difficulty:imported:)",
+          "kind": "func_decl",
+          "start": 150,
+          "body_start": 150,
+          "end": 172,
+          "accessor": ""
+        },
+        {
+          "name": "loadSharedPuzzle(_:)",
+          "kind": "func_decl",
+          "start": 174,
+          "body_start": 174,
+          "end": 179,
+          "accessor": ""
+        },
+        {
+          "name": "loadImportedPuzzle(_:)",
+          "kind": "func_decl",
+          "start": 181,
+          "body_start": 181,
+          "end": 185,
+          "accessor": ""
+        },
+        {
+          "name": "resumeGame()",
+          "kind": "func_decl",
+          "start": 187,
+          "body_start": 187,
+          "end": 192,
+          "accessor": ""
+        },
+        {
+          "name": "pauseGame()",
+          "kind": "func_decl",
+          "start": 194,
+          "body_start": 194,
+          "end": 199,
+          "accessor": ""
+        },
+        {
+          "name": "sceneBecameInactive()",
+          "kind": "func_decl",
+          "start": 201,
+          "body_start": 201,
+          "end": 209,
+          "accessor": ""
+        },
+        {
+          "name": "sceneBecameActive()",
+          "kind": "func_decl",
+          "start": 211,
+          "body_start": 211,
+          "end": 214,
+          "accessor": ""
+        },
+        {
+          "name": "endGame(won:)",
+          "kind": "func_decl",
+          "start": 216,
+          "body_start": 216,
+          "end": 233,
+          "accessor": ""
+        },
+        {
+          "name": "returnToMenu()",
+          "kind": "func_decl",
+          "start": 235,
+          "body_start": 235,
+          "end": 241,
+          "accessor": ""
+        },
+        {
+          "name": "quitGame()",
+          "kind": "func_decl",
+          "start": 243,
+          "body_start": 243,
+          "end": 249,
+          "accessor": ""
+        },
+        {
+          "name": "saveStatistics()",
+          "kind": "func_decl",
+          "start": 251,
+          "body_start": 251,
+          "end": 253,
+          "accessor": ""
+        },
+        {
+          "name": "saveSettings()",
+          "kind": "func_decl",
+          "start": 255,
+          "body_start": 255,
+          "end": 257,
+          "accessor": ""
+        },
+        {
+          "name": "saveCurrentGame()",
+          "kind": "func_decl",
+          "start": 259,
+          "body_start": 259,
+          "end": 262,
+          "accessor": ""
+        },
+        {
+          "name": "loadSavedGame()",
+          "kind": "func_decl",
+          "start": 264,
+          "body_start": 264,
+          "end": 272,
+          "accessor": ""
+        },
+        {
+          "name": "clearSavedGame()",
+          "kind": "func_decl",
+          "start": 274,
+          "body_start": 274,
+          "end": 274,
+          "accessor": ""
+        },
+        {
+          "name": "resetStatistics()",
+          "kind": "func_decl",
+          "start": 276,
+          "body_start": 276,
+          "end": 279,
+          "accessor": ""
+        },
+        {
+          "name": "unlockEasterEgg()",
+          "kind": "func_decl",
+          "start": 281,
+          "body_start": 281,
+          "end": 284,
+          "accessor": ""
+        },
+        {
+          "name": "hasSavedGame",
+          "kind": "accessor_decl",
+          "start": 286,
+          "body_start": 286,
+          "end": 289,
+          "accessor": "get"
+        },
+        {
+          "name": "startDemoIfNeeded(enabled:)",
+          "kind": "func_decl",
+          "start": 295,
+          "body_start": 295,
+          "end": 321,
+          "accessor": ""
+        },
+        {
+          "name": "runDemoSequence()",
+          "kind": "func_decl",
+          "start": 323,
+          "body_start": 323,
+          "end": 381,
+          "accessor": ""
+        },
+        {
+          "name": "nap(_:)",
+          "kind": "func_decl",
+          "start": 327,
+          "body_start": 327,
+          "end": 329,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Services/PuzzleAPIService.swift",
+      "lines": {
+        "covered": 67,
+        "total": 67,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 7,
+        "total": 8,
+        "percent": 87.5
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [
+        {
+          "line": 33,
+          "name": "implicit closure #1 in PuzzleAPIService.init(session:defaults:bundleAPIKey:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "endpointURL",
+          "kind": "accessor_decl",
+          "start": 13,
+          "body_start": 13,
+          "end": 17,
+          "accessor": "get"
+        },
+        {
+          "name": "apiKey",
+          "kind": "accessor_decl",
+          "start": 21,
+          "body_start": 21,
+          "end": 24,
+          "accessor": "get"
+        },
+        {
+          "name": "init(session:defaults:bundleAPIKey:)",
+          "kind": "constructor_decl",
+          "start": 26,
+          "body_start": 27,
+          "end": 34,
+          "accessor": ""
+        },
+        {
+          "name": "fetchPuzzle(difficulty:)",
+          "kind": "func_decl",
+          "start": 41,
+          "body_start": 41,
+          "end": 100,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Services/PuzzleCache.swift",
+      "lines": {
+        "covered": 83,
+        "total": 85,
+        "percent": 97.6470588235294
+      },
+      "functions": {
+        "covered": 16,
+        "total": 17,
+        "percent": 94.11764705882354
+      },
+      "uncovered_lines": [
+        13,
+        14
+      ],
+      "uncovered_functions": [
+        {
+          "line": 13,
+          "name": "closure #1 in default argument 0 of PuzzleCache.init(fetch:generate:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(fetch:generate:)",
+          "kind": "constructor_decl",
+          "start": 13,
+          "body_start": 19,
+          "end": 22,
+          "accessor": ""
+        },
+        {
+          "name": "prefetchAll()",
+          "kind": "func_decl",
+          "start": 25,
+          "body_start": 25,
+          "end": 33,
+          "accessor": ""
+        },
+        {
+          "name": "getPuzzle(difficulty:)",
+          "kind": "func_decl",
+          "start": 36,
+          "body_start": 36,
+          "end": 63,
+          "accessor": ""
+        },
+        {
+          "name": "ensureCached(difficulty:)",
+          "kind": "func_decl",
+          "start": 66,
+          "body_start": 66,
+          "end": 86,
+          "accessor": ""
+        },
+        {
+          "name": "generatePuzzle(difficulty:)",
+          "kind": "func_decl",
+          "start": 89,
+          "body_start": 89,
+          "end": 91,
+          "accessor": ""
+        },
+        {
+          "name": "prefetch(difficulty:)",
+          "kind": "func_decl",
+          "start": 95,
+          "body_start": 95,
+          "end": 99,
+          "accessor": ""
+        },
+        {
+          "name": "getCacheStatus()",
+          "kind": "func_decl",
+          "start": 102,
+          "body_start": 102,
+          "end": 108,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Services/PuzzleOCRService.swift",
+      "lines": {
+        "covered": 495,
+        "total": 496,
+        "percent": 99.79838709677419
+      },
+      "functions": {
+        "covered": 36,
+        "total": 38,
+        "percent": 94.73684210526316
+      },
+      "uncovered_lines": [
+        314
+      ],
+      "uncovered_functions": [
+        {
+          "line": 74,
+          "name": "implicit closure #1 in static PuzzleOCRService.visionRectangles(_:_:)"
+        },
+        {
+          "line": 190,
+          "name": "implicit closure #1 in PuzzleOCRService.enhanceForGridDetection(_:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(recognizeText:detectRectangles:)",
+          "kind": "constructor_decl",
+          "start": 50,
+          "body_start": 51,
+          "end": 54,
+          "accessor": ""
+        },
+        {
+          "name": "visionText(_:_:_:)",
+          "kind": "func_decl",
+          "start": 56,
+          "body_start": 56,
+          "end": 64,
+          "accessor": ""
+        },
+        {
+          "name": "visionRectangles(_:_:)",
+          "kind": "func_decl",
+          "start": 66,
+          "body_start": 66,
+          "end": 75,
+          "accessor": ""
+        },
+        {
+          "name": "recognizePuzzle(from:)",
+          "kind": "func_decl",
+          "start": 82,
+          "body_start": 82,
+          "end": 99,
+          "accessor": ""
+        },
+        {
+          "name": "recognizePuzzleSync(ciImage:)",
+          "kind": "func_decl",
+          "start": 102,
+          "body_start": 102,
+          "end": 130,
+          "accessor": ""
+        },
+        {
+          "name": "detectGridSync(in:)",
+          "kind": "func_decl",
+          "start": 134,
+          "body_start": 134,
+          "end": 147,
+          "accessor": ""
+        },
+        {
+          "name": "detectGridPrimary(in:)",
+          "kind": "func_decl",
+          "start": 149,
+          "body_start": 149,
+          "end": 171,
+          "accessor": ""
+        },
+        {
+          "name": "enhanceForGridDetection(_:)",
+          "kind": "func_decl",
+          "start": 174,
+          "body_start": 174,
+          "end": 191,
+          "accessor": ""
+        },
+        {
+          "name": "detectGridEnhanced(in:originalImage:)",
+          "kind": "func_decl",
+          "start": 193,
+          "body_start": 193,
+          "end": 215,
+          "accessor": ""
+        },
+        {
+          "name": "area(of:)",
+          "kind": "func_decl",
+          "start": 217,
+          "body_start": 217,
+          "end": 221,
+          "accessor": ""
+        },
+        {
+          "name": "gridStructureScore(image:rect:context:)",
+          "kind": "func_decl",
+          "start": 227,
+          "body_start": 227,
+          "end": 294,
+          "accessor": ""
+        },
+        {
+          "name": "gray(_:_:)",
+          "kind": "func_decl",
+          "start": 256,
+          "body_start": 256,
+          "end": 261,
+          "accessor": ""
+        },
+        {
+          "name": "perspectiveCorrect(_:to:)",
+          "kind": "func_decl",
+          "start": 298,
+          "body_start": 298,
+          "end": 318,
+          "accessor": ""
+        },
+        {
+          "name": "toImagePoint(_:)",
+          "kind": "func_decl",
+          "start": 302,
+          "body_start": 302,
+          "end": 304,
+          "accessor": ""
+        },
+        {
+          "name": "extractCells(from:insetFraction:)",
+          "kind": "func_decl",
+          "start": 322,
+          "body_start": 322,
+          "end": 359,
+          "accessor": ""
+        },
+        {
+          "name": "recognizeDigits(in:fullCellImages:)",
+          "kind": "func_decl",
+          "start": 363,
+          "body_start": 363,
+          "end": 392,
+          "accessor": ""
+        },
+        {
+          "name": "recognizeSingleDigit(in:level:)",
+          "kind": "func_decl",
+          "start": 399,
+          "body_start": 399,
+          "end": 410,
+          "accessor": ""
+        },
+        {
+          "name": "classifyCell(_:)",
+          "kind": "func_decl",
+          "start": 416,
+          "body_start": 416,
+          "end": 478,
+          "accessor": ""
+        },
+        {
+          "name": "detectNotes(digitResults:fullCells:)",
+          "kind": "func_decl",
+          "start": 484,
+          "body_start": 484,
+          "end": 514,
+          "accessor": ""
+        },
+        {
+          "name": "detectNotesInCell(_:)",
+          "kind": "func_decl",
+          "start": 521,
+          "body_start": 521,
+          "end": 558,
+          "accessor": ""
+        },
+        {
+          "name": "hasSignificantContent(_:)",
+          "kind": "func_decl",
+          "start": 561,
+          "body_start": 561,
+          "end": 590,
+          "accessor": ""
+        },
+        {
+          "name": "errorDescription",
+          "kind": "accessor_decl",
+          "start": 600,
+          "body_start": 600,
+          "end": 609,
+          "accessor": "get"
+        }
+      ]
+    },
+    {
+      "path": "Services/TelemetryService.swift",
+      "lines": {
+        "covered": 149,
+        "total": 149,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 18,
+        "total": 21,
+        "percent": 85.71428571428571
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [
+        {
+          "line": 176,
+          "name": "implicit closure #2 in closure #1 in TelemetryService.submitResult(game:won:)"
+        },
+        {
+          "line": 206,
+          "name": "implicit closure #1 in closure #1 in closure #1 in static TelemetryService.deviceModel()"
+        },
+        {
+          "line": 220,
+          "name": "implicit closure #1 in static TelemetryService.appVersion()"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(session:endpoint:now:)",
+          "kind": "constructor_decl",
+          "start": 15,
+          "body_start": 17,
+          "end": 21,
+          "accessor": ""
+        },
+        {
+          "name": "getToken(playerId:)",
+          "kind": "func_decl",
+          "start": 25,
+          "body_start": 25,
+          "end": 33,
+          "accessor": ""
+        },
+        {
+          "name": "clearToken()",
+          "kind": "func_decl",
+          "start": 36,
+          "body_start": 36,
+          "end": 39,
+          "accessor": ""
+        },
+        {
+          "name": "fetchToken(playerId:)",
+          "kind": "func_decl",
+          "start": 41,
+          "body_start": 41,
+          "end": 68,
+          "accessor": ""
+        },
+        {
+          "name": "init(session:defaults:endpoint:tokenEndpoint:)",
+          "kind": "constructor_decl",
+          "start": 82,
+          "body_start": 84,
+          "end": 92,
+          "accessor": ""
+        },
+        {
+          "name": "playerId",
+          "kind": "accessor_decl",
+          "start": 98,
+          "body_start": 98,
+          "end": 105,
+          "accessor": "get"
+        },
+        {
+          "name": "submitResult(game:won:)",
+          "kind": "func_decl",
+          "start": 112,
+          "body_start": 112,
+          "end": 190,
+          "accessor": ""
+        },
+        {
+          "name": "hashPuzzle(_:)",
+          "kind": "func_decl",
+          "start": 195,
+          "body_start": 195,
+          "end": 197,
+          "accessor": ""
+        },
+        {
+          "name": "deviceModel()",
+          "kind": "func_decl",
+          "start": 201,
+          "body_start": 201,
+          "end": 209,
+          "accessor": ""
+        },
+        {
+          "name": "osVersion()",
+          "kind": "func_decl",
+          "start": 211,
+          "body_start": 211,
+          "end": 217,
+          "accessor": ""
+        },
+        {
+          "name": "appVersion()",
+          "kind": "func_decl",
+          "start": 219,
+          "body_start": 219,
+          "end": 221,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "SudokuApp.swift",
+      "lines": {
+        "covered": 48,
+        "total": 53,
+        "percent": 90.56603773584905
+      },
+      "functions": {
+        "covered": 13,
+        "total": 14,
+        "percent": 92.85714285714286
+      },
+      "uncovered_lines": [
+        13,
+        14,
+        15,
+        16,
+        25
+      ],
+      "uncovered_functions": [
+        {
+          "line": 13,
+          "name": "closure #1 in SudokuApp.init()"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init()",
+          "kind": "constructor_decl",
+          "start": 8,
+          "body_start": 8,
+          "end": 17,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 19,
+          "body_start": 19,
+          "end": 36,
+          "accessor": "get"
+        },
+        {
+          "name": "init(arguments:environment:)",
+          "kind": "constructor_decl",
+          "start": 44,
+          "body_start": 44,
+          "end": 58,
+          "accessor": ""
+        },
+        {
+          "name": "makeManager()",
+          "kind": "func_decl",
+          "start": 61,
+          "body_start": 61,
+          "end": 76,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "ViewModels/GameViewModel.swift",
+      "lines": {
+        "covered": 732,
+        "total": 732,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 181,
+        "total": 181,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "elapsedTime",
+          "kind": "accessor_decl",
+          "start": 74,
+          "body_start": 74,
+          "end": 76,
+          "accessor": "get"
+        },
+        {
+          "name": "elapsedTimeString",
+          "kind": "accessor_decl",
+          "start": 78,
+          "body_start": 78,
+          "end": 83,
+          "accessor": "get"
+        },
+        {
+          "name": "isGameOver",
+          "kind": "accessor_decl",
+          "start": 85,
+          "body_start": 85,
+          "end": 87,
+          "accessor": "get"
+        },
+        {
+          "name": "numberCounts",
+          "kind": "accessor_decl",
+          "start": 89,
+          "body_start": 89,
+          "end": 92,
+          "accessor": "get"
+        },
+        {
+          "name": "completedNumbers",
+          "kind": "accessor_decl",
+          "start": 94,
+          "body_start": 94,
+          "end": 96,
+          "accessor": "get"
+        },
+        {
+          "name": "selectedValue",
+          "kind": "accessor_decl",
+          "start": 99,
+          "body_start": 99,
+          "end": 102,
+          "accessor": "get"
+        },
+        {
+          "name": "init(difficulty:now:)",
+          "kind": "constructor_decl",
+          "start": 106,
+          "body_start": 106,
+          "end": 108,
+          "accessor": ""
+        },
+        {
+          "name": "createAsync(difficulty:)",
+          "kind": "func_decl",
+          "start": 111,
+          "body_start": 111,
+          "end": 116,
+          "accessor": ""
+        },
+        {
+          "name": "init(cachedGame:difficulty:now:)",
+          "kind": "constructor_decl",
+          "start": 118,
+          "body_start": 118,
+          "end": 124,
+          "accessor": ""
+        },
+        {
+          "name": "configureMistakeLimit(enabled:limit:)",
+          "kind": "func_decl",
+          "start": 126,
+          "body_start": 126,
+          "end": 130,
+          "accessor": ""
+        },
+        {
+          "name": "syncFromEngine()",
+          "kind": "func_decl",
+          "start": 135,
+          "body_start": 135,
+          "end": 176,
+          "accessor": ""
+        },
+        {
+          "name": "dataToSet(_:)",
+          "kind": "func_decl",
+          "start": 179,
+          "body_start": 179,
+          "end": 181,
+          "accessor": ""
+        },
+        {
+          "name": "selectCell(row:col:)",
+          "kind": "func_decl",
+          "start": 185,
+          "body_start": 185,
+          "end": 189,
+          "accessor": ""
+        },
+        {
+          "name": "clearSelection()",
+          "kind": "func_decl",
+          "start": 191,
+          "body_start": 191,
+          "end": 193,
+          "accessor": ""
+        },
+        {
+          "name": "enterNumber(_:)",
+          "kind": "func_decl",
+          "start": 200,
+          "body_start": 200,
+          "end": 215,
+          "accessor": ""
+        },
+        {
+          "name": "enterTemporaryNoteMode()",
+          "kind": "func_decl",
+          "start": 218,
+          "body_start": 218,
+          "end": 223,
+          "accessor": ""
+        },
+        {
+          "name": "setValue(_:at:col:)",
+          "kind": "func_decl",
+          "start": 225,
+          "body_start": 225,
+          "end": 239,
+          "accessor": ""
+        },
+        {
+          "name": "recordFillOrder(value:row:col:)",
+          "kind": "func_decl",
+          "start": 242,
+          "body_start": 242,
+          "end": 246,
+          "accessor": ""
+        },
+        {
+          "name": "isSequentialFill(_:)",
+          "kind": "func_decl",
+          "start": 249,
+          "body_start": 249,
+          "end": 271,
+          "accessor": ""
+        },
+        {
+          "name": "checkForCompletions(afterPlacingAt:col:value:)",
+          "kind": "func_decl",
+          "start": 274,
+          "body_start": 274,
+          "end": 299,
+          "accessor": ""
+        },
+        {
+          "name": "isRowComplete(_:)",
+          "kind": "func_decl",
+          "start": 301,
+          "body_start": 301,
+          "end": 308,
+          "accessor": ""
+        },
+        {
+          "name": "isColumnComplete(_:)",
+          "kind": "func_decl",
+          "start": 310,
+          "body_start": 310,
+          "end": 317,
+          "accessor": ""
+        },
+        {
+          "name": "isBoxComplete(_:)",
+          "kind": "func_decl",
+          "start": 319,
+          "body_start": 319,
+          "end": 330,
+          "accessor": ""
+        },
+        {
+          "name": "clearCelebration()",
+          "kind": "func_decl",
+          "start": 332,
+          "body_start": 332,
+          "end": 334,
+          "accessor": ""
+        },
+        {
+          "name": "triggerRowCelebration(_:)",
+          "kind": "func_decl",
+          "start": 338,
+          "body_start": 338,
+          "end": 343,
+          "accessor": ""
+        },
+        {
+          "name": "triggerColumnCelebration(_:)",
+          "kind": "func_decl",
+          "start": 345,
+          "body_start": 345,
+          "end": 350,
+          "accessor": ""
+        },
+        {
+          "name": "triggerBoxCelebration(_:)",
+          "kind": "func_decl",
+          "start": 352,
+          "body_start": 352,
+          "end": 361,
+          "accessor": ""
+        },
+        {
+          "name": "autoClearCelebration(after:)",
+          "kind": "func_decl",
+          "start": 363,
+          "body_start": 363,
+          "end": 367,
+          "accessor": ""
+        },
+        {
+          "name": "clearSelectedCell()",
+          "kind": "func_decl",
+          "start": 369,
+          "body_start": 369,
+          "end": 383,
+          "accessor": ""
+        },
+        {
+          "name": "toggleCandidate(_:at:col:)",
+          "kind": "func_decl",
+          "start": 385,
+          "body_start": 385,
+          "end": 406,
+          "accessor": ""
+        },
+        {
+          "name": "fillCandidatesForSelected()",
+          "kind": "func_decl",
+          "start": 410,
+          "body_start": 410,
+          "end": 418,
+          "accessor": ""
+        },
+        {
+          "name": "fillAllCandidates()",
+          "kind": "func_decl",
+          "start": 420,
+          "body_start": 420,
+          "end": 427,
+          "accessor": ""
+        },
+        {
+          "name": "clearCandidatesForSelected()",
+          "kind": "func_decl",
+          "start": 429,
+          "body_start": 429,
+          "end": 436,
+          "accessor": ""
+        },
+        {
+          "name": "clearAllCandidates()",
+          "kind": "func_decl",
+          "start": 438,
+          "body_start": 438,
+          "end": 447,
+          "accessor": ""
+        },
+        {
+          "name": "getValidCandidates(row:col:)",
+          "kind": "func_decl",
+          "start": 449,
+          "body_start": 449,
+          "end": 452,
+          "accessor": ""
+        },
+        {
+          "name": "checkNotes()",
+          "kind": "func_decl",
+          "start": 456,
+          "body_start": 456,
+          "end": 468,
+          "accessor": ""
+        },
+        {
+          "name": "applyImportedMove(row:col:value:)",
+          "kind": "func_decl",
+          "start": 472,
+          "body_start": 472,
+          "end": 476,
+          "accessor": ""
+        },
+        {
+          "name": "applyImportedNotes(row:col:notes:)",
+          "kind": "func_decl",
+          "start": 478,
+          "body_start": 478,
+          "end": 487,
+          "accessor": ""
+        },
+        {
+          "name": "refreshCells()",
+          "kind": "func_decl",
+          "start": 490,
+          "body_start": 490,
+          "end": 492,
+          "accessor": ""
+        },
+        {
+          "name": "snapshot()",
+          "kind": "func_decl",
+          "start": 496,
+          "body_start": 496,
+          "end": 501,
+          "accessor": ""
+        },
+        {
+          "name": "recordUndo()",
+          "kind": "func_decl",
+          "start": 503,
+          "body_start": 503,
+          "end": 506,
+          "accessor": ""
+        },
+        {
+          "name": "resetUndoHistory()",
+          "kind": "func_decl",
+          "start": 509,
+          "body_start": 509,
+          "end": 513,
+          "accessor": ""
+        },
+        {
+          "name": "restore(_:)",
+          "kind": "func_decl",
+          "start": 515,
+          "body_start": 515,
+          "end": 537,
+          "accessor": ""
+        },
+        {
+          "name": "undo()",
+          "kind": "func_decl",
+          "start": 539,
+          "body_start": 539,
+          "end": 543,
+          "accessor": ""
+        },
+        {
+          "name": "redo()",
+          "kind": "func_decl",
+          "start": 545,
+          "body_start": 545,
+          "end": 549,
+          "accessor": ""
+        },
+        {
+          "name": "getHint()",
+          "kind": "func_decl",
+          "start": 553,
+          "body_start": 553,
+          "end": 579,
+          "accessor": ""
+        },
+        {
+          "name": "applyHint()",
+          "kind": "func_decl",
+          "start": 581,
+          "body_start": 581,
+          "end": 587,
+          "accessor": ""
+        },
+        {
+          "name": "clearHint()",
+          "kind": "func_decl",
+          "start": 589,
+          "body_start": 589,
+          "end": 594,
+          "accessor": ""
+        },
+        {
+          "name": "hintCellRole(row:col:)",
+          "kind": "func_decl",
+          "start": 596,
+          "body_start": 596,
+          "end": 598,
+          "accessor": ""
+        },
+        {
+          "name": "updateHintCellRoles()",
+          "kind": "func_decl",
+          "start": 600,
+          "body_start": 600,
+          "end": 607,
+          "accessor": ""
+        },
+        {
+          "name": "hintCellRole(from:)",
+          "kind": "func_decl",
+          "start": 609,
+          "body_start": 609,
+          "end": 623,
+          "accessor": ""
+        },
+        {
+          "name": "pause()",
+          "kind": "func_decl",
+          "start": 627,
+          "body_start": 627,
+          "end": 631,
+          "accessor": ""
+        },
+        {
+          "name": "resume()",
+          "kind": "func_decl",
+          "start": 633,
+          "body_start": 633,
+          "end": 636,
+          "accessor": ""
+        },
+        {
+          "name": "isRelated(to:)",
+          "kind": "func_decl",
+          "start": 640,
+          "body_start": 640,
+          "end": 645,
+          "accessor": ""
+        },
+        {
+          "name": "hasSameValue(as:)",
+          "kind": "func_decl",
+          "start": 647,
+          "body_start": 647,
+          "end": 651,
+          "accessor": ""
+        },
+        {
+          "name": "isNakedSingle(row:col:)",
+          "kind": "func_decl",
+          "start": 653,
+          "body_start": 653,
+          "end": 655,
+          "accessor": ""
+        },
+        {
+          "name": "getPuzzleString()",
+          "kind": "func_decl",
+          "start": 661,
+          "body_start": 661,
+          "end": 663,
+          "accessor": ""
+        },
+        {
+          "name": "getPuzzleFingerprint()",
+          "kind": "func_decl",
+          "start": 667,
+          "body_start": 667,
+          "end": 680,
+          "accessor": ""
+        },
+        {
+          "name": "getShortCode()",
+          "kind": "func_decl",
+          "start": 683,
+          "body_start": 683,
+          "end": 685,
+          "accessor": ""
+        },
+        {
+          "name": "puzzleHash",
+          "kind": "accessor_decl",
+          "start": 688,
+          "body_start": 688,
+          "end": 690,
+          "accessor": "get"
+        },
+        {
+          "name": "serializedBoard()",
+          "kind": "func_decl",
+          "start": 695,
+          "body_start": 695,
+          "end": 702,
+          "accessor": ""
+        },
+        {
+          "name": "restoreEngine(_:mistakes:hintsUsed:)",
+          "kind": "func_decl",
+          "start": 704,
+          "body_start": 704,
+          "end": 729,
+          "accessor": ""
+        },
+        {
+          "name": "serialize()",
+          "kind": "func_decl",
+          "start": 731,
+          "body_start": 731,
+          "end": 742,
+          "accessor": ""
+        },
+        {
+          "name": "deserialize(_:now:)",
+          "kind": "func_decl",
+          "start": 744,
+          "body_start": 744,
+          "end": 761,
+          "accessor": ""
+        },
+        {
+          "name": "toGameDifficulty()",
+          "kind": "func_decl",
+          "start": 768,
+          "body_start": 768,
+          "end": 779,
+          "accessor": ""
+        },
+        {
+          "name": "from(_:)",
+          "kind": "func_decl",
+          "start": 781,
+          "body_start": 781,
+          "end": 792,
+          "accessor": ""
+        },
+        {
+          "name": "fillRowExcept(row:exceptCol:)",
+          "kind": "func_decl",
+          "start": 800,
+          "body_start": 800,
+          "end": 810,
+          "accessor": ""
+        },
+        {
+          "name": "fillColumnExcept(col:exceptRow:)",
+          "kind": "func_decl",
+          "start": 813,
+          "body_start": 813,
+          "end": 823,
+          "accessor": ""
+        },
+        {
+          "name": "fillBoxExcept(boxIndex:exceptRow:exceptCol:)",
+          "kind": "func_decl",
+          "start": 826,
+          "body_start": 826,
+          "end": 840,
+          "accessor": ""
+        },
+        {
+          "name": "fillAllExcept(count:)",
+          "kind": "func_decl",
+          "start": 843,
+          "body_start": 843,
+          "end": 873,
+          "accessor": ""
+        },
+        {
+          "name": "getSolution(row:col:)",
+          "kind": "func_decl",
+          "start": 876,
+          "body_start": 876,
+          "end": 878,
+          "accessor": ""
+        },
+        {
+          "name": "findEmptyCellInRow(_:)",
+          "kind": "func_decl",
+          "start": 881,
+          "body_start": 881,
+          "end": 888,
+          "accessor": ""
+        },
+        {
+          "name": "findEmptyCellInColumn(_:)",
+          "kind": "func_decl",
+          "start": 891,
+          "body_start": 891,
+          "end": 898,
+          "accessor": ""
+        },
+        {
+          "name": "findEmptyCellInBox(_:)",
+          "kind": "func_decl",
+          "start": 901,
+          "body_start": 901,
+          "end": 912,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "ViewModels/PuzzleConfirmationViewModel.swift",
+      "lines": {
+        "covered": 125,
+        "total": 125,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 39,
+        "total": 39,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "init(recognize:validateString:)",
+          "kind": "constructor_decl",
+          "start": 48,
+          "body_start": 52,
+          "end": 59,
+          "accessor": ""
+        },
+        {
+          "name": "processImage(_:)",
+          "kind": "func_decl",
+          "start": 63,
+          "body_start": 63,
+          "end": 92,
+          "accessor": ""
+        },
+        {
+          "name": "setDigit(_:at:)",
+          "kind": "func_decl",
+          "start": 95,
+          "body_start": 95,
+          "end": 103,
+          "accessor": ""
+        },
+        {
+          "name": "selectCell(at:)",
+          "kind": "func_decl",
+          "start": 106,
+          "body_start": 106,
+          "end": 109,
+          "accessor": ""
+        },
+        {
+          "name": "givensOnlyString",
+          "kind": "accessor_decl",
+          "start": 112,
+          "body_start": 112,
+          "end": 121,
+          "accessor": "get"
+        },
+        {
+          "name": "puzzleString",
+          "kind": "accessor_decl",
+          "start": 124,
+          "body_start": 124,
+          "end": 126,
+          "accessor": "get"
+        },
+        {
+          "name": "givenCount",
+          "kind": "accessor_decl",
+          "start": 129,
+          "body_start": 129,
+          "end": 131,
+          "accessor": "get"
+        },
+        {
+          "name": "strictGivenCount",
+          "kind": "accessor_decl",
+          "start": 134,
+          "body_start": 134,
+          "end": 136,
+          "accessor": "get"
+        },
+        {
+          "name": "hasReasonableGivens",
+          "kind": "accessor_decl",
+          "start": 139,
+          "body_start": 139,
+          "end": 141,
+          "accessor": "get"
+        },
+        {
+          "name": "playerMoves",
+          "kind": "accessor_decl",
+          "start": 144,
+          "body_start": 144,
+          "end": 151,
+          "accessor": "get"
+        },
+        {
+          "name": "playerNotes",
+          "kind": "accessor_decl",
+          "start": 154,
+          "body_start": 154,
+          "end": 161,
+          "accessor": "get"
+        },
+        {
+          "name": "buildImportData()",
+          "kind": "func_decl",
+          "start": 164,
+          "body_start": 164,
+          "end": 171,
+          "accessor": ""
+        },
+        {
+          "name": "validate()",
+          "kind": "func_decl",
+          "start": 174,
+          "body_start": 174,
+          "end": 186,
+          "accessor": ""
+        },
+        {
+          "name": "canPlay",
+          "kind": "accessor_decl",
+          "start": 189,
+          "body_start": 189,
+          "end": 192,
+          "accessor": "get"
+        },
+        {
+          "name": "isLowConfidence(at:)",
+          "kind": "func_decl",
+          "start": 195,
+          "body_start": 195,
+          "end": 197,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/CameraCaptureView.swift",
+      "lines": {
+        "covered": 28,
+        "total": 28,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 7,
+        "total": 7,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "init(sourceType:onImageCaptured:)",
+          "kind": "constructor_decl",
+          "start": 10,
+          "body_start": 13,
+          "end": 16,
+          "accessor": ""
+        },
+        {
+          "name": "makeUIViewController(context:)",
+          "kind": "func_decl",
+          "start": 18,
+          "body_start": 18,
+          "end": 24,
+          "accessor": ""
+        },
+        {
+          "name": "updateUIViewController(_:context:)",
+          "kind": "func_decl",
+          "start": 26,
+          "body_start": 26,
+          "end": 26,
+          "accessor": ""
+        },
+        {
+          "name": "makeCoordinator()",
+          "kind": "func_decl",
+          "start": 28,
+          "body_start": 28,
+          "end": 30,
+          "accessor": ""
+        },
+        {
+          "name": "init(onImageCaptured:dismiss:)",
+          "kind": "constructor_decl",
+          "start": 36,
+          "body_start": 36,
+          "end": 39,
+          "accessor": ""
+        },
+        {
+          "name": "imagePickerController(_:didFinishPickingMediaWithInfo:)",
+          "kind": "func_decl",
+          "start": 41,
+          "body_start": 44,
+          "end": 49,
+          "accessor": ""
+        },
+        {
+          "name": "imagePickerControllerDidCancel(_:)",
+          "kind": "func_decl",
+          "start": 51,
+          "body_start": 51,
+          "end": 53,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/CameraController.swift",
+      "lines": {
+        "covered": 296,
+        "total": 307,
+        "percent": 96.41693811074919
+      },
+      "functions": {
+        "covered": 67,
+        "total": 72,
+        "percent": 93.05555555555556
+      },
+      "uncovered_lines": [
+        43,
+        260,
+        261,
+        262,
+        277,
+        278,
+        279,
+        298,
+        299,
+        300,
+        301
+      ],
+      "uncovered_functions": [
+        {
+          "line": 111,
+          "name": "implicit closure #1 in static CameraDependencies.detectRectangles(in:)"
+        },
+        {
+          "line": 260,
+          "name": "UnifiedCameraController.metadataOutput(_:didOutput:from:)"
+        },
+        {
+          "line": 277,
+          "name": "UnifiedCameraController.photoOutput(_:didFinishProcessingPhoto:error:)"
+        },
+        {
+          "line": 298,
+          "name": "UnifiedCameraController.captureOutput(_:didOutput:from:)"
+        },
+        {
+          "line": 300,
+          "name": "closure #1 in UnifiedCameraController.captureOutput(_:didOutput:from:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "errorDescription",
+          "kind": "accessor_decl",
+          "start": 20,
+          "body_start": 20,
+          "end": 20,
+          "accessor": "get"
+        },
+        {
+          "name": "init(session:photo:makeInput:makeMetadata:)",
+          "kind": "constructor_decl",
+          "start": 30,
+          "body_start": 32,
+          "end": 37,
+          "accessor": ""
+        },
+        {
+          "name": "deviceInput()",
+          "kind": "func_decl",
+          "start": 39,
+          "body_start": 39,
+          "end": 44,
+          "accessor": ""
+        },
+        {
+          "name": "configure(metadataDelegate:videoDelegate:queue:)",
+          "kind": "func_decl",
+          "start": 46,
+          "body_start": 48,
+          "end": 73,
+          "accessor": ""
+        },
+        {
+          "name": "start()",
+          "kind": "func_decl",
+          "start": 75,
+          "body_start": 75,
+          "end": 75,
+          "accessor": ""
+        },
+        {
+          "name": "stop()",
+          "kind": "func_decl",
+          "start": 76,
+          "body_start": 76,
+          "end": 76,
+          "accessor": ""
+        },
+        {
+          "name": "capture(delegate:)",
+          "kind": "func_decl",
+          "start": 77,
+          "body_start": 77,
+          "end": 79,
+          "accessor": ""
+        },
+        {
+          "name": "detectRectangles(in:)",
+          "kind": "func_decl",
+          "start": 103,
+          "body_start": 103,
+          "end": 112,
+          "accessor": ""
+        },
+        {
+          "name": "makeUIViewController(context:)",
+          "kind": "func_decl",
+          "start": 123,
+          "body_start": 123,
+          "end": 123,
+          "accessor": ""
+        },
+        {
+          "name": "makeController(dependencies:)",
+          "kind": "func_decl",
+          "start": 125,
+          "body_start": 125,
+          "end": 133,
+          "accessor": ""
+        },
+        {
+          "name": "updateUIViewController(_:context:)",
+          "kind": "func_decl",
+          "start": 135,
+          "body_start": 135,
+          "end": 135,
+          "accessor": ""
+        },
+        {
+          "name": "init(dependencies:)",
+          "kind": "constructor_decl",
+          "start": 163,
+          "body_start": 163,
+          "end": 166,
+          "accessor": ""
+        },
+        {
+          "name": "init(coder:)",
+          "kind": "constructor_decl",
+          "start": 168,
+          "body_start": 168,
+          "end": 171,
+          "accessor": ""
+        },
+        {
+          "name": "viewDidLoad()",
+          "kind": "func_decl",
+          "start": 173,
+          "body_start": 173,
+          "end": 181,
+          "accessor": ""
+        },
+        {
+          "name": "viewDidLayoutSubviews()",
+          "kind": "func_decl",
+          "start": 183,
+          "body_start": 183,
+          "end": 187,
+          "accessor": ""
+        },
+        {
+          "name": "viewWillAppear(_:)",
+          "kind": "func_decl",
+          "start": 189,
+          "body_start": 189,
+          "end": 195,
+          "accessor": ""
+        },
+        {
+          "name": "viewWillDisappear(_:)",
+          "kind": "func_decl",
+          "start": 197,
+          "body_start": 197,
+          "end": 211,
+          "accessor": ""
+        },
+        {
+          "name": "requestCameraAccess()",
+          "kind": "func_decl",
+          "start": 213,
+          "body_start": 213,
+          "end": 232,
+          "accessor": ""
+        },
+        {
+          "name": "setupCamera()",
+          "kind": "func_decl",
+          "start": 236,
+          "body_start": 236,
+          "end": 251,
+          "accessor": ""
+        },
+        {
+          "name": "takePhoto()",
+          "kind": "func_decl",
+          "start": 253,
+          "body_start": 253,
+          "end": 256,
+          "accessor": ""
+        },
+        {
+          "name": "metadataOutput(_:didOutput:from:)",
+          "kind": "func_decl",
+          "start": 258,
+          "body_start": 260,
+          "end": 262,
+          "accessor": ""
+        },
+        {
+          "name": "handleQRCode(_:)",
+          "kind": "func_decl",
+          "start": 264,
+          "body_start": 264,
+          "end": 274,
+          "accessor": ""
+        },
+        {
+          "name": "photoOutput(_:didFinishProcessingPhoto:error:)",
+          "kind": "func_decl",
+          "start": 276,
+          "body_start": 277,
+          "end": 279,
+          "accessor": ""
+        },
+        {
+          "name": "handlePhoto(data:error:)",
+          "kind": "func_decl",
+          "start": 281,
+          "body_start": 281,
+          "end": 295,
+          "accessor": ""
+        },
+        {
+          "name": "captureOutput(_:didOutput:from:)",
+          "kind": "func_decl",
+          "start": 297,
+          "body_start": 298,
+          "end": 301,
+          "accessor": ""
+        },
+        {
+          "name": "processFrame(_:)",
+          "kind": "func_decl",
+          "start": 305,
+          "body_start": 305,
+          "end": 337,
+          "accessor": ""
+        },
+        {
+          "name": "bestGrid(in:image:)",
+          "kind": "func_decl",
+          "start": 339,
+          "body_start": 339,
+          "end": 352,
+          "accessor": ""
+        },
+        {
+          "name": "resetGridTracking()",
+          "kind": "func_decl",
+          "start": 354,
+          "body_start": 354,
+          "end": 362,
+          "accessor": ""
+        },
+        {
+          "name": "showGridOverlay(for:)",
+          "kind": "func_decl",
+          "start": 364,
+          "body_start": 364,
+          "end": 390,
+          "accessor": ""
+        },
+        {
+          "name": "convert(_:)",
+          "kind": "func_decl",
+          "start": 367,
+          "body_start": 367,
+          "end": 369,
+          "accessor": ""
+        },
+        {
+          "name": "hideGridOverlay()",
+          "kind": "func_decl",
+          "start": 392,
+          "body_start": 392,
+          "end": 399,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/CellAccessibility.swift",
+      "lines": {
+        "covered": 14,
+        "total": 14,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 3,
+        "total": 3,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "accessibilityValue(showErrors:)",
+          "kind": "func_decl",
+          "start": 5,
+          "body_start": 5,
+          "end": 18,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/CellView.swift",
+      "lines": {
+        "covered": 96,
+        "total": 96,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 17,
+        "total": 17,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "color(for:)",
+          "kind": "func_decl",
+          "start": 6,
+          "body_start": 6,
+          "end": 20,
+          "accessor": ""
+        },
+        {
+          "name": "backgroundColor",
+          "kind": "accessor_decl",
+          "start": 36,
+          "body_start": 36,
+          "end": 52,
+          "accessor": "get"
+        },
+        {
+          "name": "textColor",
+          "kind": "accessor_decl",
+          "start": 54,
+          "body_start": 54,
+          "end": 63,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 65,
+          "body_start": 65,
+          "end": 98,
+          "accessor": "get"
+        },
+        {
+          "name": "candidatesGrid(_:opacity:)",
+          "kind": "func_decl",
+          "start": 101,
+          "body_start": 101,
+          "end": 118,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/ConfirmationGridView.swift",
+      "lines": {
+        "covered": 135,
+        "total": 140,
+        "percent": 96.42857142857143
+      },
+      "functions": {
+        "covered": 27,
+        "total": 31,
+        "percent": 87.09677419354838
+      },
+      "uncovered_lines": [
+        7,
+        8,
+        9,
+        82,
+        83
+      ],
+      "uncovered_functions": [
+        {
+          "line": 7,
+          "name": "variable initialization expression of ConfirmationGridView.gridSpacing"
+        },
+        {
+          "line": 8,
+          "name": "variable initialization expression of ConfirmationGridView.thickBorder"
+        },
+        {
+          "line": 9,
+          "name": "variable initialization expression of ConfirmationGridView.thinBorder"
+        },
+        {
+          "line": 81,
+          "name": "closure #2 in ConfirmationGridView.cellView(index:size:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 11,
+          "body_start": 11,
+          "end": 53,
+          "accessor": "get"
+        },
+        {
+          "name": "cellView(index:size:)",
+          "kind": "func_decl",
+          "start": 56,
+          "body_start": 56,
+          "end": 84,
+          "accessor": ""
+        },
+        {
+          "name": "digitWeight(_:)",
+          "kind": "func_decl",
+          "start": 86,
+          "body_start": 86,
+          "end": 92,
+          "accessor": ""
+        },
+        {
+          "name": "digitColor(classification:isLow:)",
+          "kind": "func_decl",
+          "start": 94,
+          "body_start": 94,
+          "end": 100,
+          "accessor": ""
+        },
+        {
+          "name": "notesView(notes:size:)",
+          "kind": "func_decl",
+          "start": 103,
+          "body_start": 103,
+          "end": 120,
+          "accessor": ""
+        },
+        {
+          "name": "cellBackground(isSelected:isLow:)",
+          "kind": "func_decl",
+          "start": 122,
+          "body_start": 122,
+          "end": 130,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 137,
+          "body_start": 137,
+          "end": 146,
+          "accessor": "get"
+        },
+        {
+          "name": "numberButton(_:label:)",
+          "kind": "func_decl",
+          "start": 148,
+          "body_start": 148,
+          "end": 161,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/ContentView.swift",
+      "lines": {
+        "covered": 456,
+        "total": 460,
+        "percent": 99.1304347826087
+      },
+      "functions": {
+        "covered": 107,
+        "total": 109,
+        "percent": 98.1651376146789
+      },
+      "uncovered_lines": [
+        183,
+        184,
+        185,
+        361
+      ],
+      "uncovered_functions": [
+        {
+          "line": 182,
+          "name": "closure #1 in closure #5 in closure #1 in MenuView.body.getter"
+        },
+        {
+          "line": 360,
+          "name": "closure #1 in closure #1 in closure #1 in LeaderboardTabView.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 6,
+          "body_start": 6,
+          "end": 59,
+          "accessor": "get"
+        },
+        {
+          "name": "colorScheme",
+          "kind": "accessor_decl",
+          "start": 61,
+          "body_start": 61,
+          "end": 68,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 80,
+          "body_start": 80,
+          "end": 193,
+          "accessor": "get"
+        },
+        {
+          "name": "init(selection:onPlay:)",
+          "kind": "constructor_decl",
+          "start": 204,
+          "body_start": 204,
+          "end": 207,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 209,
+          "body_start": 209,
+          "end": 228,
+          "accessor": "get"
+        },
+        {
+          "name": "difficultyRow(_:)",
+          "kind": "func_decl",
+          "start": 231,
+          "body_start": 231,
+          "end": 258,
+          "accessor": ""
+        },
+        {
+          "name": "seSlider(for:)",
+          "kind": "func_decl",
+          "start": 261,
+          "body_start": 261,
+          "end": 284,
+          "accessor": ""
+        },
+        {
+          "name": "difficultyIndicator(_:)",
+          "kind": "func_decl",
+          "start": 286,
+          "body_start": 286,
+          "end": 308,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 323,
+          "body_start": 323,
+          "end": 343,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 350,
+          "body_start": 350,
+          "end": 379,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 386,
+          "body_start": 386,
+          "end": 395,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 404,
+          "body_start": 404,
+          "end": 442,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 451,
+          "body_start": 451,
+          "end": 488,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 495,
+          "body_start": 495,
+          "end": 503,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 512,
+          "body_start": 512,
+          "end": 543,
+          "accessor": "get"
+        }
+      ]
+    },
+    {
+      "path": "Views/GameHistoryView.swift",
+      "lines": {
+        "covered": 166,
+        "total": 168,
+        "percent": 98.80952380952381
+      },
+      "functions": {
+        "covered": 32,
+        "total": 34,
+        "percent": 94.11764705882354
+      },
+      "uncovered_lines": [
+        83,
+        84
+      ],
+      "uncovered_functions": [
+        {
+          "line": 10,
+          "name": "implicit closure #2 in implicit closure #1 in GameHistoryView.init(historyManager:selectedDifficulty:)"
+        },
+        {
+          "line": 82,
+          "name": "closure #1 in closure #1 in closure #2 in closure #1 in GameHistoryView.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(historyManager:selectedDifficulty:)",
+          "kind": "constructor_decl",
+          "start": 9,
+          "body_start": 9,
+          "end": 12,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 14,
+          "body_start": 14,
+          "end": 88,
+          "accessor": "get"
+        },
+        {
+          "name": "filteredPuzzles",
+          "kind": "accessor_decl",
+          "start": 90,
+          "body_start": 90,
+          "end": 95,
+          "accessor": "get"
+        },
+        {
+          "name": "replayPuzzle(_:)",
+          "kind": "func_decl",
+          "start": 97,
+          "body_start": 97,
+          "end": 105,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 114,
+          "body_start": 114,
+          "end": 164,
+          "accessor": "get"
+        },
+        {
+          "name": "difficultyColor",
+          "kind": "accessor_decl",
+          "start": 166,
+          "body_start": 166,
+          "end": 177,
+          "accessor": "get"
+        },
+        {
+          "name": "formatTime(_:)",
+          "kind": "func_decl",
+          "start": 179,
+          "body_start": 179,
+          "end": 184,
+          "accessor": ""
+        },
+        {
+          "name": "relativeDate(_:)",
+          "kind": "func_decl",
+          "start": 186,
+          "body_start": 186,
+          "end": 190,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/GameView.swift",
+      "lines": {
+        "covered": 615,
+        "total": 618,
+        "percent": 99.51456310679612
+      },
+      "functions": {
+        "covered": 147,
+        "total": 153,
+        "percent": 96.07843137254902
+      },
+      "uncovered_lines": [
+        619,
+        673,
+        674
+      ],
+      "uncovered_functions": [
+        {
+          "line": 271,
+          "name": "implicit closure #1 in closure #1 in closure #7 in closure #1 in GameView.headerSection.getter"
+        },
+        {
+          "line": 272,
+          "name": "implicit closure #2 in closure #1 in closure #7 in closure #1 in GameView.headerSection.getter"
+        },
+        {
+          "line": 458,
+          "name": "implicit closure #1 in closure #1 in variable initialization expression of GamePresentation.Effects.chooseMessage"
+        },
+        {
+          "line": 619,
+          "name": "variable initialization expression of HintPanelView._isExpanded"
+        },
+        {
+          "line": 673,
+          "name": "variable initialization expression of CelebrationOverlay._scale"
+        },
+        {
+          "line": 674,
+          "name": "variable initialization expression of CelebrationOverlay._opacity"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "konamiDetector",
+          "kind": "accessor_decl",
+          "start": 9,
+          "body_start": 9,
+          "end": 9,
+          "accessor": "get"
+        },
+        {
+          "name": "init(game:presentation:)",
+          "kind": "constructor_decl",
+          "start": 11,
+          "body_start": 11,
+          "end": 15,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 17,
+          "body_start": 17,
+          "end": 127,
+          "accessor": "get"
+        },
+        {
+          "name": "boardLayout(size:)",
+          "kind": "func_decl",
+          "start": 130,
+          "body_start": 130,
+          "end": 175,
+          "accessor": ""
+        },
+        {
+          "name": "konamiGesture",
+          "kind": "accessor_decl",
+          "start": 180,
+          "body_start": 180,
+          "end": 204,
+          "accessor": "get"
+        },
+        {
+          "name": "handleKonamiNumberPad(_:)",
+          "kind": "func_decl",
+          "start": 207,
+          "body_start": 207,
+          "end": 213,
+          "accessor": ""
+        },
+        {
+          "name": "headerSection",
+          "kind": "accessor_decl",
+          "start": 217,
+          "body_start": 217,
+          "end": 284,
+          "accessor": "get"
+        },
+        {
+          "name": "checkSolution()",
+          "kind": "func_decl",
+          "start": 286,
+          "body_start": 286,
+          "end": 288,
+          "accessor": ""
+        },
+        {
+          "name": "gridSection(size:)",
+          "kind": "func_decl",
+          "start": 292,
+          "body_start": 292,
+          "end": 295,
+          "accessor": ""
+        },
+        {
+          "name": "numberPadSection",
+          "kind": "accessor_decl",
+          "start": 299,
+          "body_start": 299,
+          "end": 301,
+          "accessor": "get"
+        },
+        {
+          "name": "controlsSection(compact:)",
+          "kind": "func_decl",
+          "start": 305,
+          "body_start": 305,
+          "end": 321,
+          "accessor": ""
+        },
+        {
+          "name": "controlButtons",
+          "kind": "accessor_decl",
+          "start": 323,
+          "body_start": 323,
+          "end": 415,
+          "accessor": "get"
+        },
+        {
+          "name": "modeToggle",
+          "kind": "accessor_decl",
+          "start": 417,
+          "body_start": 417,
+          "end": 433,
+          "accessor": "get"
+        },
+        {
+          "name": "hapticFeedback(_:)",
+          "kind": "func_decl",
+          "start": 437,
+          "body_start": 437,
+          "end": 439,
+          "accessor": ""
+        },
+        {
+          "name": "init(effects:)",
+          "kind": "constructor_decl",
+          "start": 479,
+          "body_start": 479,
+          "end": 484,
+          "accessor": ""
+        },
+        {
+          "name": "deinit",
+          "kind": "destructor_decl",
+          "start": 486,
+          "body_start": 486,
+          "end": 486,
+          "accessor": ""
+        },
+        {
+          "name": "schedule(_:after:action:)",
+          "kind": "func_decl",
+          "start": 489,
+          "body_start": 490,
+          "end": 501,
+          "accessor": ""
+        },
+        {
+          "name": "cancelPendingEffects()",
+          "kind": "func_decl",
+          "start": 503,
+          "body_start": 503,
+          "end": 510,
+          "accessor": ""
+        },
+        {
+          "name": "revealCompletion()",
+          "kind": "func_decl",
+          "start": 513,
+          "body_start": 513,
+          "end": 517,
+          "accessor": ""
+        },
+        {
+          "name": "handleCelebration(_:game:manager:)",
+          "kind": "func_decl",
+          "start": 520,
+          "body_start": 520,
+          "end": 553,
+          "accessor": ""
+        },
+        {
+          "name": "checkSolution(game:manager:)",
+          "kind": "func_decl",
+          "start": 556,
+          "body_start": 556,
+          "end": 561,
+          "accessor": ""
+        },
+        {
+          "name": "updateMistakes(_:manager:)",
+          "kind": "func_decl",
+          "start": 563,
+          "body_start": 563,
+          "end": 568,
+          "accessor": ""
+        },
+        {
+          "name": "triggerMistakeFeedback(enabled:)",
+          "kind": "func_decl",
+          "start": 571,
+          "body_start": 571,
+          "end": 577,
+          "accessor": ""
+        },
+        {
+          "name": "triggerKonamiEasterEgg(manager:)",
+          "kind": "func_decl",
+          "start": 579,
+          "body_start": 579,
+          "end": 598,
+          "accessor": ""
+        },
+        {
+          "name": "hapticFeedback(_:enabled:)",
+          "kind": "func_decl",
+          "start": 600,
+          "body_start": 600,
+          "end": 603,
+          "accessor": ""
+        },
+        {
+          "name": "successHaptic(enabled:)",
+          "kind": "func_decl",
+          "start": 605,
+          "body_start": 605,
+          "end": 608,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 621,
+          "body_start": 621,
+          "end": 666,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 676,
+          "body_start": 676,
+          "end": 701,
+          "accessor": "get"
+        },
+        {
+          "name": "animatableData",
+          "kind": "accessor_decl",
+          "start": 710,
+          "body_start": 710,
+          "end": 710,
+          "accessor": "get"
+        },
+        {
+          "name": "animatableData",
+          "kind": "accessor_decl",
+          "start": 711,
+          "body_start": 711,
+          "end": 711,
+          "accessor": "set"
+        },
+        {
+          "name": "effectValue(size:)",
+          "kind": "func_decl",
+          "start": 714,
+          "body_start": 714,
+          "end": 717,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/GridView.swift",
+      "lines": {
+        "covered": 148,
+        "total": 151,
+        "percent": 98.01324503311258
+      },
+      "functions": {
+        "covered": 29,
+        "total": 31,
+        "percent": 93.54838709677419
+      },
+      "uncovered_lines": [
+        12,
+        59,
+        60
+      ],
+      "uncovered_functions": [
+        {
+          "line": 12,
+          "name": "variable initialization expression of GridView._wiggleProgress"
+        },
+        {
+          "line": 58,
+          "name": "closure #3 in closure #1 in closure #1 in closure #1 in closure #1 in closure #1 in GridView.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "cellSize",
+          "kind": "accessor_decl",
+          "start": 9,
+          "body_start": 9,
+          "end": 9,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 14,
+          "body_start": 14,
+          "end": 86,
+          "accessor": "get"
+        },
+        {
+          "name": "hapticFeedback(_:)",
+          "kind": "func_decl",
+          "start": 88,
+          "body_start": 88,
+          "end": 91,
+          "accessor": ""
+        },
+        {
+          "name": "animatableData",
+          "kind": "accessor_decl",
+          "start": 100,
+          "body_start": 100,
+          "end": 100,
+          "accessor": "get"
+        },
+        {
+          "name": "animatableData",
+          "kind": "accessor_decl",
+          "start": 101,
+          "body_start": 101,
+          "end": 101,
+          "accessor": "set"
+        },
+        {
+          "name": "effectValue(size:)",
+          "kind": "func_decl",
+          "start": 104,
+          "body_start": 104,
+          "end": 113,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 125,
+          "body_start": 125,
+          "end": 183,
+          "accessor": "get"
+        },
+        {
+          "name": "alignToPixel(_:)",
+          "kind": "func_decl",
+          "start": 143,
+          "body_start": 143,
+          "end": 145,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/ImportPresentation.swift",
+      "lines": {
+        "covered": 55,
+        "total": 55,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 20,
+        "total": 20,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "showingPhotoLibrary",
+          "kind": "accessor_decl",
+          "start": 18,
+          "body_start": 18,
+          "end": 18,
+          "accessor": "didSet"
+        },
+        {
+          "name": "capturedImage",
+          "kind": "accessor_decl",
+          "start": 22,
+          "body_start": 22,
+          "end": 22,
+          "accessor": "didSet"
+        },
+        {
+          "name": "init(cameraAvailable:schedule:)",
+          "kind": "constructor_decl",
+          "start": 28,
+          "body_start": 31,
+          "end": 34,
+          "accessor": ""
+        },
+        {
+          "name": "handleCameraError(_:)",
+          "kind": "func_decl",
+          "start": 36,
+          "body_start": 36,
+          "end": 42,
+          "accessor": ""
+        },
+        {
+          "name": "updateTracking(stable:count:)",
+          "kind": "func_decl",
+          "start": 44,
+          "body_start": 44,
+          "end": 48,
+          "accessor": ""
+        },
+        {
+          "name": "scanQRCode(_:onPuzzle:)",
+          "kind": "func_decl",
+          "start": 50,
+          "body_start": 50,
+          "end": 69,
+          "accessor": ""
+        },
+        {
+          "name": "activate()",
+          "kind": "func_decl",
+          "start": 71,
+          "body_start": 71,
+          "end": 71,
+          "accessor": ""
+        },
+        {
+          "name": "deactivate()",
+          "kind": "func_decl",
+          "start": 73,
+          "body_start": 73,
+          "end": 76,
+          "accessor": ""
+        },
+        {
+          "name": "cancelPendingScan()",
+          "kind": "func_decl",
+          "start": 78,
+          "body_start": 78,
+          "end": 82,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/LoseScreenView.swift",
+      "lines": {
+        "covered": 161,
+        "total": 161,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 28,
+        "total": 28,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "init(time:difficulty:mistakes:onDismiss:onRetry:presentation:)",
+          "kind": "constructor_decl",
+          "start": 28,
+          "body_start": 30,
+          "end": 37,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 39,
+          "body_start": 39,
+          "end": 131,
+          "accessor": "get"
+        },
+        {
+          "name": "formatTime(_:)",
+          "kind": "func_decl",
+          "start": 133,
+          "body_start": 133,
+          "end": 137,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 146,
+          "body_start": 146,
+          "end": 154,
+          "accessor": "get"
+        },
+        {
+          "name": "didMove(to:)",
+          "kind": "func_decl",
+          "start": 166,
+          "body_start": 166,
+          "end": 168,
+          "accessor": ""
+        },
+        {
+          "name": "update(_:)",
+          "kind": "func_decl",
+          "start": 170,
+          "body_start": 170,
+          "end": 177,
+          "accessor": ""
+        },
+        {
+          "name": "spawnRain()",
+          "kind": "func_decl",
+          "start": 179,
+          "body_start": 179,
+          "end": 208,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/NewGameSelection.swift",
+      "lines": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": []
+    },
+    {
+      "path": "Views/NumberPadView.swift",
+      "lines": {
+        "covered": 60,
+        "total": 60,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 15,
+        "total": 15,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 8,
+          "body_start": 8,
+          "end": 33,
+          "accessor": "get"
+        },
+        {
+          "name": "numberButton(_:)",
+          "kind": "func_decl",
+          "start": 36,
+          "body_start": 36,
+          "end": 51,
+          "accessor": ""
+        },
+        {
+          "name": "hapticFeedback(_:)",
+          "kind": "func_decl",
+          "start": 53,
+          "body_start": 53,
+          "end": 56,
+          "accessor": ""
+        },
+        {
+          "name": "makeBody(configuration:)",
+          "kind": "func_decl",
+          "start": 64,
+          "body_start": 64,
+          "end": 76,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/PuzzleConfirmationView.swift",
+      "lines": {
+        "covered": 126,
+        "total": 126,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 22,
+        "total": 24,
+        "percent": 91.66666666666667
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [
+        {
+          "line": 33,
+          "name": "closure #1 in closure #1 in closure #1 in closure #1 in PuzzleConfirmationView.body.getter"
+        },
+        {
+          "line": 108,
+          "name": "closure #1 in closure #1 in closure #2 in closure #1 in PuzzleConfirmationView.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(image:viewModel:onPlay:)",
+          "kind": "constructor_decl",
+          "start": 10,
+          "body_start": 11,
+          "end": 15,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 17,
+          "body_start": 17,
+          "end": 115,
+          "accessor": "get"
+        },
+        {
+          "name": "playButtonLabel",
+          "kind": "accessor_decl",
+          "start": 117,
+          "body_start": 117,
+          "end": 122,
+          "accessor": "get"
+        },
+        {
+          "name": "validationBanner",
+          "kind": "accessor_decl",
+          "start": 125,
+          "body_start": 125,
+          "end": 140,
+          "accessor": "get"
+        }
+      ]
+    },
+    {
+      "path": "Views/PuzzleLink.swift",
+      "lines": {
+        "covered": 20,
+        "total": 20,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 13,
+        "total": 13,
+        "percent": 100.0
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "extract(from:)",
+          "kind": "func_decl",
+          "start": 5,
+          "body_start": 5,
+          "end": 16,
+          "accessor": ""
+        },
+        {
+          "name": "isGrid(_:)",
+          "kind": "func_decl",
+          "start": 18,
+          "body_start": 18,
+          "end": 20,
+          "accessor": ""
+        },
+        {
+          "name": "isShortCode(_:)",
+          "kind": "func_decl",
+          "start": 22,
+          "body_start": 22,
+          "end": 26,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/QRCodeView.swift",
+      "lines": {
+        "covered": 76,
+        "total": 77,
+        "percent": 98.7012987012987
+      },
+      "functions": {
+        "covered": 12,
+        "total": 12,
+        "percent": 100.0
+      },
+      "uncovered_lines": [
+        85
+      ],
+      "uncovered_functions": [],
+      "declared_functions": [
+        {
+          "name": "init(puzzleString:shortCode:)",
+          "kind": "constructor_decl",
+          "start": 10,
+          "body_start": 10,
+          "end": 13,
+          "accessor": ""
+        },
+        {
+          "name": "shareUrl",
+          "kind": "accessor_decl",
+          "start": 15,
+          "body_start": 15,
+          "end": 20,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 22,
+          "body_start": 22,
+          "end": 69,
+          "accessor": "get"
+        },
+        {
+          "name": "generateQRCode(from:)",
+          "kind": "func_decl",
+          "start": 71,
+          "body_start": 71,
+          "end": 89,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/SettingsView.swift",
+      "lines": {
+        "covered": 105,
+        "total": 105,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 26,
+        "total": 27,
+        "percent": 96.29629629629629
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [
+        {
+          "line": 88,
+          "name": "implicit closure #1 in closure #1 in closure #7 in closure #1 in SettingsForm.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 8,
+          "body_start": 8,
+          "end": 15,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 24,
+          "body_start": 24,
+          "end": 119,
+          "accessor": "get"
+        }
+      ]
+    },
+    {
+      "path": "Views/StatsView.swift",
+      "lines": {
+        "covered": 183,
+        "total": 183,
+        "percent": 100.0
+      },
+      "functions": {
+        "covered": 27,
+        "total": 28,
+        "percent": 96.42857142857143
+      },
+      "uncovered_lines": [],
+      "uncovered_functions": [
+        {
+          "line": 111,
+          "name": "closure #1 in closure #1 in closure #2 in closure #1 in StatsView.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "stats",
+          "kind": "accessor_decl",
+          "start": 7,
+          "body_start": 7,
+          "end": 7,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 13,
+          "body_start": 13,
+          "end": 115,
+          "accessor": "get"
+        },
+        {
+          "name": "universeExploredText",
+          "kind": "accessor_decl",
+          "start": 119,
+          "body_start": 119,
+          "end": 129,
+          "accessor": "get"
+        },
+        {
+          "name": "universeProgressNote",
+          "kind": "accessor_decl",
+          "start": 131,
+          "body_start": 131,
+          "end": 145,
+          "accessor": "get"
+        },
+        {
+          "name": "averageSolveTime",
+          "kind": "accessor_decl",
+          "start": 147,
+          "body_start": 147,
+          "end": 150,
+          "accessor": "get"
+        },
+        {
+          "name": "timeToCompleteAllText",
+          "kind": "accessor_decl",
+          "start": 152,
+          "body_start": 152,
+          "end": 161,
+          "accessor": "get"
+        },
+        {
+          "name": "cheekyTimeNote",
+          "kind": "accessor_decl",
+          "start": 163,
+          "body_start": 163,
+          "end": 179,
+          "accessor": "get"
+        },
+        {
+          "name": "formatTime(_:)",
+          "kind": "func_decl",
+          "start": 181,
+          "body_start": 181,
+          "end": 192,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 199,
+          "body_start": 199,
+          "end": 207,
+          "accessor": "get"
+        }
+      ]
+    },
+    {
+      "path": "Views/UnifiedImportView.swift",
+      "lines": {
+        "covered": 358,
+        "total": 362,
+        "percent": 98.89502762430939
+      },
+      "functions": {
+        "covered": 44,
+        "total": 46,
+        "percent": 95.65217391304348
+      },
+      "uncovered_lines": [
+        53,
+        54,
+        55,
+        56
+      ],
+      "uncovered_functions": [
+        {
+          "line": 52,
+          "name": "closure #4 in UnifiedImportView.body.getter"
+        },
+        {
+          "line": 53,
+          "name": "closure #1 in closure #4 in UnifiedImportView.body.getter"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "capture()",
+          "kind": "func_decl",
+          "start": 10,
+          "body_start": 10,
+          "end": 12,
+          "accessor": ""
+        },
+        {
+          "name": "init(presentation:bridge:onPuzzleFound:onImportComplete:)",
+          "kind": "constructor_decl",
+          "start": 24,
+          "body_start": 27,
+          "end": 32,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 34,
+          "body_start": 34,
+          "end": 57,
+          "accessor": "get"
+        },
+        {
+          "name": "noCameraFallback",
+          "kind": "accessor_decl",
+          "start": 61,
+          "body_start": 61,
+          "end": 115,
+          "accessor": "get"
+        },
+        {
+          "name": "cameraView",
+          "kind": "accessor_decl",
+          "start": 119,
+          "body_start": 119,
+          "end": 251,
+          "accessor": "get"
+        },
+        {
+          "name": "guidanceText",
+          "kind": "accessor_decl",
+          "start": 253,
+          "body_start": 253,
+          "end": 262,
+          "accessor": "get"
+        },
+        {
+          "name": "handleQRCode(_:)",
+          "kind": "func_decl",
+          "start": 264,
+          "body_start": 264,
+          "end": 269,
+          "accessor": ""
+        },
+        {
+          "name": "generateTestPuzzleImage()",
+          "kind": "func_decl",
+          "start": 274,
+          "body_start": 274,
+          "end": 400,
+          "accessor": ""
+        }
+      ]
+    },
+    {
+      "path": "Views/WinScreenView.swift",
+      "lines": {
+        "covered": 357,
+        "total": 358,
+        "percent": 99.72067039106145
+      },
+      "functions": {
+        "covered": 57,
+        "total": 58,
+        "percent": 98.27586206896552
+      },
+      "uncovered_lines": [
+        123
+      ],
+      "uncovered_functions": [
+        {
+          "line": 123,
+          "name": "closure #1 in default argument 6 of WinScreenView.init(time:difficulty:hintsUsed:mistakes:seRating:onDismiss:onLeaderboard:messageCycle:presentation:)"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "init(chooseMessage:schedule:)",
+          "kind": "constructor_decl",
+          "start": 40,
+          "body_start": 43,
+          "end": 47,
+          "accessor": ""
+        },
+        {
+          "name": "start()",
+          "kind": "func_decl",
+          "start": 49,
+          "body_start": 49,
+          "end": 55,
+          "accessor": ""
+        },
+        {
+          "name": "stop()",
+          "kind": "func_decl",
+          "start": 57,
+          "body_start": 57,
+          "end": 60,
+          "accessor": ""
+        },
+        {
+          "name": "deinit",
+          "kind": "destructor_decl",
+          "start": 62,
+          "body_start": 62,
+          "end": 62,
+          "accessor": ""
+        },
+        {
+          "name": "init(makeScene:)",
+          "kind": "constructor_decl",
+          "start": 71,
+          "body_start": 71,
+          "end": 71,
+          "accessor": ""
+        },
+        {
+          "name": "start(animation:)",
+          "kind": "func_decl",
+          "start": 73,
+          "body_start": 73,
+          "end": 80,
+          "accessor": ""
+        },
+        {
+          "name": "stop()",
+          "kind": "func_decl",
+          "start": 82,
+          "body_start": 82,
+          "end": 87,
+          "accessor": ""
+        },
+        {
+          "name": "scalar(_:)",
+          "kind": "func_decl",
+          "start": 94,
+          "body_start": 94,
+          "end": 96,
+          "accessor": ""
+        },
+        {
+          "name": "duration(_:)",
+          "kind": "func_decl",
+          "start": 98,
+          "body_start": 98,
+          "end": 100,
+          "accessor": ""
+        },
+        {
+          "name": "integer(_:)",
+          "kind": "func_decl",
+          "start": 102,
+          "body_start": 102,
+          "end": 104,
+          "accessor": ""
+        },
+        {
+          "name": "init(time:difficulty:hintsUsed:mistakes:seRating:onDismiss:onLeaderboard:messageCycle:presentation:)",
+          "kind": "constructor_decl",
+          "start": 121,
+          "body_start": 125,
+          "end": 135,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 137,
+          "body_start": 137,
+          "end": 214,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 226,
+          "body_start": 226,
+          "end": 256,
+          "accessor": "get"
+        },
+        {
+          "name": "formatTime(_:)",
+          "kind": "func_decl",
+          "start": 258,
+          "body_start": 258,
+          "end": 262,
+          "accessor": ""
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 270,
+          "body_start": 270,
+          "end": 283,
+          "accessor": "get"
+        },
+        {
+          "name": "body",
+          "kind": "accessor_decl",
+          "start": 291,
+          "body_start": 291,
+          "end": 307,
+          "accessor": "get"
+        },
+        {
+          "name": "didMove(to:)",
+          "kind": "func_decl",
+          "start": 319,
+          "body_start": 319,
+          "end": 322,
+          "accessor": ""
+        },
+        {
+          "name": "update(_:)",
+          "kind": "func_decl",
+          "start": 324,
+          "body_start": 324,
+          "end": 347,
+          "accessor": ""
+        },
+        {
+          "name": "spawnConfetti()",
+          "kind": "func_decl",
+          "start": 349,
+          "body_start": 349,
+          "end": 372,
+          "accessor": ""
+        },
+        {
+          "name": "spawnFireworks()",
+          "kind": "func_decl",
+          "start": 374,
+          "body_start": 374,
+          "end": 415,
+          "accessor": ""
+        },
+        {
+          "name": "spawnSparkles()",
+          "kind": "func_decl",
+          "start": 417,
+          "body_start": 417,
+          "end": 449,
+          "accessor": ""
+        },
+        {
+          "name": "spawnRainbow()",
+          "kind": "func_decl",
+          "start": 451,
+          "body_start": 451,
+          "end": 472,
+          "accessor": ""
+        }
+      ]
+    }
+  ],
+  "mapping_errors": [],
+  "failures": [],
+  "passed": true,
+  "limitations": "Swift/Xcode line and function coverage; branch coverage is not measured.",
+  "source_sha256": {
+    "Models/GameHistory.swift": "c09cbd591c8fe823919261a47c650141b426069c1376233edaa5615f5019cacd",
+    "Models/GameModels.swift": "aef8a6972e59b3e81a98dc4e31f26f2c92ad9948f13802a4b62387b25212f23c",
+    "Services/GameCenterManager.swift": "f765b97b1b73a5d0c058f3bb089e16ae26496f48970fe6112a14049cf1e660a9",
+    "Services/GameHistoryManager.swift": "40be66adc59d6d3c70d44b8d9387a0cf7f955e7c4f1f3b75f307c0ed6ba47d30",
+    "Services/GameManager.swift": "90ceae390d23d3b814581bb7b90c0884239a9a5ca38b421b5b0cb85645ba8f9d",
+    "Services/PuzzleAPIService.swift": "134ea67114ad28f730e93e472b22a86b224b9eebd0b52580c94cf91d2f0b43f2",
+    "Services/PuzzleCache.swift": "1904d55bee703c42ebe5adfb998f7e0dd6d7b1c66dcda89a938e292ba1453b70",
+    "Services/PuzzleOCRService.swift": "44d752c164e2db0812594b0e54c897cd50240784b39493f076169c3e78cb2781",
+    "Services/TelemetryService.swift": "07165080230332ec39091af0fea3fc6e9f90946b549a3c366cc963c22568dfea",
+    "SudokuApp.swift": "e7763823f93f8d44722931720158fea161c6090fa52c8c67e3f4a08495f73bd6",
+    "ViewModels/GameViewModel.swift": "d50ca4c1e784c6f928b6af7bc074b063e48bf07d8078486b0df292a438e32c41",
+    "ViewModels/PuzzleConfirmationViewModel.swift": "d1325d2176b1bda2bbc7866b7cb9cf4131daa212839d4391eb29b6ce72bc3755",
+    "Views/CameraCaptureView.swift": "fa491295878ee8703feee69543130facdb8b3d75a3203cc8a6579e30e0562486",
+    "Views/CameraController.swift": "fd291b10b3e5435d16cbe799e85d47cf722159c7bba1546fce618e69b2d372c2",
+    "Views/CellAccessibility.swift": "ef8318ab333f179940825bb7c7ff31a25eb330a45daf9fea0b16ce92f6feae81",
+    "Views/CellView.swift": "c599544cb3f59337e9bf5c9277598bae588eae19952354bbbd0e3ec7af8b76b1",
+    "Views/ConfirmationGridView.swift": "a9e2adf10d178990ef10bb3fc2f8b2563f2759ec43b358b264a06206fd4214c3",
+    "Views/ContentView.swift": "e6a8ff335080f68dd7a4584925dec6af9cf3948966001d115334ae2129c77ea4",
+    "Views/GameHistoryView.swift": "5d9abc0da20b23b8bb635e0653dca1aa97acddad31440689e6223daf3ad216c6",
+    "Views/GameView.swift": "a917ce5840e165a829a3f5cba1c11100e2ec86e1f7b012c7602ce911eaaecffc",
+    "Views/GridView.swift": "06ecb1f1b24208d59694da5a2e8a5fd2ad44273c8fc92344407915f5301485ba",
+    "Views/ImportPresentation.swift": "16e8835e89d7df63bcdb47bb34248e7560bcc86ce11be3764ddf0fd6ec4c5209",
+    "Views/LoseScreenView.swift": "d34d9d0eb29b7eee1ace95e27e1d0f98a066e42b518b2cb2a41672f68aa01794",
+    "Views/NewGameSelection.swift": "3dea2b9e90802b778808810787f1e6cc2d10a3f9e0f2252aff0190fd0434eefb",
+    "Views/NumberPadView.swift": "d69cefa83a1ee6a5e5be922a271b0cf4e23dc1a567e8cc48a12787e090265f7d",
+    "Views/PuzzleConfirmationView.swift": "8dd97b71616790e084e8c295a2920fe2a58683d8bbd65dbc598a079c75fb17c0",
+    "Views/PuzzleLink.swift": "08809c533a93dcafd7f6608ad661e7e0386a62ad0f93568f8331986f7be4e261",
+    "Views/QRCodeView.swift": "7b3e7597a02c8f48c634af504f144223904b66bab77d023323f4998c798c3c22",
+    "Views/SettingsView.swift": "822ffc023241b498bfd2cda854449c785949bdef6c22e10bead5563db791adf1",
+    "Views/StatsView.swift": "ba151a896423c3baa11a979d29ac4f6bee8bb8ff79f730a1878bd3a3a5ba2f1f",
+    "Views/UnifiedImportView.swift": "d79d23210226751828572809555ec17424dcbfb0e7ce2fa066162c925f58758e",
+    "Views/WinScreenView.swift": "0cd03beddfc90656ffeafeb4deb2b4c60a9758a2be5a8d11aefe2a86ba8aa0fc"
+  },
+  "test_source_sha256": {
+    "SudokuTests/CameraControllerTests.swift": "e5173f492fe759b82948785af77e66004831d0588126dc2313070564e578a4da",
+    "SudokuTests/CompletionScreenTests.swift": "84a2ab63d72f81ff844232df51a3dc34f2f438c90046c452e98449ec40ba9af2",
+    "SudokuTests/ContentNavigationTests.swift": "70bcd6273d856750102ea0171818771da9b171536874a33eb17001916b0c2959",
+    "SudokuTests/GameCenterServiceTests.swift": "d2ee251ce1e8274b9f9787b22d5acd2f16f4dd48d7d5c5b9ec9d6229bfef67a2",
+    "SudokuTests/GameManagerTests.swift": "a60e5315db133b4d6e693e26b867b54c95104e8308286266f36ba113518a835d",
+    "SudokuTests/GameScreenTests.swift": "ded0e18dfcebcb4571b34fac55070f0a3f2d3e1a99ed4e321106b70a4d224448",
+    "SudokuTests/GameplayTests.swift": "62fe795a446b88fb14191a71488d27bb92afcfcd73147921a08d124a20b50f86",
+    "SudokuTests/GridPresentationTests.swift": "3e37a5fa3d9975eb7b264c354f3ae5152667ce4212f683f859c12fbbad47b9aa",
+    "SudokuTests/HistoryServiceTests.swift": "5d81bf78c9550add7e0a892ff36c0a12af0f9791bc497e84b53550de3d759533",
+    "SudokuTests/ImportAndHistoryViewTests.swift": "134bc9958464d0dffdbebe77508d21d4390da2bc806f6d43048068df8eff5ab6",
+    "SudokuTests/ModelTests.swift": "7131d7516aa68d975702fbaf402453b3fef6a06f05a7fe5d5f7062822c73d4da",
+    "SudokuTests/PuzzleAPIAndCacheTests.swift": "986e78f6cad1b3580e076f1db0a7eb52f75ee31943082f2780c8c840d2c3642b",
+    "SudokuTests/PuzzleConfirmationTests.swift": "c2c809fca8e6b9b79e4aba95226af21aa56ab05021bc76511b0b87a7ee88773e",
+    "SudokuTests/PuzzleOCRServiceTests.swift": "85011ad939cfb8390729b98c9261420721dbe83257e45389ff24528d26a20cb7",
+    "SudokuTests/ServiceTestSupport.swift": "58a909625ea1427d465430b6657e559a7e5c5160bf795dbb9d658b69a30b06ee",
+    "SudokuTests/SettingsViewTests.swift": "080b0cb815168f9e2ea89caed8b753d485467e2e0069e603a67bb040ce3144d0",
+    "SudokuTests/SudokuTests.swift": "740c2ab360702726c33a0dbf6aa17fda66cad0069054fece5502abe9d66e7aef",
+    "SudokuTests/TelemetryServiceTests.swift": "73c8a178d09e7701b448b105cc1bbb2f37cfa02d71aa42919e8783dc360bafa6",
+    "SudokuTests/UnifiedImportViewTests.swift": "49112043679d03212f07c9aca6b5a9eedf2666f787967469e520f5c1f5951aa5",
+    "SudokuTests/ViewTests.swift": "a291b5c1c1639acdb7e164482af4f196a9500fed13f583ba90b710145f1781da",
+    "SudokuUITests/ConsolidatedMenuTests.swift": "54f35f5740aec939b353ce37f721a00bef6706d0709fd9fac727d0f33591bfdb",
+    "SudokuUITests/ScreenshotTests.swift": "307f4d6fd3a050410247ccb804ade15b9997d092364e2f30fae7aba2c2e86dc7"
+  },
+  "fresh_source_manifest_verified": true
+}

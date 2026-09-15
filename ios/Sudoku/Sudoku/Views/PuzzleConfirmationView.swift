@@ -2,10 +2,17 @@ import SwiftUI
 
 /// Screen for reviewing OCR results, editing mistakes, validating, and starting the game.
 struct PuzzleConfirmationView: View {
-    @StateObject private var viewModel = PuzzleConfirmationViewModel()
+    @StateObject private var viewModel: PuzzleConfirmationViewModel
     @Environment(\.dismiss) private var dismiss
     let image: UIImage
     let onPlay: (ImportedPuzzleData) -> Void
+
+    init(image: UIImage, viewModel: PuzzleConfirmationViewModel? = nil,
+         onPlay: @escaping (ImportedPuzzleData) -> Void) {
+        self.image = image
+        self.onPlay = onPlay
+        _viewModel = StateObject(wrappedValue: viewModel ?? PuzzleConfirmationViewModel())
+    }
 
     var body: some View {
         NavigationStack {

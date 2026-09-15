@@ -23,8 +23,18 @@ struct LoseScreenView: View {
     let onRetry: () -> Void
 
     @State private var message: String = loseMessages.randomElement()!
-    @State private var showContent = false
-    @State private var particleScene: LoseParticleScene?
+    @StateObject private var presentation: CompletionScenePresentation
+
+    init(time: TimeInterval, difficulty: Difficulty, mistakes: Int,
+         onDismiss: @escaping () -> Void, onRetry: @escaping () -> Void,
+         presentation: CompletionScenePresentation = CompletionScenePresentation(makeScene: { LoseParticleScene() })) {
+        self.time = time
+        self.difficulty = difficulty
+        self.mistakes = mistakes
+        self.onDismiss = onDismiss
+        self.onRetry = onRetry
+        _presentation = StateObject(wrappedValue: presentation)
+    }
 
     var body: some View {
         ZStack {
@@ -41,13 +51,13 @@ struct LoseScreenView: View {
             .ignoresSafeArea()
 
             // Rain particle layer
-            if let scene = particleScene {
+            if let scene = presentation.scene {
                 SpriteView(scene: scene, options: [.allowsTransparency])
                     .ignoresSafeArea()
             }
 
             // Content
-            if showContent {
+            if presentation.isVisible {
                 VStack(spacing: 30) {
                     Spacer()
 
@@ -113,16 +123,10 @@ struct LoseScreenView: View {
             }
         }
         .onAppear {
-            // Create particle scene
-            let scene = LoseParticleScene()
-            scene.scaleMode = .resizeFill
-            scene.backgroundColor = .clear
-            particleScene = scene
-
-            // Show content with animation
-            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
-                showContent = true
-            }
+            presentation.start(animation: .easeOut(duration: 0.5).delay(0.3))
+        }
+        .onDisappear {
+            presentation.stop()
         }
     }
 
@@ -153,6 +157,7 @@ private struct LoseStatItem: View {
 // MARK: - SpriteKit Rain/Debris Scene
 
 class LoseParticleScene: SKScene {
+    var randomness = ParticleRandomness()
     private var frameCount: Int = 0
 
     private let rainChars = ["│", "╎", "┊", "┆", "|", "."]
@@ -163,6 +168,7 @@ class LoseParticleScene: SKScene {
     }
 
     override func update(_ currentTime: TimeInterval) {
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
         frameCount += 1
         spawnRain()
 
@@ -174,30 +180,28 @@ class LoseParticleScene: SKScene {
         guard frameCount % 2 == 0 else { return }
 
         for _ in 0..<3 {
-            let useRain = Int.random(in: 0...10) < 7
+            let useRain = randomness.integer(0...10) < 7
             let chars = useRain ? rainChars : debrisChars
 
-            let label = SKLabelNode(text: chars.randomElement()!)
-            label.fontSize = CGFloat.random(in: 10...16)
+            let label = SKLabelNode(text: chars[randomness.integer(0...(chars.count - 1))])
+            label.fontSize = randomness.scalar(10...16)
 
-            let gray = CGFloat.random(in: 0.25...0.5)
-            let redTint = CGFloat.random(in: 0...0.15)
+            let gray = randomness.scalar(0.25...0.5)
+            let redTint = randomness.scalar(0...0.15)
             label.fontColor = UIColor(red: gray + redTint, green: gray, blue: gray, alpha: 0.8)
 
             label.position = CGPoint(
-                x: CGFloat.random(in: 0...size.width),
+                x: randomness.scalar(0...size.width),
                 y: size.height + 10
             )
 
             let fall = SKAction.moveBy(
-                x: CGFloat.random(in: -10...10),
+                x: randomness.scalar(-10...10),
                 y: -size.height - 30,
-                duration: Double.random(in: 2...4)
+                duration: randomness.duration(2...4)
             )
 
-            label.run(fall) {
-                label.removeFromParent()
-            }
+            label.run(.sequence([fall, .removeFromParent()]))
 
             addChild(label)
         }

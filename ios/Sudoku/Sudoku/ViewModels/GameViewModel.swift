@@ -29,14 +29,30 @@ class GameViewModel: ObservableObject {
     @Published private(set) var showCandidates: Bool = false
 
     let difficulty: Difficulty
-    let maxMistakes = 3
+    @Published private(set) var maxMistakes = 3
+    @Published private(set) var mistakeLimitEnabled = true
 
     // MARK: - Private Properties
 
     private var game: SudokuGame
-    private var startTime: Date
-    private var pausedTime: TimeInterval = 0
-    private var lastPauseStart: Date?
+    private let now: () -> Date
+    private var startTime: Date?
+    private var accumulatedTime: TimeInterval = 0
+
+    private struct BoardSnapshot: Codable {
+        let engine: String
+        let candidates: [[Set<Int>]]
+        let showCandidates: Bool
+        let usingAutoFill: Bool
+        var rowFillOrder: [[Int]] = Array(repeating: [], count: 9)
+        var colFillOrder: [[Int]] = Array(repeating: [], count: 9)
+        var boxFillOrder: [[Int]] = Array(repeating: [], count: 9)
+        var completedRows: Set<Int> = []
+        var completedCols: Set<Int> = []
+        var completedBoxes: Set<Int> = []
+    }
+    private var undoHistory: [BoardSnapshot] = []
+    private var redoHistory: [BoardSnapshot] = []
 
     // Track which rows/cols/boxes were already complete (to detect new completions)
     private var completedRows: Set<Int> = []
@@ -49,17 +65,14 @@ class GameViewModel: ObservableObject {
 
     // Track fill order for sequential completion detection
     // For each row/col/box, track the order of values filled (excluding givens)
-    private var rowFillOrder: [Int: [Int]] = [:]
-    private var colFillOrder: [Int: [Int]] = [:]
-    private var boxFillOrder: [Int: [Int]] = [:]
+    private var rowFillOrder: [[Int]] = Array(repeating: [], count: 9)
+    private var colFillOrder: [[Int]] = Array(repeating: [], count: 9)
+    private var boxFillOrder: [[Int]] = Array(repeating: [], count: 9)
 
     // MARK: - Computed Properties
 
     var elapsedTime: TimeInterval {
-        if let pauseStart = lastPauseStart {
-            return pausedTime + pauseStart.timeIntervalSinceNow * -1
-        }
-        return pausedTime + Date().timeIntervalSince(startTime)
+        accumulatedTime + (startTime.map { max(0, now().timeIntervalSince($0)) } ?? 0)
     }
 
     var elapsedTimeString: String {
@@ -70,7 +83,7 @@ class GameViewModel: ObservableObject {
     }
 
     var isGameOver: Bool {
-        mistakes >= maxMistakes
+        mistakeLimitEnabled && mistakes >= maxMistakes
     }
 
     var numberCounts: [Int] {
@@ -90,41 +103,29 @@ class GameViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(difficulty: Difficulty) {
-        self.difficulty = difficulty
-        self.startTime = Date()
-        self.game = SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
-        syncFromEngine()
+    convenience init(difficulty: Difficulty, now: @escaping () -> Date = Date.init) {
+        self.init(cachedGame: SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty()), difficulty: difficulty, now: now)
     }
 
-    /// Create a game asynchronously (puzzle generation happens off main thread)
+    /// Generate off the main thread, then publish the game on the main actor.
     static func createAsync(difficulty: Difficulty) async -> GameViewModel {
-        // Generate puzzle on background thread
         let game = await Task.detached(priority: .userInitiated) {
             SudokuGame.newClassic(difficulty: difficulty.toGameDifficulty())
         }.value
-
-        // Create view model on main thread
-        return await MainActor.run {
-            GameViewModel(cachedGame: game, difficulty: difficulty)
-        }
+        return GameViewModel(cachedGame: game, difficulty: difficulty)
     }
 
-    /// Init with pre-created game from cache
-    init(cachedGame: SudokuGame, difficulty: Difficulty) {
+    init(cachedGame: SudokuGame, difficulty: Difficulty, now: @escaping () -> Date = Date.init) {
         self.game = cachedGame
         self.difficulty = difficulty
-        self.startTime = Date()
-        self.pausedTime = 0
+        self.now = now
+        self.startTime = now()
         syncFromEngine()
     }
 
-    /// Internal init for deserialization with elapsed time
-    private init(deserializedGame game: SudokuGame, difficulty: Difficulty, elapsedTime: TimeInterval) {
-        self.game = game
-        self.difficulty = difficulty
-        self.pausedTime = elapsedTime
-        self.startTime = Date()
+    func configureMistakeLimit(enabled: Bool, limit: Int) {
+        mistakeLimitEnabled = enabled
+        maxMistakes = min(10, max(1, limit))
         syncFromEngine()
     }
 
@@ -135,7 +136,9 @@ class GameViewModel: ObservableObject {
         let cellStates = game.getAllCells()
 
         // Convert flat array to 2D grid
-        var newCells: [[CellModel]] = Array(repeating: [], count: 9)
+        var newCells = (0..<9).map { row in
+            (0..<9).map { CellModel.empty(row: row, col: $0) }
+        }
         for state in cellStates {
             let row = Int(state.row)
             let col = Int(state.col)
@@ -159,18 +162,7 @@ class GameViewModel: ObservableObject {
                 hasConflict: state.hasConflict
             )
 
-            if newCells[row].count <= col {
-                newCells[row].append(cell)
-            } else {
-                newCells[row][col] = cell
-            }
-        }
-
-        // Ensure all rows have 9 columns
-        for row in 0..<9 {
-            while newCells[row].count < 9 {
-                newCells[row].append(CellModel.empty(row: row, col: newCells[row].count))
-            }
+            newCells[row][col] = cell
         }
 
         cells = newCells
@@ -178,8 +170,9 @@ class GameViewModel: ObservableObject {
         hintsUsed = Int(game.getHintsUsed())
         isComplete = game.isComplete()
         seRating = game.getSeRating()
-        canUndo = game.canUndo()
-        canRedo = game.canRedo()
+        canUndo = !undoHistory.isEmpty && !isComplete && !isGameOver
+        canRedo = !redoHistory.isEmpty && !isComplete && !isGameOver
+        if isComplete || isGameOver { pause() }
     }
 
     /// Convert Data (byte array) to Set<Int>
@@ -190,6 +183,7 @@ class GameViewModel: ObservableObject {
     // MARK: - Cell Selection
 
     func selectCell(row: Int, col: Int) {
+        guard (0..<9).contains(row), (0..<9).contains(col) else { return }
         selectedCell = (row, col)
         clearHint()
     }
@@ -204,12 +198,12 @@ class GameViewModel: ObservableObject {
     private var modeBeforeTemporary: InputMode = .normal
 
     func enterNumber(_ number: Int) {
-        guard let selected = selectedCell else { return }
+        guard !isComplete, !isGameOver, (0...255).contains(number), let selected = selectedCell else { return }
         let cell = cells[selected.row][selected.col]
-
         if cell.isGiven { return }
 
         if inputMode.isNotesMode {
+            guard (1...9).contains(number) else { return }
             toggleCandidate(number, at: selected.row, col: selected.col)
             // Revert from temporary mode after entering one note
             if inputMode == .temporaryCandidate {
@@ -229,50 +223,26 @@ class GameViewModel: ObservableObject {
     }
 
     private func setValue(_ value: Int, at row: Int, col: Int) {
+        let previous = snapshot()
         let result = game.makeMove(row: UInt8(row), col: UInt8(col), value: UInt8(value))
-
-        switch result {
-        case .success:
-            // Clear user candidates for this cell since it now has a value
-            userCandidates[row][col] = []
-            // Track fill order for sequential detection
-            recordFillOrder(value: value, row: row, col: col)
-            syncFromEngine()
-            checkForCompletions(afterPlacingAt: row, col: col, value: value)
-        case .complete:
-            userCandidates[row][col] = []
-            recordFillOrder(value: value, row: row, col: col)
-            syncFromEngine()
+        guard result != .cannotModifyGiven, result != .invalidValue else { return }
+        undoHistory.append(previous)
+        redoHistory.removeAll()
+        userCandidates[row][col] = []
+        recordFillOrder(value: value, row: row, col: col)
+        syncFromEngine()
+        if result == .complete {
             lastCelebration = .gameComplete
-        case .conflict:
-            userCandidates[row][col] = []
-            recordFillOrder(value: value, row: row, col: col)
-            syncFromEngine()
-        case .cannotModifyGiven, .invalidValue:
-            break
+        } else if result == .success {
+            checkForCompletions(afterPlacingAt: row, col: col, value: value)
         }
     }
 
     /// Record the fill order for sequential completion detection
     private func recordFillOrder(value: Int, row: Int, col: Int) {
-        // Track for row
-        if rowFillOrder[row] == nil {
-            rowFillOrder[row] = []
-        }
-        rowFillOrder[row]?.append(value)
-
-        // Track for column
-        if colFillOrder[col] == nil {
-            colFillOrder[col] = []
-        }
-        colFillOrder[col]?.append(value)
-
-        // Track for box
-        let boxIndex = (row / 3) * 3 + (col / 3)
-        if boxFillOrder[boxIndex] == nil {
-            boxFillOrder[boxIndex] = []
-        }
-        boxFillOrder[boxIndex]?.append(value)
+        rowFillOrder[row].append(value)
+        colFillOrder[col].append(value)
+        boxFillOrder[(row / 3) * 3 + (col / 3)].append(value)
     }
 
     /// Check if a fill order represents sequential filling (1,2,3... or ...7,8,9)
@@ -305,7 +275,7 @@ class GameViewModel: ObservableObject {
         // Check row completion
         if !completedRows.contains(row) && isRowComplete(row) {
             completedRows.insert(row)
-            let isSequential = isSequentialFill(rowFillOrder[row] ?? [])
+            let isSequential = isSequentialFill(rowFillOrder[row])
             lastCelebration = .rowComplete(row: row, isSequential: isSequential)
             return
         }
@@ -313,7 +283,7 @@ class GameViewModel: ObservableObject {
         // Check column completion
         if !completedCols.contains(col) && isColumnComplete(col) {
             completedCols.insert(col)
-            let isSequential = isSequentialFill(colFillOrder[col] ?? [])
+            let isSequential = isSequentialFill(colFillOrder[col])
             lastCelebration = .columnComplete(col: col, isSequential: isSequential)
             return
         }
@@ -322,7 +292,7 @@ class GameViewModel: ObservableObject {
         let boxIndex = (row / 3) * 3 + (col / 3)
         if !completedBoxes.contains(boxIndex) && isBoxComplete(boxIndex) {
             completedBoxes.insert(boxIndex)
-            let isSequential = isSequentialFill(boxFillOrder[boxIndex] ?? [])
+            let isSequential = isSequentialFill(boxFillOrder[boxIndex])
             lastCelebration = .boxComplete(boxIndex: boxIndex, isSequential: isSequential)
             return
         }
@@ -397,10 +367,11 @@ class GameViewModel: ObservableObject {
     }
 
     func clearSelectedCell() {
-        guard let selected = selectedCell else { return }
+        guard !isComplete, !isGameOver, let selected = selectedCell else { return }
         let cell = cells[selected.row][selected.col]
-
         if cell.isGiven { return }
+        recordUndo()
+        userCandidates[selected.row][selected.col] = []
 
         if cell.value != 0 {
             _ = game.clearCell(row: UInt8(selected.row), col: UInt8(selected.col))
@@ -415,7 +386,12 @@ class GameViewModel: ObservableObject {
         let cell = cells[row][col]
         if cell.isGiven || cell.value != 0 { return }
 
-        // Enable candidate display when user manually enters candidates
+        recordUndo()
+        // Preserve the currently displayed notes when switching from automatic notes.
+        if usingAutoFill {
+            userCandidates = cells.map { $0.map(\.candidates) }
+            usingAutoFill = false
+        }
         showCandidates = true
 
         // Toggle in local user tracking
@@ -432,12 +408,18 @@ class GameViewModel: ObservableObject {
     // MARK: - Candidates
 
     func fillCandidatesForSelected() {
-        guard let selected = selectedCell else { return }
+        guard !isComplete, !isGameOver, let selected = selectedCell,
+              cells[selected.row][selected.col].isEmpty else { return }
+        recordUndo()
         _ = game.fillCellCandidates(row: UInt8(selected.row), col: UInt8(selected.col))
+        userCandidates[selected.row][selected.col] = getValidCandidates(row: selected.row, col: selected.col)
+        showCandidates = true
         syncFromEngine()
     }
 
     func fillAllCandidates() {
+        guard !isComplete, !isGameOver else { return }
+        recordUndo()
         showCandidates = true
         usingAutoFill = true
         game.fillAllCandidates()
@@ -445,12 +427,17 @@ class GameViewModel: ObservableObject {
     }
 
     func clearCandidatesForSelected() {
-        guard let selected = selectedCell else { return }
+        guard !isComplete, !isGameOver, let selected = selectedCell,
+              cells[selected.row][selected.col].isEmpty else { return }
+        recordUndo()
+        userCandidates[selected.row][selected.col] = []
         _ = game.clearCellCandidates(row: UInt8(selected.row), col: UInt8(selected.col))
         syncFromEngine()
     }
 
     func clearAllCandidates() {
+        guard !isComplete, !isGameOver else { return }
+        recordUndo()
         showCandidates = false
         usingAutoFill = false
         // Clear user-entered candidates as well
@@ -467,6 +454,8 @@ class GameViewModel: ObservableObject {
     /// Remove invalid candidates (Check Notes feature)
     /// Keeps only candidates that match the solution
     func checkNotes() {
+        guard !isComplete, !isGameOver else { return }
+        recordUndo()
         game.removeInvalidCandidates()
         // Also update local user candidates to match
         for row in 0..<9 {
@@ -481,13 +470,18 @@ class GameViewModel: ObservableObject {
     // MARK: - Imported Puzzle Support
 
     func applyImportedMove(row: Int, col: Int, value: Int) {
-        let result = game.makeMove(row: UInt8(row), col: UInt8(col), value: UInt8(value))
-        if case .success = result { syncFromEngine() }
-        else if case .complete = result { syncFromEngine() }
+        guard (0..<9).contains(row), (0..<9).contains(col), (1...9).contains(value) else { return }
+        _ = game.makeMove(row: UInt8(row), col: UInt8(col), value: UInt8(value))
+        syncFromEngine()
     }
 
     func applyImportedNotes(row: Int, col: Int, notes: Set<Int>) {
-        userCandidates[row][col] = notes
+        guard (0..<9).contains(row), (0..<9).contains(col), cells[row][col].isEmpty else { return }
+        userCandidates[row][col] = notes.filter { (1...9).contains($0) }
+        _ = game.clearCellCandidates(row: UInt8(row), col: UInt8(col))
+        for note in userCandidates[row][col] {
+            _ = game.toggleCandidate(row: UInt8(row), col: UInt8(col), value: UInt8(note))
+        }
         showCandidates = true
         refreshCells()
     }
@@ -499,19 +493,65 @@ class GameViewModel: ObservableObject {
 
     // MARK: - Undo/Redo
 
-    func undo() {
-        _ = game.undo()
+    private func snapshot() -> BoardSnapshot {
+        BoardSnapshot(engine: serializedBoard(), candidates: usingAutoFill ? cells.map { $0.map(\.candidates) } : userCandidates,
+                      showCandidates: showCandidates, usingAutoFill: usingAutoFill,
+                      rowFillOrder: rowFillOrder, colFillOrder: colFillOrder, boxFillOrder: boxFillOrder,
+                      completedRows: completedRows, completedCols: completedCols, completedBoxes: completedBoxes)
+    }
+
+    private func recordUndo() {
+        undoHistory.append(snapshot())
+        redoHistory.removeAll()
+    }
+
+    /// Initial helper setup should not appear as a player move in Undo.
+    func resetUndoHistory() {
+        undoHistory.removeAll()
+        redoHistory.removeAll()
         syncFromEngine()
     }
 
-    func redo() {
-        _ = game.redo()
+    private func restore(_ snapshot: BoardSnapshot) {
+        guard let restored = Self.restoreEngine(snapshot.engine, mistakes: mistakes, hintsUsed: hintsUsed) else { return }
+        game = restored
+        userCandidates = snapshot.candidates
+        usingAutoFill = snapshot.usingAutoFill
+        showCandidates = snapshot.showCandidates
+        rowFillOrder = snapshot.rowFillOrder
+        colFillOrder = snapshot.colFillOrder
+        boxFillOrder = snapshot.boxFillOrder
+        completedRows = snapshot.completedRows
+        completedCols = snapshot.completedCols
+        completedBoxes = snapshot.completedBoxes
+        game.clearAllCandidates()
+        for row in 0..<9 {
+            for col in 0..<9 {
+                for candidate in userCandidates[row][col] {
+                    _ = game.toggleCandidate(row: UInt8(row), col: UInt8(col), value: UInt8(candidate))
+                }
+            }
+        }
+        clearHint()
         syncFromEngine()
+    }
+
+    func undo() {
+        guard !isComplete, !isGameOver, let previous = undoHistory.popLast() else { return }
+        redoHistory.append(snapshot())
+        restore(previous)
+    }
+
+    func redo() {
+        guard !isComplete, !isGameOver, let next = redoHistory.popLast() else { return }
+        undoHistory.append(snapshot())
+        restore(next)
     }
 
     // MARK: - Hints
 
     func getHint() {
+        guard !isComplete, !isGameOver else { return }
         if currentHint != nil && hintDetailLevel == .summary {
             // Second tap: upgrade to proof detail
             hintDetailLevel = .proofDetail
@@ -539,7 +579,8 @@ class GameViewModel: ObservableObject {
     }
 
     func applyHint() {
-        guard currentHint != nil else { return }
+        guard !isComplete, !isGameOver, currentHint != nil else { return }
+        recordUndo()
         _ = game.applyHint()
         clearHint()
         syncFromEngine()
@@ -548,7 +589,7 @@ class GameViewModel: ObservableObject {
     func clearHint() {
         currentHint = nil
         hintDetailLevel = .none
-        hintCellRoles = Array(repeating: .none, count: 81)
+        updateHintCellRoles()
         game.clearHint()
     }
 
@@ -565,7 +606,7 @@ class GameViewModel: ObservableObject {
         hintCellRoles = rawRoles.map { Self.hintCellRole(from: $0) }
     }
 
-    private static func hintCellRole(from raw: UInt8) -> HintCellRole {
+    static func hintCellRole(from raw: UInt8) -> HintCellRole {
         switch raw {
         case 1: return .target
         case 2: return .involved
@@ -584,14 +625,14 @@ class GameViewModel: ObservableObject {
     // MARK: - Pause/Resume
 
     func pause() {
-        lastPauseStart = Date()
+        guard let started = startTime else { return }
+        accumulatedTime += max(0, now().timeIntervalSince(started))
+        startTime = nil
     }
 
     func resume() {
-        if let pauseStart = lastPauseStart {
-            pausedTime += Date().timeIntervalSince(pauseStart)
-            lastPauseStart = nil
-        }
+        guard startTime == nil, !isComplete, !isGameOver else { return }
+        startTime = now()
     }
 
     // MARK: - Highlighting
@@ -650,44 +691,75 @@ class GameViewModel: ObservableObject {
 
     // MARK: - Serialization
 
+    /// Store original givens separately: the FFI serializer otherwise promotes player moves to givens.
+    private func serializedBoard() -> String {
+        // The engine serializer guarantees a JSON object; silently saving an empty object would lose the puzzle.
+        var dictionary = (try! JSONSerialization.jsonObject(with: Data(game.serialize().utf8))) as! [String: Any]
+        dictionary["playerValues"] = cells.flatMap { $0.map(\.value) }
+        dictionary["puzzle"] = getPuzzleFingerprint()
+        let data = try! JSONSerialization.data(withJSONObject: dictionary, options: .sortedKeys)
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private static func restoreEngine(_ json: String, mistakes: Int? = nil, hintsUsed: Int? = nil) -> SudokuGame? {
+        guard var dictionary = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] else { return nil }
+        let values = dictionary["playerValues"] as? [Int]
+        if let values {
+            guard values.count == 81, values.allSatisfy({ (0...9).contains($0) }),
+                  let puzzle = dictionary["puzzle"] as? String, puzzle.count == 81,
+                  let solution = dictionary["solution"] as? String, solution.count == 81 else { return nil }
+            let givens = Array(puzzle)
+            let answers = Array(solution)
+            let replayedMistakes = values.indices.filter {
+                values[$0] > 0 && (givens[$0] == "." || givens[$0] == "0") && String(values[$0]) != String(answers[$0])
+            }.count
+            let savedMistakes = mistakes ?? dictionary["swiftMistakes"] as? Int ?? dictionary["mistakes"] as? Int ?? 0
+            dictionary["mistakes"] = max(0, savedMistakes - replayedMistakes)
+        }
+        if let hintsUsed { dictionary["hints_used"] = hintsUsed }
+        guard let data = try? JSONSerialization.data(withJSONObject: dictionary),
+              let engine = gameDeserialize(json: String(decoding: data, as: UTF8.self)) else { return nil }
+        if let values {
+            let givenCells = engine.getAllCells()
+            for (index, value) in values.enumerated() where value > 0 && !givenCells[index].isGiven {
+                _ = engine.makeMove(row: UInt8(index / 9), col: UInt8(index % 9), value: UInt8(value))
+            }
+        }
+        return engine
+    }
+
     func serialize() -> String {
-        // Include elapsed time in the JSON since it's not tracked by the Rust engine
-        let engineJson = game.serialize()
-
-        // Parse and add elapsed time
-        guard let data = engineJson.data(using: .utf8),
-              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return engineJson
-        }
-
-        dict["elapsedTime"] = elapsedTime
-        dict["swiftDifficulty"] = difficulty.rawValue
-
-        if let newData = try? JSONSerialization.data(withJSONObject: dict),
-           let newJson = String(data: newData, encoding: .utf8) {
-            return newJson
-        }
-
-        return engineJson
+        var dictionary = (try! JSONSerialization.jsonObject(with: Data(serializedBoard().utf8))) as! [String: Any]
+        dictionary["elapsedTime"] = elapsedTime
+        dictionary["swiftDifficulty"] = difficulty.rawValue
+        dictionary["swiftMistakes"] = mistakes
+        dictionary["swiftHintsUsed"] = hintsUsed
+        dictionary["notes"] = snapshot().candidates.map { $0.map { $0.sorted() } }
+        dictionary["showCandidates"] = showCandidates
+        dictionary["usingAutoFill"] = usingAutoFill
+        let data = try! JSONSerialization.data(withJSONObject: dictionary, options: .sortedKeys)
+        return String(decoding: data, as: UTF8.self)
     }
 
-    static func deserialize(_ json: String) -> GameViewModel? {
-        // Extract elapsed time before passing to engine
-        guard let data = json.data(using: .utf8),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
+    static func deserialize(_ json: String, now: @escaping () -> Date = Date.init) -> GameViewModel? {
+        guard let dictionary = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any],
+              let engine = restoreEngine(json) else { return nil }
+        let difficulty = Difficulty(rawValue: dictionary["swiftDifficulty"] as? String ?? "Medium") ?? .medium
+        let viewModel = GameViewModel(cachedGame: engine, difficulty: difficulty, now: now)
+        viewModel.accumulatedTime = max(0, dictionary["elapsedTime"] as? TimeInterval ?? 0)
+        viewModel.startTime = nil
+        if let notes = dictionary["notes"] as? [[[Int]]] {
+            guard notes.count == 9, notes.allSatisfy({ $0.count == 9 }),
+                  notes.flatMap({ $0 }).flatMap({ $0 }).allSatisfy({ (1...9).contains($0) }) else { return nil }
+            viewModel.userCandidates = notes.map { $0.map(Set.init) }
         }
-
-        let elapsedTime = dict["elapsedTime"] as? TimeInterval ?? 0
-        let difficultyStr = dict["swiftDifficulty"] as? String ?? "Medium"
-        let difficulty = Difficulty(rawValue: difficultyStr) ?? .medium
-
-        guard let game = gameDeserialize(json: json) else {
-            return nil
-        }
-
-        return GameViewModel(deserializedGame: game, difficulty: difficulty, elapsedTime: elapsedTime)
+        viewModel.showCandidates = dictionary["showCandidates"] as? Bool ?? false
+        viewModel.usingAutoFill = dictionary["usingAutoFill"] as? Bool ?? false
+        viewModel.restore(BoardSnapshot(engine: json, candidates: viewModel.userCandidates,
+                                       showCandidates: viewModel.showCandidates, usingAutoFill: viewModel.usingAutoFill))
+        return viewModel
     }
+
 }
 
 // MARK: - Difficulty Conversion

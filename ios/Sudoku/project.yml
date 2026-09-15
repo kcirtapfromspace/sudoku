@@ -6,6 +6,11 @@ options:
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
 
+packages:
+  ViewInspector:
+    url: https://github.com/nalexn/ViewInspector
+    exactVersion: 0.10.3
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -62,6 +67,7 @@ targets:
       - SudokuTests
     dependencies:
       - target: Sudoku
+      - package: ViewInspector
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ukodus.app.tests
@@ -95,6 +101,13 @@ schemes:
     run:
       config: Debug
     test:
+      gatherCoverageData: true
+      coverageTargets:
+        - Sudoku
+      environmentVariables:
+        - variable: SUDOKU_TESTING
+          value: "1"
+          isEnabled: true
       targets:
         - SudokuTests
         - SudokuUITests

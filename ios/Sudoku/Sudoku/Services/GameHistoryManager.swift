@@ -17,7 +17,10 @@ class GameHistoryManager: ObservableObject {
 
     // MARK: - Initialization
 
-    private init() {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         load()
     }
 
@@ -121,24 +124,26 @@ class GameHistoryManager: ObservableObject {
     private func save() {
         // Save puzzles
         if let data = try? JSONEncoder().encode(Array(puzzles.values)) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         }
 
         // Save stats
         if let statsData = try? JSONEncoder().encode(stats) {
-            UserDefaults.standard.set(statsData, forKey: statsKey)
+            defaults.set(statsData, forKey: statsKey)
         }
     }
 
     private func load() {
         // Load puzzles
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+        if let data = defaults.data(forKey: storageKey),
            let records = try? JSONDecoder().decode([PuzzleRecord].self, from: data) {
-            puzzles = Dictionary(uniqueKeysWithValues: records.map { ($0.puzzleHash, $0) })
+            puzzles = Dictionary(records.map { ($0.puzzleHash, $0) }, uniquingKeysWith: { first, second in
+                first.lastPlayedAt > second.lastPlayedAt ? first : second
+            })
         }
 
         // Load stats
-        if let statsData = UserDefaults.standard.data(forKey: statsKey),
+        if let statsData = defaults.data(forKey: statsKey),
            let loadedStats = try? JSONDecoder().decode(PuzzleLibraryStats.self, from: statsData) {
             stats = loadedStats
         }

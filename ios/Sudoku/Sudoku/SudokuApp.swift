@@ -2,13 +2,17 @@ import SwiftUI
 
 @main
 struct SudokuApp: App {
-    @StateObject private var gameManager = GameManager()
+    @StateObject private var gameManager: GameManager
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        // Start prefetching puzzles immediately on app launch
-        Task(priority: .background) {
-            await PuzzleCache.shared.prefetchAll()
+        let launch = AppLaunchConfiguration(arguments: ProcessInfo.processInfo.arguments,
+                                            environment: ProcessInfo.processInfo.environment)
+        _gameManager = StateObject(wrappedValue: launch.makeManager())
+        if !launch.isTesting {
+            Task(priority: .background) {
+                await PuzzleCache.shared.prefetchAll()
+            }
         }
     }
 
@@ -18,32 +22,56 @@ struct SudokuApp: App {
                 .environmentObject(gameManager)
                 .onChange(of: scenePhase) { newPhase in
                     if newPhase == .background || newPhase == .inactive {
-                        // Auto-pause when app goes to background
-                        gameManager.currentGame?.pause()
-                        gameManager.saveCurrentGame()
+                        gameManager.sceneBecameInactive()
+                    } else if newPhase == .active {
+                        gameManager.sceneBecameActive()
                     }
                 }
                 .onOpenURL { url in
-                    // Handle shared puzzle URLs:
-                    // https://kcirtapfromspace.github.io/sudoku/?s=SHORT_CODE
-                    // https://kcirtapfromspace.github.io/sudoku/?p=PUZZLE_STRING
-                    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-                        return
-                    }
-
-                    // Try short code first (?s=)
-                    if let shortCode = components.queryItems?.first(where: { $0.name == "s" })?.value,
-                       shortCode.count == 8 {
-                        gameManager.loadSharedPuzzle(shortCode)
-                        return
-                    }
-
-                    // Fall back to 81-char puzzle (?p=)
-                    if let puzzleParam = components.queryItems?.first(where: { $0.name == "p" })?.value,
-                       puzzleParam.count == 81 {
-                        gameManager.loadSharedPuzzle(puzzleParam)
+                    if let puzzle = PuzzleLink.extract(from: url.absoluteString) {
+                        gameManager.loadSharedPuzzle(puzzle)
                     }
                 }
         }
+    }
+}
+
+struct AppLaunchConfiguration {
+    let isTesting: Bool
+    let resetState: Bool
+    let initialPuzzle: String?
+
+    init(arguments: [String], environment: [String: String]) {
+        #if DEBUG
+        isTesting = arguments.contains("--ui-testing") || environment["SUDOKU_TESTING"] == "1"
+        resetState = isTesting && arguments.contains("--reset-state")
+        if isTesting, let index = arguments.firstIndex(of: "--puzzle"), arguments.indices.contains(index + 1) {
+            initialPuzzle = PuzzleLink.extract(from: arguments[index + 1])
+        } else {
+            initialPuzzle = nil
+        }
+        #else
+        isTesting = false
+        resetState = false
+        initialPuzzle = nil
+        #endif
+    }
+
+    @MainActor
+    func makeManager() -> GameManager {
+        guard isTesting else { return GameManager() }
+        let suite = "com.ukodus.app.ui-testing"
+        let defaults = UserDefaults(suiteName: suite)!
+        if resetState { defaults.removePersistentDomain(forName: suite) }
+        let history = GameHistoryManager(defaults: defaults)
+        var dependencies = GameManager.Dependencies.isolated
+        dependencies.recordStart = { _ = history.recordPuzzleStart(puzzleString: $0, difficulty: $1) }
+        dependencies.recordResult = { history.recordResult(puzzleHash: $0, won: $1, time: $2) }
+        let manager = GameManager(defaults: defaults, dependencies: dependencies, historyManager: history)
+        manager.settings.cameraImportEnabled = true
+        manager.settings.hapticsEnabled = false
+        manager.settings.celebrationsEnabled = false
+        if let initialPuzzle { manager.loadSharedPuzzle(initialPuzzle) }
+        return manager
     }
 }

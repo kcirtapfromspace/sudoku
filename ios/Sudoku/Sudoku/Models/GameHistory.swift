@@ -37,12 +37,12 @@ struct PuzzleRecord: Codable, Identifiable {
     var hasBeenSolved: Bool { wins > 0 }
 
     /// Create a new puzzle record
-    init(puzzleString: String, difficulty: Difficulty) {
+    init(puzzleString: String, difficulty: Difficulty, now: Date = Date()) {
         self.puzzleHash = Self.generateHash(from: puzzleString)
         self.puzzleString = puzzleString
         self.difficulty = difficulty
-        self.firstPlayedAt = Date()
-        self.lastPlayedAt = Date()
+        self.firstPlayedAt = now
+        self.lastPlayedAt = now
         self.playCount = 1
         self.bestTime = nil
         self.wins = 0
@@ -57,9 +57,8 @@ struct PuzzleRecord: Codable, Identifiable {
     }
 
     /// Record a game result
-    mutating func recordResult(won: Bool, time: TimeInterval?) {
-        lastPlayedAt = Date()
-        playCount += 1
+    mutating func recordResult(won: Bool, time: TimeInterval?, now: Date = Date()) {
+        lastPlayedAt = now
 
         if won {
             wins += 1

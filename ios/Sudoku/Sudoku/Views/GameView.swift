@@ -1,63 +1,34 @@
 import SwiftUI
+import Combine
 
+@MainActor
 struct GameView: View {
     @EnvironmentObject var gameManager: GameManager
     @ObservedObject var game: GameViewModel
-    @StateObject private var konamiDetector = KonamiCodeDetector()
-    @State private var showingKonamiAlert = false
-    @State private var konamiMessage = ""
-    @State private var celebrationText = ""
-    @State private var showCelebration = false
-    @State private var heartShake = false
-    @State private var lastMistakeCount = 0
-    @State private var showingCheckResult = false  // Temporarily reveal errors on "Check"
-    @State private var showingShareSheet = false
-    @State private var showCompletionOverlay = false
-    #if DEBUG
-    @State private var showingDebugMenu = false
-    #endif
+    @StateObject private var presentation: GamePresentation
+    private var konamiDetector: KonamiCodeDetector { presentation.konamiDetector }
+
+    init(game: GameViewModel, presentation: GamePresentation? = nil) {
+        self.game = game
+        let presentation = presentation ?? GamePresentation()
+        _presentation = StateObject(wrappedValue: presentation)
+    }
 
     var body: some View {
         ZStack {
             GeometryReader { geometry in
-                if geometry.size.width > geometry.size.height {
-                    // Landscape layout
-                    HStack(spacing: 20) {
-                        gridSection(size: min(geometry.size.height - 40, geometry.size.width * 0.55))
-                        controlsSection(compact: true)
-                    }
-                    .padding()
-                } else {
-                    // Portrait layout
-                    let gridSize = min(geometry.size.width - 32, geometry.size.height * 0.55)
-                    VStack(spacing: 16) {
-                        headerSection
-                        gridSection(size: gridSize)
-                        if let hint = game.currentHint {
-                            HintPanelView(
-                                hint: hint,
-                                detailLevel: game.hintDetailLevel,
-                                onUpgrade: { game.getHint() },
-                                onDismiss: { game.clearHint() }
-                            )
-                        }
-                        Spacer(minLength: 8)
-                        numberPadSection
-                        controlsSection(compact: false)
-                    }
-                    .padding()
-                }
+                boardLayout(size: geometry.size)
             }
 
             // Celebration overlay
-            if showCelebration {
-                CelebrationOverlay(text: celebrationText)
+            if presentation.showCelebration {
+                CelebrationOverlay(text: presentation.celebrationText)
                     .transition(.scale.combined(with: .opacity))
                     .zIndex(100)
             }
 
             // Completion overlay — let the user admire the board before transitioning
-            if showCompletionOverlay {
+            if presentation.showCompletionOverlay {
                 VStack {
                     Spacer()
                     Button {
@@ -86,25 +57,28 @@ struct GameView: View {
                 .zIndex(99)
             }
         }
+        .onAppear {
+            if game.isComplete { presentation.revealCompletion() }
+        }
+        .onDisappear {
+            presentation.cancelPendingEffects()
+            game.clearCelebration()
+            game.celebratingCells.removeAll()
+        }
         .simultaneousGesture(konamiGesture)
         .onChange(of: konamiDetector.isActivated) { activated in
             if activated {
-                triggerKonamiEasterEgg()
+                presentation.triggerKonamiEasterEgg(manager: gameManager)
             }
         }
         .onChange(of: game.lastCelebration) { celebration in
             if let celebration = celebration {
-                handleCelebration(celebration)
+                presentation.handleCelebration(celebration, game: game, manager: gameManager)
             }
         }
         .onChange(of: game.isComplete) { complete in
             if complete {
-                // Give the user time to admire the completed board, then show Continue button
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        showCompletionOverlay = true
-                    }
-                }
+                presentation.revealCompletion()
             }
         }
         .onChange(of: game.isGameOver) { gameOver in
@@ -112,18 +86,18 @@ struct GameView: View {
                 gameManager.endGame(won: false)
             }
         }
-        .alert("🎮 KONAMI CODE!", isPresented: $showingKonamiAlert) {
+        .alert("🎮 KONAMI CODE!", isPresented: $presentation.showingKonamiAlert) {
             Button("Awesome!") {
                 konamiDetector.reset()
             }
         } message: {
-            Text(konamiMessage)
+            Text(presentation.konamiMessage)
         }
         #if DEBUG
         .onLongPressGesture(minimumDuration: 2.0) {
-            showingDebugMenu = true
+            presentation.showingDebugMenu = true
         }
-        .confirmationDialog("🔧 Debug Menu", isPresented: $showingDebugMenu, titleVisibility: .visible) {
+        .confirmationDialog("🔧 Debug Menu", isPresented: $presentation.showingDebugMenu, titleVisibility: .visible) {
             Button("Fill Row 1 (except 1 cell)") {
                 if let col = game.findEmptyCellInRow(0) {
                     game.fillRowExcept(row: 0, exceptCol: col)
@@ -152,59 +126,54 @@ struct GameView: View {
         #endif
     }
 
-    private func handleCelebration(_ event: CelebrationEvent) {
-        guard gameManager.settings.celebrationsEnabled else {
-            game.clearCelebration()
-            return
-        }
-
-        switch event {
-        case .rowComplete(let row, let isSequential):
-            game.triggerRowCelebration(row)
-            successHaptic()
-            if isSequential {
-                gameManager.statistics.recordSequentialCompletion()
+    @ViewBuilder
+    func boardLayout(size: CGSize) -> some View {
+        if size.width > size.height {
+            let contentWidth = max(0, size.width - 32)
+            let boardSize = max(0, min(size.height - 32, (contentWidth - 20) * 0.48))
+            let controlsWidth = max(0, contentWidth - boardSize - 20)
+            HStack(spacing: 20) {
+                gridSection(size: boardSize)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        headerSection
+                        if let hint = game.currentHint {
+                            HintPanelView(
+                                hint: hint,
+                                detailLevel: game.hintDetailLevel,
+                                onUpgrade: { game.getHint() },
+                                onDismiss: { game.clearHint() }
+                            )
+                        }
+                        numberPadSection
+                        controlsSection(compact: true)
+                    }
+                }
+                .frame(width: controlsWidth)
             }
-            game.clearCelebration()
-            return
-        case .columnComplete(let col, let isSequential):
-            game.triggerColumnCelebration(col)
-            successHaptic()
-            if isSequential {
-                gameManager.statistics.recordSequentialCompletion()
+            .padding()
+        } else {
+            // Portrait layout
+            let gridSize = max(0, min(size.width - 32, size.height * 0.55))
+            VStack(spacing: 16) {
+                headerSection
+                gridSection(size: gridSize)
+                if let hint = game.currentHint {
+                    HintPanelView(
+                        hint: hint,
+                        detailLevel: game.hintDetailLevel,
+                        onUpgrade: { game.getHint() },
+                        onDismiss: { game.clearHint() }
+                    )
+                }
+                Spacer(minLength: 8)
+                numberPadSection
+                controlsSection(compact: false)
             }
-            game.clearCelebration()
-            return
-        case .boxComplete(let box, let isSequential):
-            game.triggerBoxCelebration(box)
-            successHaptic()
-            if isSequential {
-                gameManager.statistics.recordSequentialCompletion()
-            }
-            game.clearCelebration()
-            return
-        case .gameComplete:
-            // Keep the overlay only for game completion
-            celebrationText = "🏆 PUZZLE SOLVED! 🏆"
-        case .cellComplete:
-            // Don't show celebration for individual cells
-            game.clearCelebration()
-            return
-        }
-
-        hapticFeedback(.medium)
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-            showCelebration = true
-        }
-
-        // Auto-dismiss after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            withAnimation(.easeOut(duration: 0.3)) {
-                showCelebration = false
-            }
-            game.clearCelebration()
+            .padding()
         }
     }
+
 
     // MARK: - Konami Code
 
@@ -243,35 +212,6 @@ struct GameView: View {
         }
     }
 
-    private func triggerKonamiEasterEgg() {
-        // Check if already unlocked
-        let alreadyUnlocked = gameManager.statistics.easterEggUnlocked
-
-        if alreadyUnlocked {
-            let easterEggs = [
-                "🚀 +30 extra lives! (Just kidding, you only had 3)",
-                "🎯 God mode activated! (Your mistakes still count though)",
-                "🧠 IQ temporarily boosted to 9000!",
-                "🎮 You found the secret! Here's a virtual high-five: 🖐️",
-                "🔮 The puzzle whispers its secrets to you...",
-                "⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️ - A true gamer!",
-                "🏆 Achievement Unlocked: Nostalgia Master",
-                "🎪 Circus mode engaged! 🤹‍♂️ (Nothing changed, but imagine it did)"
-            ]
-            konamiMessage = easterEggs.randomElement() ?? "You did it!"
-        } else {
-            // First time - unlock Master and Extreme difficulties!
-            gameManager.unlockEasterEgg()
-            konamiMessage = "🔓 SECRET UNLOCKED!\n\nMaster & Extreme difficulties are now available!\n\n⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️"
-        }
-
-        showingKonamiAlert = true
-        hapticFeedback(.heavy)
-
-        // Unlock Game Center achievement
-        GameCenterManager.shared.unlockKonamiAchievement()
-    }
-
     // MARK: - Header
 
     private var headerSection: some View {
@@ -284,6 +224,8 @@ struct GameView: View {
                     .foregroundStyle(.secondary)
             }
             .disabled(game.isComplete)
+            .accessibilityLabel("Pause game")
+            .accessibilityIdentifier("PauseGame")
 
             // Timer
             if gameManager.settings.timerVisible {
@@ -295,12 +237,14 @@ struct GameView: View {
 
             // Share button
             Button {
-                showingShareSheet = true
+                presentation.showingShareSheet = true
             } label: {
                 Image(systemName: "square.and.arrow.up")
                     .font(.body)
             }
-            .sheet(isPresented: $showingShareSheet) {
+            .accessibilityLabel("Share puzzle")
+            .accessibilityIdentifier("SharePuzzle")
+            .sheet(isPresented: $presentation.showingShareSheet) {
                 QRCodeView(puzzleString: game.getPuzzleFingerprint(), shortCode: game.getShortCode())
                     .presentationDetents([.medium, .large])
             }
@@ -324,65 +268,29 @@ struct GameView: View {
                 ForEach(0..<game.maxMistakes, id: \.self) { i in
                     Image(systemName: i < game.mistakes ? "heart.slash.fill" : "heart.fill")
                         .foregroundStyle(i < game.mistakes ? .red : .pink)
-                        .scaleEffect(heartShake && i == game.mistakes - 1 ? 1.3 : 1.0)
-                        .opacity(heartShake && i == game.mistakes - 1 ? 0.7 : 1.0)
+                        .scaleEffect(presentation.heartShake && i == game.mistakes - 1 ? 1.3 : 1.0)
+                        .opacity(presentation.heartShake && i == game.mistakes - 1 ? 0.7 : 1.0)
                 }
             }
-            .modifier(ShakeEffect(shakes: heartShake ? 4 : 0))
-            .animation(.easeInOut(duration: 0.4), value: heartShake)
+            .modifier(ShakeEffect(shakes: presentation.heartShake ? 4 : 0))
+            .animation(.easeInOut(duration: 0.4), value: presentation.heartShake)
         }
         .onChange(of: game.mistakes) { newMistakes in
-            if newMistakes > lastMistakeCount && gameManager.settings.showErrorsImmediately {
-                // Mistake was made - trigger animation and haptic (only if showing errors immediately)
-                triggerMistakeFeedback()
-            }
-            lastMistakeCount = newMistakes
+            presentation.updateMistakes(newMistakes, manager: gameManager)
         }
         .onAppear {
-            lastMistakeCount = game.mistakes
+            presentation.lastMistakeCount = game.mistakes
         }
     }
 
     private func checkSolution() {
-        showingCheckResult = true
-
-        // Check if there are any mistakes
-        if game.mistakes > 0 {
-            triggerMistakeFeedback()
-        } else {
-            // No mistakes - provide positive feedback
-            hapticFeedback(.medium)
-        }
-
-        // Auto-hide check results after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            showingCheckResult = false
-        }
-    }
-
-    private func triggerMistakeFeedback() {
-        // Haptic feedback
-        if gameManager.settings.hapticsEnabled {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-        }
-
-        // Visual shake animation
-        withAnimation(.easeInOut(duration: 0.1)) {
-            heartShake = true
-        }
-
-        // Reset after animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation {
-                heartShake = false
-            }
-        }
+        presentation.checkSolution(game: game, manager: gameManager)
     }
 
     // MARK: - Grid
 
     private func gridSection(size: CGFloat) -> some View {
-        GridView(game: game, size: size, forceShowErrors: showingCheckResult)
+        GridView(game: game, size: size, forceShowErrors: presentation.showingCheckResult)
             .frame(width: size, height: size)
     }
 
@@ -397,11 +305,11 @@ struct GameView: View {
     private func controlsSection(compact: Bool) -> some View {
         VStack(spacing: compact ? 8 : 12) {
             if compact {
-                // Landscape: vertical controls
-                VStack(spacing: 8) {
+                // Keep actions beside the board without displacing digit entry.
+                HStack(spacing: 8) {
                     controlButtons
-                    modeToggle
                 }
+                modeToggle
             } else {
                 // Portrait: horizontal controls
                 HStack(spacing: 16) {
@@ -421,6 +329,8 @@ struct GameView: View {
                 Image(systemName: "arrow.uturn.backward")
             }
             .disabled(!game.canUndo)
+            .accessibilityLabel("Undo")
+            .accessibilityIdentifier("Undo")
 
             Button {
                 game.redo()
@@ -429,6 +339,8 @@ struct GameView: View {
                 Image(systemName: "arrow.uturn.forward")
             }
             .disabled(!game.canRedo)
+            .accessibilityLabel("Redo")
+            .accessibilityIdentifier("Redo")
 
             Button {
                 game.clearSelectedCell()
@@ -436,6 +348,8 @@ struct GameView: View {
             } label: {
                 Image(systemName: "delete.left")
             }
+            .accessibilityLabel("Erase cell")
+            .accessibilityIdentifier("EraseCell")
 
             // Fill/Clear Notes button
             Menu {
@@ -464,6 +378,7 @@ struct GameView: View {
             } label: {
                 Image(systemName: "note.text")
             }
+            .accessibilityLabel("Manage notes")
 
             Button {
                 game.getHint()
@@ -471,6 +386,8 @@ struct GameView: View {
             } label: {
                 Image(systemName: game.currentHint != nil ? "lightbulb.fill" : "lightbulb")
             }
+            .accessibilityLabel(game.currentHint == nil ? "Hint" : "Hint details")
+            .accessibilityIdentifier("Hint")
 
             // Check Solution button (only when not showing errors immediately)
             if !gameManager.settings.showErrorsImmediately {
@@ -479,6 +396,8 @@ struct GameView: View {
                 } label: {
                     Image(systemName: "checkmark.circle")
                 }
+                .accessibilityLabel("Check solution")
+                .accessibilityIdentifier("CheckSolution")
             }
 
             Button {
@@ -486,6 +405,8 @@ struct GameView: View {
             } label: {
                 Image(systemName: "pause")
             }
+            .accessibilityLabel("Pause")
+            .accessibilityIdentifier("Pause")
         }
         .font(.body)
         .imageScale(.medium)
@@ -506,19 +427,184 @@ struct GameView: View {
         }
         .buttonStyle(.bordered)
         .tint(game.inputMode == .candidate ? .orange : nil)
+        .accessibilityLabel("Notes")
+        .accessibilityValue(game.inputMode == .candidate ? "On" : "Off")
+        .accessibilityIdentifier("NotesMode")
     }
 
     // MARK: - Haptics
 
     private func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
-        guard gameManager.settings.hapticsEnabled else { return }
-        UIImpactFeedbackGenerator(style: style).impactOccurred()
+        presentation.hapticFeedback(style, enabled: gameManager.settings.hapticsEnabled)
     }
 
-    /// Smooth success haptic for segment (row/col/box) completion — distinct from the error double-buzz
-    private func successHaptic() {
-        guard gameManager.settings.hapticsEnabled else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+}
+
+/// Transient gameplay effects have one owner so leaving a game cancels pending work.
+@MainActor
+final class GamePresentation: ObservableObject {
+    struct Effects {
+        var sleep: @MainActor (TimeInterval) async throws -> Void = { seconds in
+            try await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
+        }
+        var impact: @MainActor (UIImpactFeedbackGenerator.FeedbackStyle) -> Void = {
+            UIImpactFeedbackGenerator(style: $0).impactOccurred()
+        }
+        var notification: @MainActor (UINotificationFeedbackGenerator.FeedbackType) -> Void = {
+            UINotificationFeedbackGenerator().notificationOccurred($0)
+        }
+        var unlockKonami: @MainActor () -> Void = { GameCenterManager.shared.unlockKonamiAchievement() }
+        var chooseMessage: ([String]) -> String = { $0.randomElement() ?? "You did it!" }
+    }
+
+    let konamiDetector = KonamiCodeDetector()
+    @Published var showingKonamiAlert = false
+    @Published var konamiMessage = ""
+    @Published var celebrationText = ""
+    @Published var showCelebration = false
+    @Published var heartShake = false
+    @Published var showingCheckResult = false
+    @Published var showingShareSheet = false
+    @Published var showCompletionOverlay = false
+    #if DEBUG
+    @Published var showingDebugMenu = false
+    #endif
+    var lastMistakeCount = 0
+    private let effects: Effects
+    private var konamiObservation: AnyCancellable?
+    private enum PendingEffect { case celebration, completion, mistake, check }
+    private var pending: [PendingEffect: Task<Void, Never>] = [:]
+
+    init(effects: Effects = Effects()) {
+        self.effects = effects
+        konamiObservation = konamiDetector.objectWillChange.sink { [weak self] in
+            self?.objectWillChange.send()
+        }
+    }
+
+    deinit { pending.values.forEach { $0.cancel() } }
+
+    @discardableResult
+    private func schedule(_ effect: PendingEffect, after seconds: TimeInterval,
+                          action: @escaping @MainActor (GamePresentation) -> Void) -> Task<Void, Never> {
+        pending[effect]?.cancel()
+        let sleep = effects.sleep
+        let task = Task { [weak self] in
+            do { try await sleep(seconds) } catch { return }
+            guard !Task.isCancelled, let self else { return }
+            action(self)
+            self.pending[effect] = nil
+        }
+        pending[effect] = task
+        return task
+    }
+
+    func cancelPendingEffects() {
+        pending.values.forEach { $0.cancel() }
+        pending.removeAll()
+        showCelebration = false
+        showCompletionOverlay = false
+        showingCheckResult = false
+        heartShake = false
+    }
+
+    @discardableResult
+    func revealCompletion() -> Task<Void, Never> {
+        schedule(.completion, after: 1.5) { state in
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { state.showCompletionOverlay = true }
+        }
+    }
+
+    @discardableResult
+    func handleCelebration(_ event: CelebrationEvent, game: GameViewModel, manager: GameManager) -> Task<Void, Never>? {
+        guard manager.settings.celebrationsEnabled else { game.clearCelebration(); return nil }
+        switch event {
+        case .rowComplete(let row, let sequential):
+            game.triggerRowCelebration(row)
+            successHaptic(enabled: manager.settings.hapticsEnabled)
+            if sequential { manager.statistics.recordSequentialCompletion() }
+            game.clearCelebration()
+            return nil
+        case .columnComplete(let col, let sequential):
+            game.triggerColumnCelebration(col)
+            successHaptic(enabled: manager.settings.hapticsEnabled)
+            if sequential { manager.statistics.recordSequentialCompletion() }
+            game.clearCelebration()
+            return nil
+        case .boxComplete(let box, let sequential):
+            game.triggerBoxCelebration(box)
+            successHaptic(enabled: manager.settings.hapticsEnabled)
+            if sequential { manager.statistics.recordSequentialCompletion() }
+            game.clearCelebration()
+            return nil
+        case .cellComplete:
+            game.clearCelebration()
+            return nil
+        case .gameComplete:
+            celebrationText = "🏆 PUZZLE SOLVED! 🏆"
+        }
+        hapticFeedback(.medium, enabled: manager.settings.hapticsEnabled)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { showCelebration = true }
+        return schedule(.celebration, after: 1.2) { state in
+            withAnimation(.easeOut(duration: 0.3)) { state.showCelebration = false }
+            game.clearCelebration()
+        }
+    }
+
+    @discardableResult
+    func checkSolution(game: GameViewModel, manager: GameManager) -> Task<Void, Never> {
+        showingCheckResult = true
+        if game.mistakes > 0 { triggerMistakeFeedback(enabled: manager.settings.hapticsEnabled) }
+        else { hapticFeedback(.medium, enabled: manager.settings.hapticsEnabled) }
+        return schedule(.check, after: 2) { $0.showingCheckResult = false }
+    }
+
+    func updateMistakes(_ count: Int, manager: GameManager) {
+        if count > lastMistakeCount && manager.settings.showErrorsImmediately {
+            triggerMistakeFeedback(enabled: manager.settings.hapticsEnabled)
+        }
+        lastMistakeCount = count
+    }
+
+    @discardableResult
+    func triggerMistakeFeedback(enabled: Bool) -> Task<Void, Never> {
+        if enabled { effects.notification(.error) }
+        withAnimation(.easeInOut(duration: 0.1)) { heartShake = true }
+        return schedule(.mistake, after: 0.5) { state in
+            withAnimation { state.heartShake = false }
+        }
+    }
+
+    func triggerKonamiEasterEgg(manager: GameManager) {
+        if manager.statistics.easterEggUnlocked {
+            konamiMessage = effects.chooseMessage([
+                "🚀 +30 extra lives! (Just kidding, you only had 3)",
+                "🎯 God mode activated! (Your mistakes still count though)",
+                "🧠 IQ temporarily boosted to 9000!",
+                "🎮 You found the secret! Here's a virtual high-five: 🖐️",
+                "🔮 The puzzle whispers its secrets to you...",
+                "⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️ - A true gamer!",
+                "🏆 Achievement Unlocked: Nostalgia Master",
+                "🎪 Circus mode engaged! 🤹‍♂️ (Nothing changed, but imagine it did)"
+            ])
+        } else {
+            manager.unlockEasterEgg()
+            konamiMessage = "🔓 SECRET UNLOCKED!\n\nMaster & Extreme difficulties are now available!\n\n⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️🅱️🅰️"
+        }
+        showingKonamiAlert = true
+        hapticFeedback(.heavy, enabled: manager.settings.hapticsEnabled)
+        effects.unlockKonami()
+    }
+
+    func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle, enabled: Bool) {
+        guard enabled else { return }
+        effects.impact(style)
+    }
+
+    func successHaptic(enabled: Bool) {
+        guard enabled else { return }
+        effects.notification(.success)
     }
 }
 
@@ -556,6 +642,7 @@ struct HintPanelView: View {
                 }
             }
             Text(hint.explanation)
+                .accessibilityIdentifier("HintExplanation")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(isExpanded ? nil : 3)

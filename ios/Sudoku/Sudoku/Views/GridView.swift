@@ -35,8 +35,7 @@ struct GridView: View {
                                 highlightedNumber: game.selectedValue,
                                 size: cellSize
                             )
-                            .modifier(WiggleModifier(
-                                isCelebrating: game.celebratingCells.contains("\(row)-\(col)"),
+                            .modifier(WiggleEffect(
                                 progress: wiggleProgress["\(row)-\(col)"] ?? 0
                             ))
                             .contentShape(Rectangle())
@@ -49,6 +48,15 @@ struct GridView: View {
                                 game.selectCell(row: row, col: col)
                                 game.enterTemporaryNoteMode()
                                 hapticFeedback(.medium)
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Row \(row + 1), column \(col + 1)")
+                            .accessibilityValue(game.cells[row][col].accessibilityValue(showErrors: forceShowErrors || gameManager.settings.showErrorsImmediately))
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAddTraits(game.selectedCell?.row == row && game.selectedCell?.col == col ? .isSelected : [])
+                            .accessibilityIdentifier("Cell_\(row)_\(col)")
+                            .accessibilityAction {
+                                game.selectCell(row: row, col: col)
                             }
                         }
                     }
@@ -66,13 +74,12 @@ struct GridView: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        .accessibilityIdentifier("SudokuGrid")
         .onChange(of: game.celebratingCells) { newCells in
-            // Start wiggle animation for newly celebrating cells
+            // Advance one cycle. Resetting to zero and one in the same render
+            // transaction is coalesced by SwiftUI, suppressing later wiggles.
             for cellKey in newCells {
-                wiggleProgress[cellKey] = 0
                 withAnimation(.easeOut(duration: 0.5)) {
-                    wiggleProgress[cellKey] = 1
+                    wiggleProgress[cellKey, default: 0] += 1
                 }
             }
         }
@@ -84,17 +91,7 @@ struct GridView: View {
     }
 }
 
-// MARK: - Wiggle Modifier
-
-struct WiggleModifier: ViewModifier {
-    let isCelebrating: Bool
-    let progress: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .modifier(WiggleEffect(progress: isCelebrating ? progress : 0))
-    }
-}
+// MARK: - Wiggle Effect
 
 struct WiggleEffect: GeometryEffect {
     var progress: CGFloat
@@ -105,7 +102,8 @@ struct WiggleEffect: GeometryEffect {
     }
 
     func effectValue(size: CGSize) -> ProjectionTransform {
-        let scale = 1.0 + sin(progress * .pi) * 0.08 * (1 - progress)
+        let phase = progress - progress.rounded(.down)
+        let scale = 1.0 + sin(phase * .pi) * 0.08 * (1 - phase)
         let offsetX = size.width / 2 * (1 - scale)
         let offsetY = size.height / 2 * (1 - scale)
         return ProjectionTransform(

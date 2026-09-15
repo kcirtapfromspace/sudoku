@@ -55,3 +55,6 @@ ios/Sudoku/Gemfile.lock
 # Planning
 plan-*.md
 **/plan-*.md
+
+# Python coverage collector cache
+__pycache__/

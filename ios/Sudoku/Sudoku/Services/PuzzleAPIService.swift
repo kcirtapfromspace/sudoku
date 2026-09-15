@@ -6,26 +6,31 @@ actor PuzzleAPIService {
     static let shared = PuzzleAPIService()
 
     private let session: URLSession
+    private let defaults: UserDefaults
+    private let bundleAPIKey: String?
 
     /// Base URL for the API. Override via UserDefaults key "api_base_url" for testing.
-    private var endpointURL: URL {
-        let base = UserDefaults.standard.string(forKey: "api_base_url")
+    private var endpointURL: URL? {
+        let base = defaults.string(forKey: "api_base_url")
             ?? "https://ukodus.now"
-        return URL(string: "\(base)/api/v1/internal/puzzles/undiscovered")!
+        return URL(string: "\(base)/api/v1/internal/puzzles/undiscovered")
     }
 
     /// API key for the mining endpoints. Set via MINING_API_KEY in the build environment
     /// or override at runtime via UserDefaults key "mining_api_key".
     private var apiKey: String? {
-        UserDefaults.standard.string(forKey: "mining_api_key")
-            ?? Bundle.main.infoDictionary?["MINING_API_KEY"] as? String
+        defaults.string(forKey: "mining_api_key")
+            ?? bundleAPIKey
     }
 
-    private init() {
+    init(session: URLSession? = nil, defaults: UserDefaults = .standard,
+         bundleAPIKey: String? = Bundle.main.infoDictionary?["MINING_API_KEY"] as? String) {
+        self.defaults = defaults
+        self.bundleAPIKey = bundleAPIKey
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 8
         config.waitsForConnectivity = false
-        self.session = URLSession(configuration: config)
+        self.session = session ?? URLSession(configuration: config)
     }
 
     /// Difficulties eligible for API-fetched puzzles
@@ -41,7 +46,9 @@ actor PuzzleAPIService {
             return nil
         }
 
-        var components = URLComponents(url: endpointURL, resolvingAgainstBaseURL: false)!
+        guard let endpointURL,
+              var components = URLComponents(url: endpointURL, resolvingAgainstBaseURL: false),
+              ["https", "http"].contains(components.scheme), components.host != nil else { return nil }
         components.queryItems = [URLQueryItem(name: "difficulty", value: difficulty.rawValue)]
 
         guard let url = components.url else { return nil }

@@ -28,11 +28,51 @@ struct OCRResult {
 
 /// On-device OCR service for recognizing Sudoku puzzles from photos.
 /// Uses Apple Vision framework for grid detection and text recognition.
-final class PuzzleOCRService {
+// Configuration is immutable; async recognition uses one serial queue and
+// CIContext supports concurrent rendering. Injected recognizers must likewise
+// be safe to call from the OCR queue.
+final class PuzzleOCRService: @unchecked Sendable {
 
     /// Minimum confidence threshold to accept a digit recognition
     private static let confidenceThreshold: Float = 0.5
     private let ciContext = CIContext()
+
+    struct RecognizedText {
+        let text: String
+        let confidence: Float
+    }
+
+    typealias RecognizeText = (CIImage, VNRequestTextRecognitionLevel, [String]) throws -> RecognizedText?
+    typealias DetectRectangles = (CIImage, Float) throws -> [VNRectangleObservation]
+    private let recognizeText: RecognizeText
+    private let detectRectangles: DetectRectangles
+
+    init(recognizeText: @escaping RecognizeText = PuzzleOCRService.visionText,
+         detectRectangles: @escaping DetectRectangles = PuzzleOCRService.visionRectangles) {
+        self.recognizeText = recognizeText
+        self.detectRectangles = detectRectangles
+    }
+
+    static func visionText(_ image: CIImage, _ level: VNRequestTextRecognitionLevel, _ words: [String]) throws -> RecognizedText? {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = level
+        request.usesLanguageCorrection = false
+        request.customWords = words
+        try VNImageRequestHandler(ciImage: image, options: [:]).perform([request])
+        guard let candidate = request.results?.first?.topCandidates(1).first else { return nil }
+        return RecognizedText(text: candidate.string, confidence: candidate.confidence)
+    }
+
+    static func visionRectangles(_ image: CIImage, _ confidence: Float) throws -> [VNRectangleObservation] {
+        let request = VNDetectRectanglesRequest()
+        request.minimumAspectRatio = 0.7
+        request.maximumAspectRatio = 1.3
+        request.minimumSize = 0.15
+        request.maximumObservations = 10
+        request.minimumConfidence = confidence
+        try VNImageRequestHandler(ciImage: image, options: [:]).perform([request])
+        return request.results ?? []
+    }
 
     /// Serial queue for heavy Vision work — keeps it off the cooperative thread pool
     /// to avoid deadlocking Swift concurrency.
@@ -59,7 +99,7 @@ final class PuzzleOCRService {
     }
 
     /// Synchronous OCR pipeline — must be called off the main thread.
-    private func recognizePuzzleSync(ciImage: CIImage) throws -> OCRResult {
+    func recognizePuzzleSync(ciImage: CIImage) throws -> OCRResult {
         // Step 1: Detect the grid rectangle
         let gridRect = try detectGridSync(in: ciImage)
 
@@ -91,7 +131,7 @@ final class PuzzleOCRService {
 
     // MARK: - Step 1: Grid Detection
 
-    private func detectGridSync(in image: CIImage) throws -> VNRectangleObservation {
+    func detectGridSync(in image: CIImage) throws -> VNRectangleObservation {
         // Primary attempt
         if let result = try detectGridPrimary(in: image) {
             return result
@@ -106,20 +146,9 @@ final class PuzzleOCRService {
         throw OCRError.noGridFound
     }
 
-    private func detectGridPrimary(in image: CIImage) throws -> VNRectangleObservation? {
-        let request = VNDetectRectanglesRequest()
-        request.minimumAspectRatio = 0.7
-        request.maximumAspectRatio = 1.3
-        request.minimumSize = 0.15
-        request.maximumObservations = 10
-        request.minimumConfidence = 0.4
-
-        let handler = VNImageRequestHandler(ciImage: image, options: [:])
-        try handler.perform([request])
-
-        guard let results = request.results, !results.isEmpty else {
-            return nil
-        }
+    func detectGridPrimary(in image: CIImage) throws -> VNRectangleObservation? {
+        let results = try detectRectangles(image, 0.4)
+        guard !results.isEmpty else { return nil }
 
         let minimumGridScore: Float = 0.25
         var bestRect: VNRectangleObservation?
@@ -142,7 +171,7 @@ final class PuzzleOCRService {
     }
 
     /// Pre-process image to enhance thin grid lines for screen photos
-    private func enhanceForGridDetection(_ image: CIImage) -> CIImage {
+    func enhanceForGridDetection(_ image: CIImage) -> CIImage {
         // Boost contrast
         let contrast = CIFilter.colorControls()
         contrast.inputImage = image
@@ -161,20 +190,9 @@ final class PuzzleOCRService {
         return sharpen.outputImage ?? contrasted
     }
 
-    private func detectGridEnhanced(in enhanced: CIImage, originalImage: CIImage) throws -> VNRectangleObservation? {
-        let request = VNDetectRectanglesRequest()
-        request.minimumAspectRatio = 0.7
-        request.maximumAspectRatio = 1.3
-        request.minimumSize = 0.15
-        request.maximumObservations = 10
-        request.minimumConfidence = 0.3
-
-        let handler = VNImageRequestHandler(ciImage: enhanced, options: [:])
-        try handler.perform([request])
-
-        guard let results = request.results, !results.isEmpty else {
-            return nil
-        }
+    func detectGridEnhanced(in enhanced: CIImage, originalImage: CIImage) throws -> VNRectangleObservation? {
+        let results = try detectRectangles(enhanced, 0.3)
+        guard !results.isEmpty else { return nil }
 
         // Score against the original image for more accurate structure verification
         let minimumGridScore: Float = 0.25
@@ -196,7 +214,7 @@ final class PuzzleOCRService {
         return results.max(by: { area(of: $0) < area(of: $1) })
     }
 
-    private func area(of rect: VNRectangleObservation) -> CGFloat {
+    func area(of rect: VNRectangleObservation) -> CGFloat {
         let w = hypot(rect.topRight.x - rect.topLeft.x, rect.topRight.y - rect.topLeft.y)
         let h = hypot(rect.bottomLeft.x - rect.topLeft.x, rect.bottomLeft.y - rect.topLeft.y)
         return w * h
@@ -225,7 +243,10 @@ final class PuzzleOCRService {
         let translated = corrected.transformed(by: CGAffineTransform(translationX: -ext.origin.x, y: -ext.origin.y))
         let scaled = translated.transformed(by: CGAffineTransform(scaleX: CGFloat(sz) / ext.width, y: CGFloat(sz) / ext.height))
 
-        guard let cgImage = context.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
+        // Sampling below reads individual 8-bit RGB channels; filters can otherwise
+        // produce half-float images whose bytes are not channel intensities.
+        guard let cgImage = context.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz),
+                                                format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB()),
               let dp = cgImage.dataProvider,
               let data = dp.data,
               let ptr = CFDataGetBytePtr(data) else { return 0 }
@@ -274,7 +295,7 @@ final class PuzzleOCRService {
 
     // MARK: - Step 2: Perspective Correction
 
-    private func perspectiveCorrect(_ image: CIImage, to rect: VNRectangleObservation) throws -> CIImage {
+    func perspectiveCorrect(_ image: CIImage, to rect: VNRectangleObservation) throws -> CIImage {
         let imageSize = image.extent.size
 
         // Convert normalized Vision coordinates to image coordinates
@@ -298,7 +319,7 @@ final class PuzzleOCRService {
 
     // MARK: - Step 3: Cell Extraction
 
-    private func extractCells(from image: CIImage, insetFraction: CGFloat) -> [CIImage] {
+    func extractCells(from image: CIImage, insetFraction: CGFloat) -> [CIImage] {
         let extent = image.extent
         let cellW = extent.width / 9.0
         let cellH = extent.height / 9.0
@@ -322,7 +343,14 @@ final class PuzzleOCRService {
                     height: cellH - 2 * insetY
                 )
 
-                let cropped = image.cropped(to: cellRect)
+                // Fractional crop edges create transparent corner pixels when rendered.
+                // Color classification samples the corners as the paper background, so
+                // keep the crop inside whole pixels to avoid treating that alpha as ink.
+                let left = ceil(cellRect.minX), bottom = ceil(cellRect.minY)
+                let pixelRect = CGRect(x: left, y: bottom,
+                                       width: max(0, floor(cellRect.maxX) - left),
+                                       height: max(0, floor(cellRect.maxY) - bottom))
+                let cropped = image.cropped(to: pixelRect)
                 cells.append(cropped)
             }
         }
@@ -332,7 +360,7 @@ final class PuzzleOCRService {
 
     // MARK: - Step 4: Digit Recognition + Color Classification
 
-    private func recognizeDigits(in centerCells: [CIImage], fullCellImages: [CIImage]) throws -> [CellOCRResult] {
+    func recognizeDigits(in centerCells: [CIImage], fullCellImages: [CIImage]) throws -> [CellOCRResult] {
         var results: [CellOCRResult] = []
         results.reserveCapacity(81)
 
@@ -363,30 +391,16 @@ final class PuzzleOCRService {
         return results
     }
 
-    private struct RawDigitResult {
+    struct RawDigitResult {
         let digit: Int
         let confidence: Float
     }
 
-    private func recognizeSingleDigit(in cellImage: CIImage, level: VNRequestTextRecognitionLevel) throws -> RawDigitResult {
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = level
-        request.usesLanguageCorrection = false
-        request.customWords = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-        let handler = VNImageRequestHandler(ciImage: cellImage, options: [:])
-        try handler.perform([request])
-
-        guard let results = request.results, !results.isEmpty else {
+    func recognizeSingleDigit(in cellImage: CIImage, level: VNRequestTextRecognitionLevel) throws -> RawDigitResult {
+        guard let candidate = try recognizeText(cellImage, level, ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) else {
             return RawDigitResult(digit: 0, confidence: 1.0)
         }
-
-        let top = results[0]
-        guard let candidate = top.topCandidates(1).first else {
-            return RawDigitResult(digit: 0, confidence: 1.0)
-        }
-
-        let text = candidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = candidate.text.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if text.count == 1, let digit = Int(text), (1...9).contains(digit) {
             return RawDigitResult(digit: digit, confidence: candidate.confidence)
@@ -399,7 +413,7 @@ final class PuzzleOCRService {
 
     /// Classify a cell as given (black text) or player-filled (colored text) by
     /// sampling the average HSB saturation of foreground pixels.
-    private func classifyCell(_ cellImage: CIImage) -> CellClassification {
+    func classifyCell(_ cellImage: CIImage) -> CellClassification {
         let sz = 40
         let ext = cellImage.extent
         guard ext.width > 0, ext.height > 0 else { return .ambiguous }
@@ -407,7 +421,8 @@ final class PuzzleOCRService {
         let translated = cellImage.transformed(by: CGAffineTransform(translationX: -ext.origin.x, y: -ext.origin.y))
         let scaled = translated.transformed(by: CGAffineTransform(scaleX: CGFloat(sz) / ext.width, y: CGFloat(sz) / ext.height))
 
-        guard let cgImage = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
+        guard let cgImage = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz),
+                                                format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB()),
               let dp = cgImage.dataProvider,
               let data = dp.data,
               let ptr = CFDataGetBytePtr(data) else { return .ambiguous }
@@ -466,7 +481,7 @@ final class PuzzleOCRService {
 
     /// For cells where digit == 0, attempt to detect pencil marks by dividing the
     /// cell into a 3x3 sub-grid and running OCR on each sub-region.
-    private func detectNotes(digitResults: [CellOCRResult], fullCells: [CIImage]) throws -> [CellOCRResult] {
+    func detectNotes(digitResults: [CellOCRResult], fullCells: [CIImage]) throws -> [CellOCRResult] {
         var results = digitResults
 
         // Collect indices of empty cells that need notes detection
@@ -503,7 +518,7 @@ final class PuzzleOCRService {
     /// [1][2][3]
     /// [4][5][6]
     /// [7][8][9]
-    private func detectNotesInCell(_ cellImage: CIImage) throws -> Set<Int> {
+    func detectNotesInCell(_ cellImage: CIImage) throws -> Set<Int> {
         let ext = cellImage.extent
         guard ext.width > 10, ext.height > 10 else { return [] }
 
@@ -529,18 +544,8 @@ final class PuzzleOCRService {
                 // Skip sub-regions with low pixel variance (obviously empty)
                 if !hasSignificantContent(subImage) { continue }
 
-                let request = VNRecognizeTextRequest()
-                request.recognitionLevel = .fast
-                request.usesLanguageCorrection = false
-                request.customWords = ["\(expectedDigit)"]
-
-                let handler = VNImageRequestHandler(ciImage: subImage, options: [:])
-                try handler.perform([request])
-
-                if let results = request.results,
-                   let top = results.first,
-                   let candidate = top.topCandidates(1).first {
-                    let text = candidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let candidate = try recognizeText(subImage, .fast, ["\(expectedDigit)"]) {
+                    let text = candidate.text.trimmingCharacters(in: .whitespacesAndNewlines)
                     if text == "\(expectedDigit)" && candidate.confidence > 0.3 {
                         foundNotes.insert(expectedDigit)
                     }
@@ -553,7 +558,7 @@ final class PuzzleOCRService {
     }
 
     /// Quick check if a sub-region has enough pixel variance to contain text.
-    private func hasSignificantContent(_ image: CIImage) -> Bool {
+    func hasSignificantContent(_ image: CIImage) -> Bool {
         let sz = 20
         let ext = image.extent
         guard ext.width > 0, ext.height > 0 else { return false }
@@ -561,7 +566,8 @@ final class PuzzleOCRService {
         let translated = image.transformed(by: CGAffineTransform(translationX: -ext.origin.x, y: -ext.origin.y))
         let scaled = translated.transformed(by: CGAffineTransform(scaleX: CGFloat(sz) / ext.width, y: CGFloat(sz) / ext.height))
 
-        guard let cgImage = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz)),
+        guard let cgImage = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: sz, height: sz),
+                                                format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB()),
               let dp = cgImage.dataProvider,
               let data = dp.data,
               let ptr = CFDataGetBytePtr(data) else { return false }
