@@ -6,7 +6,6 @@ on:
     paths:
       - 'ios/**'
       - 'crates/sudoku-ffi/**'
-      - 'crates/sudoku-core/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/build-ios.yml'
@@ -15,7 +14,6 @@ on:
     paths:
       - 'ios/**'
       - 'crates/sudoku-ffi/**'
-      - 'crates/sudoku-core/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/build-ios.yml'
@@ -26,6 +24,10 @@ on:
         required: false
         default: false
         type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   SCHEME: Sudoku
@@ -46,15 +48,9 @@ jobs:
         uses: dtolnay/rust-toolchain@1.95.0
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry/
-            ~/.cargo/git/
-            target/
-          key: ${{ runner.os }}-${{ runner.arch }}-ios-test-rust-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-ios-test-rust-
+          shared-key: ios
 
       - name: Cache SPM packages
         uses: actions/cache@v4
@@ -74,6 +70,9 @@ jobs:
         run: brew install xcodegen
 
       - name: Test all iOS suites and enforce production coverage
+        env:
+          SUDOKU_CI_REUSE_SIM: '1'
+          SUDOKU_CI_PARALLEL_TESTS: '1'
         run: ./ios/scripts/test-coverage.sh
 
       - name: Upload test results and coverage, including failures
@@ -93,7 +92,7 @@ jobs:
   # Generate changelog from recent commits
   changelog:
     name: Generate Changelog
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy_testflight)
     outputs:
       text: ${{ steps.log.outputs.changelog }}
@@ -132,19 +131,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Rust artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-ios-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-ios-
-
       - name: Cache DerivedData
         uses: actions/cache@v4
         with:
@@ -167,6 +153,11 @@ jobs:
         uses: dtolnay/rust-toolchain@1.95.0
         with:
           targets: aarch64-apple-ios
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ios
 
       - name: Build Rust library for iOS
         working-directory: .

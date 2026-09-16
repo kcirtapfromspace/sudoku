@@ -24,6 +24,18 @@ Thumbs.db
 *.xcodeproj/
 *.xcworkspace/
 xcshareddata/
+# Track the SPM pin file so CI can key its package cache on it. Each parent
+# directory must be un-ignored (with its other contents re-ignored) because git
+# never descends into a directory that is itself excluded.
+!ios/Sudoku/Sudoku.xcodeproj/
+ios/Sudoku/Sudoku.xcodeproj/*
+!ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/
+ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/*
+!ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/xcshareddata/
+ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/xcshareddata/*
+!ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!ios/Sudoku/Sudoku.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 *.gcno
 *.xcscmblueprint
 *.xccheckout
