@@ -45,12 +45,16 @@ struct QRCodeView: View {
                     Label("Share Code", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                 }
+                .simultaneousGesture(TapGesture().onEnded {
+                    PostHogService.shared.capturePuzzleShared(shortCode: shortCode)
+                })
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .padding(.horizontal, 40)
 
                 Button {
                     UIPasteboard.general.string = shareUrl
+                    PostHogService.shared.capturePuzzleShared(shortCode: shortCode)
                 } label: {
                     Label("Copy Code", systemImage: "doc.on.doc")
                         .frame(maxWidth: .infinity)
@@ -60,6 +64,9 @@ struct QRCodeView: View {
                 .padding(.horizontal, 40)
             }
             .padding()
+            .onAppear {
+                PostHogService.shared.screen(name: "share_puzzle")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

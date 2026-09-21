@@ -111,6 +111,9 @@ struct StatsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .onAppear {
+                PostHogService.shared.screen(name: "statistics")
+            }
         }
     }
 

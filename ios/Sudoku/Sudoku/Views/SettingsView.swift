@@ -116,6 +116,12 @@ struct SettingsForm: View {
         } message: {
             Text("This will permanently delete the statistics stored on this device. Game Center leaderboard entries will remain.")
         }
+        .onAppear {
+            PostHogService.shared.screen(name: "settings")
+        }
+        .onChange(of: gameManager.settings.theme) { newTheme in
+            PostHogService.shared.captureThemeChanged(theme: newTheme.rawValue)
+        }
     }
 }
 

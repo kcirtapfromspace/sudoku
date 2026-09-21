@@ -103,7 +103,7 @@ If you enable iCloud sync:
 
 ## Third-Party Services
 
-Beyond Apple Game Center and iCloud (both opt-in on iOS), the App does not integrate with any third-party analytics, advertising, or tracking services.
+Beyond Apple Game Center and iCloud (both opt-in on iOS), the App integrates with PostHog for anonymous puzzle difficulty calibration, solve rates, and gameplay telemetry. All events are associated solely with an anonymous random identifier and do not contain personal information, tracking across external apps, or advertising identifiers.
 
 ## Children's Privacy
 

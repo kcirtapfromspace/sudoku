@@ -73,5 +73,9 @@
     <string>Take a photo of a Sudoku puzzle to import and play it, or scan QR codes for shared puzzles.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Select a photo of a Sudoku puzzle to import and play it.</string>
+    <key>PostHogApiKey</key>
+    <string>$(POSTHOG_API_KEY)</string>
+    <key>PostHogHost</key>
+    <string>$(POSTHOG_HOST)</string>
 </dict>
 </plist>

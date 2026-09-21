@@ -36,6 +36,7 @@ struct UnifiedImportView: View {
             if let image = presentation.capturedImage {
                 PuzzleConfirmationView(image: image) { importData in
                     dismiss()
+                    PostHogService.shared.capture(event: "puzzle_imported", properties: ["source": "camera"])
                     onImportComplete(importData)
                 }
             } else if presentation.cameraUnavailable {
@@ -47,7 +48,10 @@ struct UnifiedImportView: View {
         .animation(.easeInOut(duration: 0.3), value: presentation.errorMessage != nil)
         .animation(.easeInOut(duration: 0.3), value: presentation.qrDetected)
         .animation(.easeInOut(duration: 0.3), value: presentation.gridTracking)
-        .onAppear { presentation.activate() }
+        .onAppear {
+            presentation.activate()
+            PostHogService.shared.screen(name: "import_puzzle")
+        }
         .onDisappear { presentation.deactivate() }
         .sheet(isPresented: $presentation.showingPhotoLibrary) {
             CameraCaptureView(sourceType: .photoLibrary) { image in

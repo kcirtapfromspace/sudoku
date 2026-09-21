@@ -23,6 +23,7 @@
 		2C6528C1F6B245F937841280 /* GridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C655A4BF5C47359EC66D564 /* GridView.swift */; };
 		2E54FCBBD232B8058DDB5E50 /* PuzzleAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EB72FC1E191D58BD05A52C2 /* PuzzleAPIService.swift */; };
 		35DA863CF42C3FE1AF5A74A9 /* PuzzleAPIAndCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A5270BADD03720B4D9C061 /* PuzzleAPIAndCacheTests.swift */; };
+		3A6D3ED56990DB1B96941B3E /* PostHogServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7F87F654085B74B96C350E /* PostHogServiceTests.swift */; };
 		40D6FDCEFB5B288FFFBA238E /* TelemetryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E182D48569A68DAB597096CB /* TelemetryServiceTests.swift */; };
 		42ECC73F3F15C9A2C21A201A /* GameManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F1A00416E00D459B8B96AC /* GameManagerTests.swift */; };
 		49D456614551D8F05F178D93 /* GridPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B89419314789A18341CB0F /* GridPresentationTests.swift */; };
@@ -50,6 +51,7 @@
 		AB97975A72144224CD906808 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3B899CF657A96412F1220E34 /* PrivacyInfo.xcprivacy */; };
 		B37FD2D1499C45FFC14B4498 /* PuzzleOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A1440F516DF4C90A8D92B5 /* PuzzleOCRService.swift */; };
 		B463F4C229827901EA86A192 /* SudokuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE1F7E4A124E1E6523353A9A /* SudokuApp.swift */; };
+		B65A371ABA4D8FEA45AD3C7E /* PostHogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0AC203BE44C25843D1D750 /* PostHogService.swift */; };
 		B75D7EAC0621000267989D78 /* NewGameSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C6866611FB956663512B34 /* NewGameSelection.swift */; };
 		B89172F837E42E6D7D360BBD /* CellAccessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7640EAE8BC46ED36D9353016 /* CellAccessibility.swift */; };
 		B99C366A95303857F1451367 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736AF9623BB91E6B9ED3CBD2 /* GameViewModel.swift */; };
@@ -98,6 +100,7 @@
 		3B899CF657A96412F1220E34 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3C888EF30EC69E5CCD23F685 /* SudokuEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SudokuEngine.swift; sourceTree = "<group>"; };
 		3D9B40B0AA0ADF931BA2211A /* ContentNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentNavigationTests.swift; sourceTree = "<group>"; };
+		3F0AC203BE44C25843D1D750 /* PostHogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostHogService.swift; sourceTree = "<group>"; };
 		44DD73914C37CA163E8E15C2 /* ConsolidatedMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolidatedMenuTests.swift; sourceTree = "<group>"; };
 		4689931FD8F194CE39063F2A /* HistoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryServiceTests.swift; sourceTree = "<group>"; };
 		4996D6E89188CCEE2DDA0882 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
@@ -123,6 +126,7 @@
 		82FA2664B8FB1FC1AB78D47C /* UnifiedImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedImportView.swift; sourceTree = "<group>"; };
 		884BBAF962528512E969732E /* PuzzleConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PuzzleConfirmationView.swift; sourceTree = "<group>"; };
 		89C7EADCED9EFA430F577D76 /* SudokuTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SudokuTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A7F87F654085B74B96C350E /* PostHogServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostHogServiceTests.swift; sourceTree = "<group>"; };
 		9597B4336B8519D637205973 /* CameraControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraControllerTests.swift; sourceTree = "<group>"; };
 		96C6FAE7DAF23A9C2FCBF3D6 /* UnifiedImportViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedImportViewTests.swift; sourceTree = "<group>"; };
 		997BD907DDD5E510FC44939E /* SudokuEngineFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = SudokuEngineFFI.modulemap; sourceTree = "<group>"; };
@@ -178,6 +182,7 @@
 				4689931FD8F194CE39063F2A /* HistoryServiceTests.swift */,
 				7A98BF44C95ACF54261B6AEA /* ImportAndHistoryViewTests.swift */,
 				E80DBB727F8F82EDD8C3ABFB /* ModelTests.swift */,
+				8A7F87F654085B74B96C350E /* PostHogServiceTests.swift */,
 				32A5270BADD03720B4D9C061 /* PuzzleAPIAndCacheTests.swift */,
 				AA1DB3C162B4DB670127FFD3 /* PuzzleConfirmationTests.swift */,
 				F8E754F9C47BC28EFF2F8EC2 /* PuzzleOCRServiceTests.swift */,
@@ -252,6 +257,7 @@
 				D7B70116407782179275FE99 /* GameCenterManager.swift */,
 				4E48F51C8F39E07F64BDBCBE /* GameHistoryManager.swift */,
 				B778D4F8E525013FE40E3C47 /* GameManager.swift */,
+				3F0AC203BE44C25843D1D750 /* PostHogService.swift */,
 				9EB72FC1E191D58BD05A52C2 /* PuzzleAPIService.swift */,
 				6699671B041E2B1C69B1DE3D /* PuzzleCache.swift */,
 				60A1440F516DF4C90A8D92B5 /* PuzzleOCRService.swift */,
@@ -450,6 +456,7 @@
 				BFBA457CB2C08F4C26C322D9 /* HistoryServiceTests.swift in Sources */,
 				8D02F3182982E894B6F5C8C6 /* ImportAndHistoryViewTests.swift in Sources */,
 				FBF526E251C1D627F4DDBB2E /* ModelTests.swift in Sources */,
+				3A6D3ED56990DB1B96941B3E /* PostHogServiceTests.swift in Sources */,
 				35DA863CF42C3FE1AF5A74A9 /* PuzzleAPIAndCacheTests.swift in Sources */,
 				2695B9199357193F7F67DAD8 /* PuzzleConfirmationTests.swift in Sources */,
 				94913BA24768DC2E3DC8D61D /* PuzzleOCRServiceTests.swift in Sources */,
@@ -494,6 +501,7 @@
 				089359C4D2B805E077C674C7 /* LoseScreenView.swift in Sources */,
 				B75D7EAC0621000267989D78 /* NewGameSelection.swift in Sources */,
 				FFDAC89D9AE5F86EA0F1B996 /* NumberPadView.swift in Sources */,
+				B65A371ABA4D8FEA45AD3C7E /* PostHogService.swift in Sources */,
 				2E54FCBBD232B8058DDB5E50 /* PuzzleAPIService.swift in Sources */,
 				E3D566CB81AA0EC9502D4FAA /* PuzzleCache.swift in Sources */,
 				0D2D087A2A8F79BE2C130AAD /* PuzzleConfirmationView.swift in Sources */,
@@ -595,6 +603,8 @@
 				OTHER_LDFLAGS = (
 					"-lsudoku_ffi_sim",
 				);
+				POSTHOG_API_KEY = phc_fpR3Ys9gIknGVFxS0Wu0M7GIu0BSUZ4tyXAeCzq0ZOq;
+				POSTHOG_HOST = "https://us.i.posthog.com";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ukodus.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
@@ -673,6 +683,8 @@
 				OTHER_LDFLAGS = (
 					"-lsudoku_ffi_device",
 				);
+				POSTHOG_API_KEY = phc_fpR3Ys9gIknGVFxS0Wu0M7GIu0BSUZ4tyXAeCzq0ZOq;
+				POSTHOG_HOST = "https://us.i.posthog.com";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ukodus.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
@@ -738,7 +750,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.1.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -799,7 +811,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.1.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

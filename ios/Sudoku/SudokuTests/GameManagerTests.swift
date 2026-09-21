@@ -221,7 +221,28 @@ final class GameManagerTests: XCTestCase {
         let history = GameHistoryManager(defaults: defaults())
         let session = ServiceURLProtocol.session { request in try ServiceFixtures.response(request, status: 404) }
         let telemetry = TelemetryService(session: session, defaults: defaults())
-        let dependencies = GameManager.Dependencies.connected(cache: cache, gameCenter: center, history: history, telemetry: telemetry)
+        var posthogEvents: [String] = []
+        let posthogSession = ServiceURLProtocol.session { request in
+            if let data = request.httpBody ?? (request.httpBodyStream.flatMap { stream in
+                stream.open(); defer { stream.close() }
+                var buffer = Data(), bytes = [UInt8](repeating: 0, count: 1024)
+                while stream.hasBytesAvailable {
+                    let n = stream.read(&bytes, maxLength: bytes.count)
+                    if n <= 0 { break }
+                    buffer.append(bytes, count: n)
+                }
+                return buffer
+            }),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let batch = json["batch"] as? [[String: Any]] {
+                for item in batch {
+                    if let ev = item["event"] as? String { posthogEvents.append(ev) }
+                }
+            }
+            return try ServiceFixtures.response(request, status: 200, body: ["status": "Ok"])
+        }
+        let posthog = PostHogService(apiKey: "test_key", session: posthogSession, defaults: defaults(), isEnabled: true)
+        let dependencies = GameManager.Dependencies.connected(cache: cache, gameCenter: center, history: history, telemetry: telemetry, posthog: posthog)
         let manager = GameManager(defaults: defaults(), dependencies: dependencies)
         await manager.newGame(difficulty: .beginner).value
         XCTAssertEqual(history.stats.totalPlays, 1)
@@ -235,6 +256,9 @@ final class GameManagerTests: XCTestCase {
         XCTAssertEqual(history.getPuzzle(hash: game.puzzleHash)?.playCount, 1)
         await manager.newGameWithSE(targetSE: 1.5).value
         XCTAssertEqual(manager.gameState, .playing)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertTrue(posthogEvents.contains("game_started"))
+        XCTAssertTrue(posthogEvents.contains("game_completed"))
     }
 
     func testDemoExercisesRecordedGameFlowWithControllableTimeAndCancellation() async throws {

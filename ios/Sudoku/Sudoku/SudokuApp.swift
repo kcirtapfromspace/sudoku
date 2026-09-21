@@ -13,6 +13,8 @@ struct SudokuApp: App {
             Task(priority: .background) {
                 await PuzzleCache.shared.prefetchAll()
             }
+            PostHogService.shared.identify()
+            PostHogService.shared.capture(event: "app_launched")
         }
     }
 
@@ -23,6 +25,7 @@ struct SudokuApp: App {
                 .onChange(of: scenePhase) { newPhase in
                     if newPhase == .background || newPhase == .inactive {
                         gameManager.sceneBecameInactive()
+                        PostHogService.shared.flush()
                     } else if newPhase == .active {
                         gameManager.sceneBecameActive()
                     }

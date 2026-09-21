@@ -33,11 +33,12 @@ class GameManager: ObservableObject {
         }
 
         static var live: Dependencies {
-            connected(cache: .shared, gameCenter: .shared, history: .shared, telemetry: .shared)
+            connected(cache: .shared, gameCenter: .shared, history: .shared, telemetry: .shared, posthog: .shared)
         }
 
         static func connected(cache: PuzzleCache, gameCenter: GameCenterManager,
-                              history: GameHistoryManager, telemetry: TelemetryService) -> Dependencies {
+                              history: GameHistoryManager, telemetry: TelemetryService,
+                              posthog: PostHogService = .shared) -> Dependencies {
             Dependencies(
                 generate: { await cache.getPuzzle(difficulty: $0) },
                 generateSE: { target in
@@ -45,7 +46,11 @@ class GameManager: ObservableObject {
                 },
                 prefetch: { cache.prefetch(difficulty: $0) },
                 authenticate: { gameCenter.authenticate() },
-                recordStart: { _ = history.recordPuzzleStart(puzzleString: $0, difficulty: $1) },
+                recordStart: { puzzleString, difficulty in
+                    _ = history.recordPuzzleStart(puzzleString: puzzleString, difficulty: difficulty)
+                    let hash = canonicalPuzzleHash(puzzleString: puzzleString)
+                    _ = posthog.captureGameStarted(puzzleHash: hash, difficulty: difficulty.rawValue)
+                },
                 recordResult: { history.recordResult(puzzleHash: $0, won: $1, time: $2) },
                 submitWin: { game, statistics in
                     let center = gameCenter
@@ -55,7 +60,10 @@ class GameManager: ObservableObject {
                                              mistakes: game.mistakes, currentStreak: statistics.currentStreak,
                                              totalWins: statistics.gamesWon)
                 },
-                submitResult: { _ = telemetry.submitResult(game: $0, won: $1) }
+                submitResult: { game, won in
+                    _ = telemetry.submitResult(game: game, won: won)
+                    _ = posthog.captureGameCompleted(game: game, won: won)
+                }
             )
         }
 
@@ -97,7 +105,7 @@ class GameManager: ObservableObject {
         self.defaults = defaults
         let history = historyManager ?? .shared
         self.historyManager = history
-        self.dependencies = dependencies ?? .connected(cache: .shared, gameCenter: .shared, history: history, telemetry: .shared)
+        self.dependencies = dependencies ?? .connected(cache: .shared, gameCenter: .shared, history: history, telemetry: .shared, posthog: .shared)
         self.now = now
         self.statistics = defaults.data(forKey: statisticsKey)
             .flatMap { try? JSONDecoder().decode(GameStatistics.self, from: $0) } ?? GameStatistics()
