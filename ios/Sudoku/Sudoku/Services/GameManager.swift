@@ -120,6 +120,7 @@ class GameManager: ObservableObject {
 
     private func applyGameSettings() {
         currentGame?.configureMistakeLimit(enabled: settings.mistakeLimitEnabled, limit: settings.mistakeLimit)
+        currentGame?.configureAutoClearNotes(enabled: settings.autoClearNotes)
     }
 
     @discardableResult
@@ -158,6 +159,7 @@ class GameManager: ObservableObject {
     private func start(_ puzzle: SudokuGame, difficulty: Difficulty, imported: ImportedPuzzleData? = nil) {
         let game = GameViewModel(cachedGame: puzzle, difficulty: difficulty, now: now)
         game.configureMistakeLimit(enabled: settings.mistakeLimitEnabled, limit: settings.mistakeLimit)
+        game.configureAutoClearNotes(enabled: settings.autoClearNotes)
         if settings.autoFillCandidates && imported?.isContinuing != true {
             game.fillAllCandidates()
         } else {
@@ -317,6 +319,7 @@ class GameManager: ObservableObject {
         settings.highlightRelatedCells = true
         settings.highlightSameNumbers = true
         settings.autoFillCandidates = false // keep ghost hints visible by default
+        settings.autoClearNotes = true
         settings.celebrationsEnabled = true
         settings.showErrorsImmediately = true
         saveSettings()

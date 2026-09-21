@@ -12,7 +12,8 @@ final class SettingsViewTests: XCTestCase {
             ("Show Errors Immediately", \.showErrorsImmediately),
             ("Highlight Related Cells", \.highlightRelatedCells), ("Highlight Same Numbers", \.highlightSameNumbers),
             ("Ghost Hints", \.ghostHintsEnabled), ("Highlight Valid Cells", \.highlightValidCells),
-            ("Auto-Fill Notes on Start", \.autoFillCandidates), ("Haptic Feedback", \.hapticsEnabled),
+            ("Auto-Fill Notes on Start", \.autoFillCandidates), ("Auto-Clear Notes", \.autoClearNotes),
+            ("Haptic Feedback", \.hapticsEnabled),
             ("Celebrations", \.celebrationsEnabled), ("Camera Import", \.cameraImportEnabled)
         ]
         let view = SettingsView().environmentObject(manager)

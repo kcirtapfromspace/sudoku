@@ -402,4 +402,96 @@ final class GameplayTests: XCTestCase {
         XCTAssertGreaterThan(hint.seRating, 2)
     }
 
+    func testAutoClearNotesRemovesRowColumnBoxCandidatesAndSupportsUndo() async throws {
+        let game = try fixture()
+        XCTAssertTrue(game.autoClearNotesEnabled)
+
+        // Set up manual notes across row, column, box, and non-peer cells
+        game.inputMode = .candidate
+
+        // Cell itself
+        game.selectCell(row: 0, col: 2)
+        game.enterNumber(4)
+        XCTAssertEqual(game.cells[0][2].candidates, [4])
+
+        // Same row peer: (0, 3)
+        game.selectCell(row: 0, col: 3)
+        game.enterNumber(1)
+        game.enterNumber(4)
+        XCTAssertEqual(game.cells[0][3].candidates, [1, 4])
+
+        // Same col peer: (3, 2)
+        game.selectCell(row: 3, col: 2)
+        game.enterNumber(2)
+        game.enterNumber(4)
+        XCTAssertEqual(game.cells[3][2].candidates, [2, 4])
+
+        // Same box peer: (1, 2)
+        game.selectCell(row: 1, col: 2)
+        game.enterNumber(7)
+        game.enterNumber(4)
+        XCTAssertEqual(game.cells[1][2].candidates, [4, 7])
+
+        // Non-peer cell: (4, 4)
+        game.selectCell(row: 4, col: 4)
+        game.enterNumber(4)
+        game.enterNumber(9)
+        XCTAssertEqual(game.cells[4][4].candidates, [4, 9])
+
+        // Place value 4 into (0, 2) in normal mode
+        game.inputMode = .normal
+        game.selectCell(row: 0, col: 2)
+        game.enterNumber(4)
+
+        // Verify cell (0, 2) has value 4 and empty candidates
+        XCTAssertEqual(game.cells[0][2].value, 4)
+        XCTAssertTrue(game.cells[0][2].candidates.isEmpty)
+
+        // Verify peer cells have 4 removed, other candidates preserved
+        XCTAssertEqual(game.cells[0][3].candidates, [1])
+        XCTAssertEqual(game.cells[3][2].candidates, [2])
+        XCTAssertEqual(game.cells[1][2].candidates, [7])
+
+        // Verify non-peer cell is unaffected
+        XCTAssertEqual(game.cells[4][4].candidates, [4, 9])
+
+        // Test Undo restores all cleared notes
+        game.undo()
+        XCTAssertEqual(game.cells[0][2].value, 0)
+        XCTAssertEqual(game.cells[0][2].candidates, [4])
+        XCTAssertEqual(game.cells[0][3].candidates, [1, 4])
+        XCTAssertEqual(game.cells[3][2].candidates, [2, 4])
+        XCTAssertEqual(game.cells[1][2].candidates, [4, 7])
+        XCTAssertEqual(game.cells[4][4].candidates, [4, 9])
+
+        // Test Redo clears them again
+        game.redo()
+        XCTAssertEqual(game.cells[0][2].value, 4)
+        XCTAssertTrue(game.cells[0][2].candidates.isEmpty)
+        XCTAssertEqual(game.cells[0][3].candidates, [1])
+        XCTAssertEqual(game.cells[3][2].candidates, [2])
+        XCTAssertEqual(game.cells[1][2].candidates, [7])
+        XCTAssertEqual(game.cells[4][4].candidates, [4, 9])
+
+        // Test with autoClearNotes disabled
+        game.configureAutoClearNotes(enabled: false)
+        XCTAssertFalse(game.autoClearNotesEnabled)
+
+        // Clear cell (0, 2) and re-add 4 to (0, 3)
+        game.clearSelectedCell()
+        XCTAssertEqual(game.cells[0][2].value, 0)
+        game.inputMode = .candidate
+        game.selectCell(row: 0, col: 3)
+        game.enterNumber(4)
+        XCTAssertEqual(game.cells[0][3].candidates, [1, 4])
+
+        // Enter 4 in normal mode with auto-clear disabled
+        game.inputMode = .normal
+        game.selectCell(row: 0, col: 2)
+        game.enterNumber(4)
+
+        // Peer candidate 4 should NOT be cleared
+        XCTAssertEqual(game.cells[0][3].candidates, [1, 4])
+    }
+
 }

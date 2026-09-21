@@ -70,18 +70,21 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(settings.mistakeLimit, 3)
         XCTAssertTrue(settings.mistakeLimitEnabled)
         XCTAssertFalse(settings.autoFillCandidates)
+        XCTAssertTrue(settings.autoClearNotes)
         for theme in GameSettings.ThemeSetting.allCases {
             settings.theme = theme
             settings.mistakeLimitEnabled = false
             settings.mistakeLimit = 9
             settings.cameraImportEnabled = true
             settings.autoFillCandidates = true
+            settings.autoClearNotes = false
             let restored = try JSONDecoder().decode(GameSettings.self, from: JSONEncoder().encode(settings))
             XCTAssertEqual(restored.theme, theme)
             XCTAssertEqual(restored.mistakeLimit, 9)
             XCTAssertFalse(restored.mistakeLimitEnabled)
             XCTAssertTrue(restored.cameraImportEnabled)
             XCTAssertTrue(restored.autoFillCandidates)
+            XCTAssertFalse(restored.autoClearNotes)
         }
     }
 

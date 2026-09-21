@@ -45,6 +45,7 @@ final class GameManagerTests: XCTestCase {
         manager.settings.autoFillCandidates = true
         manager.settings.mistakeLimitEnabled = false
         manager.settings.mistakeLimit = 7
+        manager.settings.autoClearNotes = false
         let task = manager.newGame(difficulty: .beginner)
         XCTAssertEqual(manager.gameState, .loading)
         await task.value
@@ -52,6 +53,9 @@ final class GameManagerTests: XCTestCase {
         let game = try XCTUnwrap(manager.currentGame)
         XCTAssertEqual(game.maxMistakes, 7)
         XCTAssertFalse(game.mistakeLimitEnabled)
+        XCTAssertFalse(game.autoClearNotesEnabled)
+        manager.settings.autoClearNotes = true
+        XCTAssertTrue(game.autoClearNotesEnabled)
         XCTAssertFalse(game.cells[0][2].candidates.isEmpty)
         XCTAssertFalse(game.canUndo)
         XCTAssertEqual(started.last?.1, .beginner)

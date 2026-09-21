@@ -31,6 +31,7 @@ class GameViewModel: ObservableObject {
     let difficulty: Difficulty
     @Published private(set) var maxMistakes = 3
     @Published private(set) var mistakeLimitEnabled = true
+    @Published private(set) var autoClearNotesEnabled = true
 
     // MARK: - Private Properties
 
@@ -127,6 +128,10 @@ class GameViewModel: ObservableObject {
         mistakeLimitEnabled = enabled
         maxMistakes = min(10, max(1, limit))
         syncFromEngine()
+    }
+
+    func configureAutoClearNotes(enabled: Bool) {
+        autoClearNotesEnabled = enabled
     }
 
     // MARK: - Engine Sync
@@ -229,12 +234,31 @@ class GameViewModel: ObservableObject {
         undoHistory.append(previous)
         redoHistory.removeAll()
         userCandidates[row][col] = []
+        if autoClearNotesEnabled {
+            clearRelatedCandidates(for: value, at: row, col: col)
+        }
         recordFillOrder(value: value, row: row, col: col)
         syncFromEngine()
         if result == .complete {
             lastCelebration = .gameComplete
         } else if result == .success {
             checkForCompletions(afterPlacingAt: row, col: col, value: value)
+        }
+    }
+
+    private func clearRelatedCandidates(for value: Int, at row: Int, col: Int) {
+        for c in 0..<9 {
+            userCandidates[row][c].remove(value)
+        }
+        for r in 0..<9 {
+            userCandidates[r][col].remove(value)
+        }
+        let startRow = (row / 3) * 3
+        let startCol = (col / 3) * 3
+        for r in startRow..<startRow + 3 {
+            for c in startCol..<startCol + 3 {
+                userCandidates[r][c].remove(value)
+            }
         }
     }
 

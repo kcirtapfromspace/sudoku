@@ -254,6 +254,7 @@ struct GameSettings: Codable {
     var highlightRelatedCells: Bool = true
     var highlightSameNumbers: Bool = true
     var autoFillCandidates: Bool = false  // Start games with notes pre-filled
+    var autoClearNotes: Bool = true  // Automatically remove notes from row/column/box when entering a number
     var celebrationsEnabled: Bool = true  // Show celebrations for completions
     var showErrorsImmediately: Bool = true  // Show wrong answers immediately vs check on submit
     var cameraImportEnabled: Bool = false

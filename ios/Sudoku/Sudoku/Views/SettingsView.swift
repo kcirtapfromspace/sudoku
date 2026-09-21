@@ -58,6 +58,8 @@ struct SettingsForm: View {
                 Toggle("Highlight Valid Cells", isOn: $gameManager.settings.highlightValidCells)
 
                 Toggle("Auto-Fill Notes on Start", isOn: $gameManager.settings.autoFillCandidates)
+
+                Toggle("Auto-Clear Notes", isOn: $gameManager.settings.autoClearNotes)
             }
 
             // Feedback
