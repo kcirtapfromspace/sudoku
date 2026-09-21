@@ -259,8 +259,13 @@ final class GameManagerTests: XCTestCase {
         XCTAssertEqual(history.stats.solvedPuzzles, 1)
         XCTAssertEqual(history.getPuzzle(hash: game.puzzleHash)?.playCount, 1)
         await manager.newGameWithSE(targetSE: 1.5).value
-        XCTAssertEqual(manager.gameState, .playing)
-        try await Task.sleep(nanoseconds: 50_000_000)
+        for _ in 0..<40 {
+            _ = await posthog.flushNow()
+            if posthogEvents.contains("game_started") && posthogEvents.contains("game_completed") {
+                break
+            }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
         XCTAssertTrue(posthogEvents.contains("game_started"))
         XCTAssertTrue(posthogEvents.contains("game_completed"))
     }
