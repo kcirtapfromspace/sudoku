@@ -189,6 +189,23 @@ project, including through Fastlane's version-bump lanes, will be overwritten.
 The `beta_manual` lane increments the build number automatically; it does not
 advance the app version. A newer build number cannot reopen a closed version.
 
+### Submit a validated TestFlight build for App Store review
+
+After the `Build iOS App` workflow succeeds, record its uploaded version and build
+number. Run `Submit iOS App for Review` from `main` with those exact values and
+the release notes. It selects the existing build, submits it for review, and
+keeps release manual after Apple's approval. It does not rebuild the binary.
+
+The equivalent Fastlane command is:
+
+```sh
+bundle exec fastlane submit_review version:1.1.4 build_number:UPLOADED_BUILD_NUMBER release_notes:"Faster puzzle generation and validation, with reliability improvements."
+```
+
+Validate the submission lane's build selection and release options without
+credentials using `ruby ios/Sudoku/fastlane/tests/submit_review_test.rb` from
+the repository root.
+
 ## License
 
 MIT License - see the root LICENSE file.

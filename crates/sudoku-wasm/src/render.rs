@@ -142,6 +142,7 @@ fn compute_hint_roles(hint: &Hint, detail: HintDetailLevel) -> [HintCellRole; 81
                     }
                 }
                 ProofCertificate::Basic { .. }
+                | ProofCertificate::Arithmetic(_)
                 | ProofCertificate::Forcing { .. }
                 | ProofCertificate::Backtracking => {}
             }
@@ -1210,6 +1211,17 @@ fn render_hint_panel(
                     format!("Forcing: {} branches converge", branches)
                 }
                 ProofCertificate::Backtracking => "Backtracking".to_string(),
+                ProofCertificate::Arithmetic(proof) => match proof.terminal {
+                    sudoku_core::ArithmeticTerminal::IntervalGcd => format!(
+                        "{} weighted rules: bounds or divisibility contradiction",
+                        proof.terms.len()
+                    ),
+                    sudoku_core::ArithmeticTerminal::Residue { modulus } => format!(
+                        "{} weighted rules: required remainder unreachable modulo {}",
+                        proof.terms.len(),
+                        modulus
+                    ),
+                },
             };
             ctx.set_fill_style_str(&theme.hint_explain_text.as_css_alpha(0.7));
             let _ = ctx.fill_text(&proof_summary, x + padding, y + padding + line_height * 2.0);

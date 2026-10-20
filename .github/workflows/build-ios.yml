@@ -44,6 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate App Store submission options
+        run: ruby ios/Sudoku/fastlane/tests/submit_review_test.rb
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.95.0
 

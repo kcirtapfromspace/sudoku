@@ -152,6 +152,29 @@ platform :ios do
   # APP STORE RELEASE
   # ============================================
 
+  desc "Submit an explicitly selected, uploaded build for App Store review"
+  lane :submit_review do |options|
+    version = options[:version].to_s
+    build = options[:build_number].to_s
+    notes = options[:release_notes].to_s.strip
+    UI.user_error!("Provide the tested app version") unless version.match?(/\A\d+\.\d+\.\d+\z/)
+    UI.user_error!("Provide the uploaded build number") unless build.match?(/\A\d+(?:\.\d+)*\z/)
+    UI.user_error!("Provide release notes") if notes.empty?
+
+    upload_to_app_store(
+      app_version: version,
+      build_number: build,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      release_notes: { "en-US" => notes },
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false
+    )
+    UI.success("Submitted #{version} (#{build}) for review; release remains manual")
+  end
+
   desc "Submit app to App Store review"
   lane :release do |options|
     # Increment version if specified
