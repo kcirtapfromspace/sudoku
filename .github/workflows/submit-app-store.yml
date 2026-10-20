@@ -1,0 +1,72 @@
+name: Submit iOS App for Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: 'Version of the tested TestFlight build'
+        required: true
+        type: string
+      build_number:
+        description: 'Exact uploaded build number from the successful iOS deployment'
+        required: true
+        type: string
+      release_notes:
+        description: 'English release notes'
+        required: true
+        default: 'Faster puzzle generation and validation, with reliability improvements.'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-review
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: Submit the selected TestFlight build
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios/Sudoku
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: ios/Sudoku
+
+      - name: Validate submission options
+        run: ruby fastlane/tests/submit_review_test.rb
+
+      - name: Create App Store Connect API key
+        env:
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          umask 077
+          printf '%s' "$API_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+
+      - name: Submit for review with manual release
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY_FILEPATH: ${{ runner.temp }}/AuthKey.p8
+          APP_VERSION: ${{ inputs.app_version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          bundle exec fastlane submit_review \
+            version:"$APP_VERSION" \
+            build_number:"$BUILD_NUMBER" \
+            release_notes:"$RELEASE_NOTES"
+
+      - name: Clean up API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
