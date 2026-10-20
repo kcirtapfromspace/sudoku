@@ -876,6 +876,8 @@ impl SudokuGame {
                     }
                     ProofCertificate::Basic { .. }
                     | ProofCertificate::Forcing { .. }
+                    // Arithmetic hints use the generic involved-cell roles.
+                    | ProofCertificate::Arithmetic(_)
                     | ProofCertificate::Backtracking => {}
                 }
             }
