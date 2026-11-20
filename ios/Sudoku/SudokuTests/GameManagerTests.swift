@@ -249,6 +249,7 @@ final class GameManagerTests: XCTestCase {
         let posthog = PostHogService(apiKey: "test_key", session: posthogSession, defaults: defaults(), isEnabled: true)
         let dependencies = GameManager.Dependencies.connected(cache: cache, gameCenter: center, history: history, telemetry: telemetry, posthog: posthog)
         let manager = GameManager(defaults: defaults(), dependencies: dependencies)
+        manager.preparePuzzle(difficulty: .beginner)
         await manager.newGame(difficulty: .beginner).value
         XCTAssertEqual(history.stats.totalPlays, 1)
         let game = try XCTUnwrap(manager.currentGame)
