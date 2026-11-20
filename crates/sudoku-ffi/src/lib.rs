@@ -421,6 +421,26 @@ impl SudokuGame {
         }
     }
 
+    /// Preview a placement after an elimination without changing the board or hint count.
+    pub fn preview_placement_hint(&self) -> Option<GameHint> {
+        let grid = self.grid.lock().unwrap();
+        let mut last = self.last_hint.lock().unwrap();
+        if !matches!(
+            last.as_ref()?.hint_type,
+            HintType::EliminateCandidates { .. }
+        ) {
+            return None;
+        }
+        let hint = Solver::new().get_next_placement(&grid)?;
+        if let HintType::SetValue { pos, value } = hint.hint_type {
+            if grid.get(pos).is_none() && self.solution.lock().unwrap().get(pos) == Some(value) {
+                *last = Some(hint.clone());
+                return Some(hint.into());
+            }
+        }
+        None
+    }
+
     /// Get cell roles for hint visualization.
     /// Returns 81 u8 values (one per cell), encoding HintCellRole.
     /// detail_level: 0 = Summary (target + involved), 1 = ProofDetail (proof-specific roles).

@@ -24,9 +24,21 @@ enum ViewTestFixture {
     @discardableResult
     static func render<V: View>(_ view: V, size: CGSize = CGSize(width: 390, height: 844),
                                 file: StaticString = #filePath, line: UInt = #line) throws -> UIImage {
-        let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height))
-        renderer.scale = 1
-        let image = try XCTUnwrap(renderer.uiImage, file: file, line: line)
+        // Platform-backed SwiftUI views need a hosting lifecycle during snapshot and teardown.
+        let frame = CGRect(origin: .zero, size: size)
+        let host = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
+        let window = UIWindow(frame: frame)
+        window.rootViewController = host
+        window.isHidden = false
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+        host.view.frame = frame
+        host.view.layoutIfNeeded()
+        let image = UIGraphicsImageRenderer(size: size).image { _ in
+            XCTAssertTrue(host.view.drawHierarchy(in: frame, afterScreenUpdates: true), file: file, line: line)
+        }
         XCTAssertEqual(image.size, size, file: file, line: line)
         XCTAssertGreaterThan(try XCTUnwrap(image.pngData()).count, 100, file: file, line: line)
         return image
@@ -165,14 +177,17 @@ final class GameplayViewTests: XCTestCase {
         let hint = HintModel(row: 0, col: 2, value: 4, eliminate: [], explanation: "Only 4 fits this cell.", technique: "Naked Single", seRating: 1, involvedCells: [(0, 2)])
         var upgrades = 0
         var dismissals = 0
-        let view = HintPanelView(hint: hint, detailLevel: .summary, onUpgrade: { upgrades += 1 }, onDismiss: { dismissals += 1 })
+        var applications = 0
+        let view = HintPanelView(hint: hint, detailLevel: .summary, onUpgrade: { upgrades += 1 }, onDismiss: { dismissals += 1 }, onApply: { applications += 1 })
         XCTAssertEqual(try view.inspect().find(text: hint.explanation).string(), hint.explanation)
         try view.inspect().find(button: "Details").tap()
         XCTAssertEqual(upgrades, 1)
         let buttons = try view.inspect().findAll(ViewType.Button.self)
         try buttons[1].tap()
         XCTAssertEqual(dismissals, 1)
-        let detailed = HintPanelView(hint: hint, detailLevel: .proofDetail, onUpgrade: {}, onDismiss: {})
+        try view.inspect().find(button: "Place 4").tap()
+        XCTAssertEqual(applications, 1)
+        let detailed = HintPanelView(hint: hint, detailLevel: .proofDetail, onUpgrade: {}, onDismiss: {}, onApply: {})
         XCTAssertEqual(try detailed.inspect().find(text: "Proof shown").string(), "Proof shown")
     }
 }

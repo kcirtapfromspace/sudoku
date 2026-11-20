@@ -14,6 +14,7 @@ class GameViewModel: ObservableObject {
     @Published private(set) var hintsUsed: Int = 0
     @Published private(set) var isComplete: Bool = false
     @Published private(set) var currentHint: HintModel?
+    @Published private(set) var hintNotice: String?
     @Published private(set) var hintDetailLevel: HintDetailLevel = .none
     @Published private(set) var hintCellRoles: [HintCellRole] = Array(repeating: .none, count: 81)
     @Published private(set) var canUndo: Bool = false
@@ -231,6 +232,7 @@ class GameViewModel: ObservableObject {
         let previous = snapshot()
         let result = game.makeMove(row: UInt8(row), col: UInt8(col), value: UInt8(value))
         guard result != .cannotModifyGiven, result != .invalidValue else { return }
+        clearHint()
         undoHistory.append(previous)
         redoHistory.removeAll()
         userCandidates[row][col] = []
@@ -397,6 +399,7 @@ class GameViewModel: ObservableObject {
         recordUndo()
         userCandidates[selected.row][selected.col] = []
 
+        clearHint()
         if cell.value != 0 {
             _ = game.clearCell(row: UInt8(selected.row), col: UInt8(selected.col))
             syncFromEngine()
@@ -576,16 +579,24 @@ class GameViewModel: ObservableObject {
 
     func getHint() {
         guard !isComplete, !isGameOver else { return }
-        if currentHint != nil && hintDetailLevel == .summary {
-            // Second tap: upgrade to proof detail
+        if currentHint != nil {
             hintDetailLevel = .proofDetail
             updateHintCellRoles()
             return
         }
+        if let wrong = cells.joined().first(where: {
+            !$0.isGiven && !$0.isEmpty && !game.isValueCorrect(row: UInt8($0.row), col: UInt8($0.col))
+        }) {
+            selectCell(row: wrong.row, col: wrong.col)
+            hintNotice = "Check the \(wrong.value) in row \(wrong.row + 1), column \(wrong.col + 1) before using a hint."
+            return
+        }
+        guard let hint = game.getHint() else { return }
+        showHint(hint)
+    }
 
-        // First tap: get a new hint
-        guard let engineHint = game.getHint() else { return }
-
+    private func showHint(_ engineHint: GameHint) {
+        hintNotice = nil
         currentHint = HintModel(
             row: Int(engineHint.row),
             col: Int(engineHint.col),
@@ -603,14 +614,27 @@ class GameViewModel: ObservableObject {
     }
 
     func applyHint() {
-        guard !isComplete, !isGameOver, currentHint != nil else { return }
-        recordUndo()
-        _ = game.applyHint()
-        clearHint()
-        syncFromEngine()
+        guard !isComplete, !isGameOver, let hint = currentHint else { return }
+        guard let value = hint.value else {
+            if let placement = game.previewPlacementHint() {
+                showHint(placement)
+            } else {
+                clearHint()
+                hintNotice = "A verified placement is unavailable for this position."
+            }
+            return
+        }
+        guard cells[hint.row][hint.col].isEmpty,
+              Int(game.getSolutionValue(row: UInt8(hint.row), col: UInt8(hint.col))) == value else {
+            clearHint()
+            hintNotice = "This placement could not be verified."
+            return
+        }
+        setValue(value, at: hint.row, col: hint.col)
     }
 
     func clearHint() {
+        hintNotice = nil
         currentHint = nil
         hintDetailLevel = .none
         updateHintCellRoles()

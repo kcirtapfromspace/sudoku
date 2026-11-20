@@ -280,7 +280,45 @@ final class GameplayTests: XCTestCase {
         XCTAssertNil(game.currentHint)
         XCTAssertEqual(game.hintDetailLevel, .none)
         XCTAssertTrue(game.hintCellRoles.allSatisfy { $0 == .none })
-        XCTAssertGreaterThan(game.hintsUsed, 0)
+        XCTAssertEqual(game.hintsUsed, 1)
+        XCTAssertEqual(game.cells[hint.row][hint.col].value, try XCTUnwrap(hint.value))
+        game.undo()
+        XCTAssertTrue(game.cells[hint.row][hint.col].isEmpty)
+        game.redo()
+        XCTAssertEqual(game.cells[hint.row][hint.col].value, hint.value)
+        XCTAssertEqual(game.hintsUsed, 1)
+    }
+
+    func testHintPointsToIncorrectEntryBeforeSuggestingAPlacement() throws {
+        let game = try fixture()
+        game.selectCell(row: 0, col: 2)
+        game.enterNumber(5)
+        game.getHint()
+        XCTAssertNil(game.currentHint)
+        XCTAssertEqual(game.hintNotice, "Check the 5 in row 1, column 3 before using a hint.")
+        XCTAssertEqual(game.hintsUsed, 0)
+        game.clearSelectedCell()
+        XCTAssertNil(game.hintNotice)
+        game.getHint()
+        XCTAssertNotNil(game.currentHint)
+    }
+
+    func testIncompleteStoredSolutionsCannotApplyAnUnverifiedHint() throws {
+        let hiddenPair = "034008002000190048108040000809060003400000790010920800061030000000000635000006000"
+        for puzzle in [Self.puzzle, hiddenPair] {
+            let engine = try XCTUnwrap(gameFromPregenerated(puzzleString: puzzle,
+                                      solutionString: String(repeating: "0", count: 81),
+                                      difficulty: "Hard", seRating: 4.0))
+            let game = GameViewModel(cachedGame: engine, difficulty: .hard)
+            let before = game.cells
+            game.getHint()
+            XCTAssertNotNil(game.currentHint)
+            game.applyHint()
+            XCTAssertNil(game.currentHint)
+            XCTAssertNotNil(game.hintNotice)
+            XCTAssertEqual(game.cells, before)
+            XCTAssertEqual(game.mistakes, 0)
+        }
     }
 
     func testImportFiltersInvalidCoordinatesAndRestoresPlayerState() async throws {
@@ -400,6 +438,21 @@ final class GameplayTests: XCTestCase {
         XCTAssertFalse(hint.explanation.isEmpty)
         XCTAssertFalse(hint.involvedCells.isEmpty)
         XCTAssertGreaterThan(hint.seRating, 2)
+        let before = game.cells
+        let count = game.hintsUsed
+        game.applyHint()
+        let preview = try XCTUnwrap(game.currentHint)
+        let digit = try XCTUnwrap(preview.value)
+        XCTAssertEqual(game.cells, before)
+        XCTAssertEqual(game.hintsUsed, count)
+        XCTAssertEqual(game.hintDetailLevel, .summary)
+        game.inputMode = .candidate
+        game.applyHint()
+        XCTAssertEqual(game.cells[preview.row][preview.col].value, digit)
+        XCTAssertEqual(game.hintsUsed, count)
+        XCTAssertEqual(game.mistakes, 0)
+        game.undo()
+        XCTAssertEqual(game.cells, before)
     }
 
     func testAutoClearNotesRemovesRowColumnBoxCandidatesAndSupportsUndo() async throws {

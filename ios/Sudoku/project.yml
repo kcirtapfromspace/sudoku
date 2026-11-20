@@ -9,12 +9,12 @@ options:
 packages:
   ViewInspector:
     url: https://github.com/nalexn/ViewInspector
-    exactVersion: 0.10.3
+    exactVersion: 0.10.5
 
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.1.4"
+    MARKETING_VERSION: "1.1.5"
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: "67C7724279"
     CODE_SIGN_STYLE: Automatic

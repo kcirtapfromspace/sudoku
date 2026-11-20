@@ -127,6 +127,18 @@ struct GameView: View {
     }
 
     @ViewBuilder
+    private var hintPanel: some View {
+        if let hint = game.currentHint {
+            HintPanelView(hint: hint, detailLevel: game.hintDetailLevel,
+                          onUpgrade: game.getHint, onDismiss: game.clearHint, onApply: game.applyHint)
+        } else if let notice = game.hintNotice {
+            Text(notice)
+                .font(.callout)
+                .accessibilityIdentifier("HintNotice")
+        }
+    }
+
+    @ViewBuilder
     func boardLayout(size: CGSize) -> some View {
         if size.width > size.height {
             let contentWidth = max(0, size.width - 32)
@@ -137,14 +149,7 @@ struct GameView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         headerSection
-                        if let hint = game.currentHint {
-                            HintPanelView(
-                                hint: hint,
-                                detailLevel: game.hintDetailLevel,
-                                onUpgrade: { game.getHint() },
-                                onDismiss: { game.clearHint() }
-                            )
-                        }
+                        hintPanel
                         numberPadSection
                         controlsSection(compact: true)
                     }
@@ -158,14 +163,7 @@ struct GameView: View {
             VStack(spacing: 16) {
                 headerSection
                 gridSection(size: gridSize)
-                if let hint = game.currentHint {
-                    HintPanelView(
-                        hint: hint,
-                        detailLevel: game.hintDetailLevel,
-                        onUpgrade: { game.getHint() },
-                        onDismiss: { game.clearHint() }
-                    )
-                }
+                hintPanel
                 Spacer(minLength: 8)
                 numberPadSection
                 controlsSection(compact: false)
@@ -615,6 +613,7 @@ struct HintPanelView: View {
     let detailLevel: HintDetailLevel
     let onUpgrade: () -> Void
     let onDismiss: () -> Void
+    let onApply: () -> Void
 
     @State private var isExpanded = false
 
@@ -640,6 +639,7 @@ struct HintPanelView: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Dismiss hint")
             }
             Text(hint.explanation)
                 .accessibilityIdentifier("HintExplanation")
@@ -651,14 +651,16 @@ struct HintPanelView: View {
                         isExpanded.toggle()
                     }
                 }
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
+            HStack {
+                Button(isExpanded ? "Show less" : "Show more") {
+                    withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
                 }
-            } label: {
-                Text(isExpanded ? "Show less" : "Show more")
-                    .font(.caption2)
-                    .foregroundStyle(Color.accentColor)
+                .font(.caption)
+                Spacer()
+                Button(hint.value.map { "Place \($0)" } ?? "Preview next digit", action: onApply)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("HintAction")
             }
         }
         .padding(12)

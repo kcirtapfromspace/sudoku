@@ -24,6 +24,18 @@ final class ScreenshotTests: XCTestCase {
         app.launch()
     }
 
+    func testPlaceThePreviewedHintCompletesThePuzzle() {
+        launch(puzzle: almostComplete)
+        let hint = app.buttons["Hint"]
+        XCTAssertTrue(hint.waitForExistence(timeout: 10))
+        hint.tap()
+        let placement = app.buttons["HintAction"]
+        XCTAssertTrue(placement.waitForExistence(timeout: 5))
+        XCTAssertEqual(placement.label, "Place 5")
+        placement.tap()
+        XCTAssertTrue(app.buttons["Continue"].waitForExistence(timeout: 10))
+    }
+
     func testCaptureAllScreenshots() {
         launch(puzzle: puzzle)
         XCTAssertTrue(app.buttons["Cell_0_2"].waitForExistence(timeout: 10))
