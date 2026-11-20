@@ -205,7 +205,7 @@ impl SudokuGame {
         let grid = puzzle_id.generate();
 
         let solver = Solver::new();
-        let rated = solver.rate_difficulty(&grid);
+        let (rated, se_rating) = solver.analyze(&grid);
         let solution = solver
             .solve(&grid)
             .expect("Generated puzzle should be solvable");
@@ -221,7 +221,7 @@ impl SudokuGame {
             mistakes: Mutex::new(0),
             seed: Mutex::new(Some(puzzle_id.seed)),
             last_hint: Mutex::new(None),
-            se_rating_cache: Mutex::new(None),
+            se_rating_cache: Mutex::new(Some(se_rating)),
         })
     }
 
@@ -232,7 +232,7 @@ impl SudokuGame {
         let grid = generator.generate_for_se(target_se);
 
         let solver = Solver::new();
-        let rated = solver.rate_difficulty(&grid);
+        let (rated, se_rating) = solver.analyze(&grid);
         let solution = solver
             .solve(&grid)
             .expect("Generated puzzle should be solvable");
@@ -248,7 +248,7 @@ impl SudokuGame {
             mistakes: Mutex::new(0),
             seed: Mutex::new(None),
             last_hint: Mutex::new(None),
-            se_rating_cache: Mutex::new(None),
+            se_rating_cache: Mutex::new(Some(se_rating)),
         })
     }
 
@@ -991,20 +991,20 @@ pub fn game_from_string(puzzle: String) -> Option<Arc<SudokuGame>> {
     let grid = Grid::from_string(&puzzle)?;
     let solver = Solver::new();
     let solution = solver.solve(&grid)?;
-    let difficulty = solver.rate_difficulty(&grid);
+    let (difficulty, se_rating) = solver.analyze(&grid);
 
     Some(Arc::new(SudokuGame {
-        grid: Mutex::new(grid.clone()),
+        grid: Mutex::new(grid),
         solution: Mutex::new(solution),
         difficulty: Mutex::new(difficulty),
-        rated_difficulty: Mutex::new(solver.rate_difficulty(&grid)),
+        rated_difficulty: Mutex::new(difficulty),
         undo_stack: Mutex::new(Vec::new()),
         redo_stack: Mutex::new(Vec::new()),
         hints_used: Mutex::new(0),
         mistakes: Mutex::new(0),
         seed: Mutex::new(None),
         last_hint: Mutex::new(None),
-        se_rating_cache: Mutex::new(None),
+        se_rating_cache: Mutex::new(Some(se_rating)),
     }))
 }
 

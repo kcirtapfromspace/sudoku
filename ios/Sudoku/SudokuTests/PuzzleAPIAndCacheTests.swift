@@ -2,80 +2,118 @@ import XCTest
 @testable import Sudoku
 
 final class PuzzleAPIAndCacheTests: XCTestCase {
-    func testAPIRequiresKeyAndValidURL() async {
-        let defaults = ServiceFixtures.defaults()
-        let session = ServiceURLProtocol.session { _ in XCTFail("Request should not be sent"); throw URLError(.badURL) }
-        let api = PuzzleAPIService(session: session, defaults: defaults, bundleAPIKey: nil)
-        let noKey = await api.fetchPuzzle(difficulty: .hard); XCTAssertNil(noKey)
-        defaults.set("", forKey: "mining_api_key")
-        let emptyKey = await api.fetchPuzzle(difficulty: .hard); XCTAssertNil(emptyKey)
-        defaults.set("test", forKey: "mining_api_key")
-        defaults.set("http://[", forKey: "api_base_url")
-        let invalidURL = await api.fetchPuzzle(difficulty: .hard); XCTAssertNil(invalidURL)
-        defaults.set("file:///tmp", forKey: "api_base_url")
-        let invalidScheme = await api.fetchPuzzle(difficulty: .hard); XCTAssertNil(invalidScheme)
-    }
-    func testAPIDecodesRealPuzzleAndSendsAuthenticationAndDifficulty() async {
+    private let hard = "002601000407080000008090050780009005500030001200800093040020700000010904000306500"
+
+    func testPublicCatalogChecksBoardAndComputesSolutionAndRating() async throws {
+        let board = hard
         let session = ServiceURLProtocol.session { request in
-            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Api-Key"), "test-key")
-            XCTAssertEqual(request.url?.path, "/api/v1/internal/puzzles/undiscovered")
-            XCTAssertEqual(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "Hard")
-            return try ServiceFixtures.response(request, body: ["puzzle_string": ServiceFixtures.puzzle, "solution_string": ServiceFixtures.solution, "difficulty": "Hard", "se_rating": 4.2])
+            XCTAssertNil(request.value(forHTTPHeaderField: "X-Api-Key"))
+            XCTAssertEqual(request.url?.path, "/api/v1/puzzles/random")
+            XCTAssertEqual(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems,
+                           [URLQueryItem(name: "difficulty", value: "Hard")])
+            return try ServiceFixtures.response(request, body: ["puzzle_string": board, "difficulty": "Hard", "se_rating": 0])
         }
-        let api = PuzzleAPIService(session: session, defaults: ServiceFixtures.defaults(), bundleAPIKey: "test-key")
-        let game = await api.fetchPuzzle(difficulty: .hard)
-        XCTAssertNotNil(game)
-        XCTAssertEqual(game?.getAllCells()[0].value, 5)
-        XCTAssertEqual(PuzzleAPIService.eligibleDifficulties, [.hard, .expert, .master, .extreme])
-    }
-    func testAPIFailuresReturnNil() async {
-        let handlers: [(URLRequest) throws -> (Data, URLResponse)] = [
-            { try ServiceFixtures.response($0, status: 401) },
-            { (Data(), URLResponse(url: $0.url!, mimeType: nil, expectedContentLength: 0, textEncodingName: nil)) },
-            { (Data("invalid JSON".utf8), HTTPURLResponse(url: $0.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!) },
-            { try ServiceFixtures.response($0, body: ["puzzle_string": "bad"]) },
-            { try ServiceFixtures.response($0, body: ["puzzle_string": "bad", "solution_string": "bad", "difficulty": "Hard", "se_rating": 4.2]) },
-            { _ in throw URLError(.timedOut) }
-        ]
-        for handler in handlers {
-            let api = PuzzleAPIService(session: ServiceURLProtocol.session(handler), defaults: ServiceFixtures.defaults(), bundleAPIKey: "key")
-            let game = await api.fetchPuzzle(difficulty: .expert); XCTAssertNil(game)
-        }
-    }
-    func testCacheWarmupConsumptionAndFallback() async {
-        let cache = PuzzleCache(fetch: { _ in ServiceFixtures.game() }, generate: { _ in ServiceFixtures.game() })
-        let initial = await cache.getCacheStatus(); XCTAssertTrue(initial.values.allSatisfy { !$0 })
-        await cache.prefetchAll()
-        let full = await cache.getCacheStatus(); XCTAssertTrue(full.values.allSatisfy { $0 })
-        await cache.ensureCached(difficulty: .medium)
-        let cached = await cache.getPuzzle(difficulty: .medium); XCTAssertEqual(cached.getAllCells()[0].value, 5)
-        let api = PuzzleCache(fetch: { _ in ServiceFixtures.game() }, generate: { _ in XCTFail("API hit must not generate"); return ServiceFixtures.game() })
-        let fetched = await api.getPuzzle(difficulty: .hard); XCTAssertEqual(fetched.getAllCells()[0].value, 5)
-        let fallback = PuzzleCache(fetch: { _ in nil }, generate: { _ in ServiceFixtures.game() })
-        let generated = await fallback.getPuzzle(difficulty: .hard); XCTAssertEqual(generated.getAllCells()[0].value, 5)
-        await fallback.prefetch(difficulty: .easy).value
-        let status = await fallback.getCacheStatus(); XCTAssertEqual(status[.easy], true)
-    }
-    func testConcurrentWarmupsGenerateOnlyOnce() async {
-        actor Counter {
-            var count = 0
-            func generate() async -> SudokuGame { count += 1; try? await Task.sleep(nanoseconds: 10_000_000); return ServiceFixtures.game() }
-        }
-        let counter = Counter()
-        let cache = PuzzleCache(fetch: { _ in nil }, generate: { _ in await counter.generate() })
-        await withTaskGroup(of: Void.self) { group in
-            for _ in 0..<10 { group.addTask { await cache.ensureCached(difficulty: .beginner) } }
-        }
-        let count = await counter.count; XCTAssertEqual(count, 1)
-        let status = await cache.getCacheStatus(); XCTAssertEqual(status[.beginner], true)
-    }
-    func testDefaultGeneratorProducesAPlayableGrid() async {
-        let cache = PuzzleCache(fetch: { _ in nil })
-        let game = await cache.getPuzzle(difficulty: .beginner)
-        let cells = game.getAllCells()
-        XCTAssertEqual(cells.count, 81)
-        XCTAssertTrue(cells.contains { $0.isGiven && $0.value > 0 })
-        XCTAssertTrue(cells.contains { !$0.isGiven && $0.value == 0 })
+        let api = PuzzleAPIService(session: session, defaults: ServiceFixtures.defaults())
+        let result = await api.fetchPuzzle(difficulty: .hard)
+        let game = try XCTUnwrap(result)
+        XCTAssertEqual(game.getRatedDifficulty(), .hard)
+        XCTAssertEqual(game.getSeRating(), 2.6, accuracy: 0.001)
+        XCTAssertGreaterThan(game.getSolutionValue(row: 0, col: 0), 0)
     }
 
+    func testInvalidCatalogResponseFallsBack() async {
+        let handlers: [(URLRequest) throws -> (Data, URLResponse)] = [
+            { try ServiceFixtures.response($0, status: 404) },
+            { try ServiceFixtures.response($0, body: ["difficulty": "Expert", "puzzle_string": self.hard]) },
+            { try ServiceFixtures.response($0, body: ["difficulty": "Hard", "puzzle_string": ServiceFixtures.puzzle]) },
+            { try ServiceFixtures.response($0, body: ["difficulty": "Hard", "puzzle_string": String(repeating: "0", count: 81)]) },
+            { try ServiceFixtures.response($0, body: ["difficulty": "Hard", "puzzle_string": "bad"]) },
+            { _ in throw URLError(.notConnectedToInternet) }
+        ]
+        for handler in handlers {
+            let api = PuzzleAPIService(session: ServiceURLProtocol.session(handler), defaults: ServiceFixtures.defaults())
+            let game = await api.fetchPuzzle(difficulty: .hard)
+            XCTAssertNil(game)
+        }
+        let defaults = ServiceFixtures.defaults()
+        defaults.set("file:///tmp", forKey: "api_base_url")
+        let api = PuzzleAPIService(session: ServiceURLProtocol.session { _ in XCTFail(); throw URLError(.badURL) }, defaults: defaults)
+        let result = await api.fetchPuzzle(difficulty: .hard)
+        XCTAssertNil(result)
+    }
+
+    func testBundledReserveIsUniqueRatedAndRotatesAcrossColdStarts() throws {
+        let defaults = ServiceFixtures.defaults()
+        var all = Set<String>()
+        for difficulty in PuzzleAPIService.eligibleDifficulties {
+            let choices = try XCTUnwrap(StarterPuzzles.boards[difficulty.rawValue])
+            XCTAssertEqual(choices.count, 8)
+            var cycle: [String] = []
+            for _ in choices {
+                let game = try XCTUnwrap(StarterPuzzles.next(for: difficulty, defaults: defaults))
+                let board = game.getPuzzleString()
+                guard case .valid = validatePuzzleString(puzzle: board) else { return XCTFail("Invalid starter") }
+                let solved = try XCTUnwrap(gameFromString(puzzle: board))
+                XCTAssertEqual(solved.getRatedDifficulty(), difficulty.toGameDifficulty())
+                XCTAssertEqual(game.getSeRating(), solved.getSeRating())
+                for i in 0..<81 {
+                    let row = UInt8(i / 9), col = UInt8(i % 9)
+                    XCTAssertEqual(game.getSolutionValue(row: row, col: col), solved.getSolutionValue(row: row, col: col))
+                }
+                XCTAssertTrue(all.insert(board).inserted)
+                cycle.append(board)
+            }
+            XCTAssertEqual(StarterPuzzles.next(for: difficulty, defaults: defaults)?.getPuzzleString(), cycle.first)
+        }
+        XCTAssertNil(StarterPuzzles.next(for: .easy, defaults: defaults))
+    }
+
+    func testColdStartDoesNotWaitForCatalogAndConsumesReadyGameNext() async {
+        let gate = AsyncStream<Void>.makeStream()
+        let catalog = ServiceFixtures.game()
+        let cache = PuzzleCache(fetch: { _ in
+            for await _ in gate.stream { break }
+            return catalog
+        }, generate: { _ in XCTFail("Unexpected generation"); return ServiceFixtures.game() },
+        starter: { _ in ServiceFixtures.game() })
+        let cold = await cache.getPuzzle(difficulty: .hard)
+        XCTAssertFalse(cold === catalog)
+        gate.continuation.finish()
+        await cache.ensureCached(difficulty: .hard)
+        let next = await cache.getPuzzle(difficulty: .hard)
+        XCTAssertTrue(next === catalog)
+    }
+
+    func testConcurrentWarmupsAndStartsConsumeDistinctGames() async {
+        actor Counter {
+            var count = 0
+            func generate() async -> SudokuGame {
+                count += 1
+                await Task.yield()
+                return ServiceFixtures.game()
+            }
+        }
+        let counter = Counter()
+        let cache = PuzzleCache(fetch: { _ in nil }, generate: { _ in await counter.generate() }, starter: { _ in nil })
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<8 { group.addTask { await cache.ensureCached(difficulty: .medium) } }
+        }
+        let count = await counter.count
+        XCTAssertEqual(count, 1)
+        async let first = cache.getPuzzle(difficulty: .medium)
+        async let second = cache.getPuzzle(difficulty: .medium)
+        let games = await (first, second)
+        XCTAssertFalse(games.0 === games.1)
+    }
+
+    func testOfflineRefillAndMissingBundleStillProducePlayableGames() async {
+        let replacement = StarterPuzzles.next(for: .hard, defaults: ServiceFixtures.defaults())!
+        let cache = PuzzleCache(fetch: { _ in nil }, generate: { _ in ServiceFixtures.game() }, starter: { _ in replacement })
+        await cache.prefetch(difficulty: .hard).value
+        let result = await cache.getPuzzle(difficulty: .hard)
+        XCTAssertTrue(result === replacement)
+        let offline = PuzzleCache(fetch: { _ in nil }, starter: { _ in nil })
+        let easy = await offline.getPuzzle(difficulty: .beginner)
+        XCTAssertTrue(easy.getAllCells().contains { $0.isGiven })
+    }
 }

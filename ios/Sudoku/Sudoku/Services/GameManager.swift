@@ -123,6 +123,10 @@ class GameManager: ObservableObject {
         currentGame?.configureAutoClearNotes(enabled: settings.autoClearNotes)
     }
 
+    func preparePuzzle(difficulty: Difficulty) {
+        dependencies.prefetch(difficulty)
+    }
+
     @discardableResult
     func newGame(difficulty: Difficulty) -> Task<Void, Never> {
         generationTask?.cancel()
@@ -132,11 +136,6 @@ class GameManager: ObservableObject {
             let puzzle = await dependencies.generate(difficulty)
             guard !Task.isCancelled else { return }
             start(puzzle, difficulty: difficulty)
-            let difficulties = Difficulty.allCases
-            let index = difficulties.firstIndex(of: difficulty)!
-            for nearby in max(0, index - 1)...min(difficulties.count - 1, index + 1) {
-                dependencies.prefetch(difficulties[nearby])
-            }
         }
         generationTask = task
         return task

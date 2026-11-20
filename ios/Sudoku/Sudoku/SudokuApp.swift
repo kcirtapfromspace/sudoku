@@ -10,9 +10,6 @@ struct SudokuApp: App {
                                             environment: ProcessInfo.processInfo.environment)
         _gameManager = StateObject(wrappedValue: launch.makeManager())
         if !launch.isTesting {
-            Task(priority: .background) {
-                await PuzzleCache.shared.prefetchAll()
-            }
             PostHogService.shared.identify()
             PostHogService.shared.capture(event: "app_launched")
         }

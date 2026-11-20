@@ -166,9 +166,13 @@ struct MenuView: View {
                 .padding(.bottom, 40)
             }
             .sheet(isPresented: $showingNewGame) {
-                NewGamePickerView { targetSE in
+                NewGamePickerView { difficulty, targetSE in
                     showingNewGame = false
-                    gameManager.newGameWithSE(targetSE: targetSE)
+                    if let targetSE {
+                        gameManager.newGameWithSE(targetSE: targetSE)
+                    } else {
+                        gameManager.newGame(difficulty: difficulty)
+                    }
                 }
             }
             .sheet(isPresented: $showingSettings) {
@@ -196,12 +200,12 @@ struct MenuView: View {
 // MARK: - New Game Picker (unified difficulty + SE slider)
 
 struct NewGamePickerView: View {
-    let onPlay: (Float) -> Void
+    let onPlay: (Difficulty, Float?) -> Void
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var gameManager: GameManager
     @StateObject private var selection: NewGameSelection
 
-    init(selection: NewGameSelection? = nil, onPlay: @escaping (Float) -> Void) {
+    init(selection: NewGameSelection? = nil, onPlay: @escaping (Difficulty, Float?) -> Void) {
         _selection = StateObject(wrappedValue: selection ?? NewGameSelection())
         self.onPlay = onPlay
     }
@@ -232,12 +236,14 @@ struct NewGamePickerView: View {
         Button {
             if selection.expanded == diff {
                 // Already expanded — play with current SE
-                onPlay(selection.targetSE)
+                onPlay(diff, selection.customRating ? selection.targetSE : nil)
             } else {
                 withAnimation(.easeInOut(duration: 0.25)) {
+                    selection.customRating = false
                     selection.expanded = diff
                     selection.targetSE = diff.defaultSE
                 }
+                gameManager.preparePuzzle(difficulty: diff)
             }
         } label: {
             HStack {
@@ -261,19 +267,22 @@ struct NewGamePickerView: View {
     private func seSlider(for diff: Difficulty) -> some View {
         let range = diff.seRange
         VStack(spacing: 10) {
-            HStack {
-                Text(String(format: "%.1f", range.lowerBound))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: $selection.targetSE, in: range, step: 0.1)
-                Text(String(format: "%.1f", range.upperBound))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Toggle("Custom rating", isOn: $selection.customRating)
+            if selection.customRating {
+                HStack {
+                    Text(String(format: "%.1f", range.lowerBound))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Slider(value: $selection.targetSE, in: range, step: 0.1)
+                    Text(String(format: "%.1f", range.upperBound))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Button {
-                onPlay(selection.targetSE)
+                onPlay(diff, selection.customRating ? selection.targetSE : nil)
             } label: {
-                Text("Play (SE \(String(format: "%.1f", selection.targetSE)))")
+                Text(selection.customRating ? "Play (SE \(String(format: "%.1f", selection.targetSE)))" : "Play \(diff.displayName)")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

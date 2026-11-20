@@ -10,24 +10,29 @@ final class ContentNavigationTests: XCTestCase {
         let manager = ViewTestFixture.manager()
         manager.statistics.easterEggUnlocked = true
         let selection = NewGameSelection()
-        var played: [Float] = []
-        let view = NewGamePickerView(selection: selection, onPlay: { played.append($0) }).environmentObject(manager)
+        var played: [(Difficulty, Float?)] = []
+        let view = NewGamePickerView(selection: selection, onPlay: { played.append(($0, $1)) }).environmentObject(manager)
         XCTAssertEqual(try view.inspect().findAll(ViewType.Slider.self).count, 0)
         for difficulty in Difficulty.allCases {
             let row = try view.inspect().find(ViewType.Button.self, where: { (try? $0.labelView().find(text: difficulty.displayName)) != nil })
             try row.tap()
             XCTAssertEqual(selection.expanded, difficulty)
             XCTAssertEqual(selection.targetSE, difficulty.defaultSE)
+            try view.inspect().find(button: "Play \(difficulty.displayName)").tap()
+            XCTAssertEqual(played.last?.0, difficulty)
+            XCTAssertNil(played.last?.1)
+            XCTAssertTrue(try view.inspect().findAll(ViewType.Slider.self).isEmpty)
+            try view.inspect().find(ViewType.Toggle.self).tap()
             let slider = try view.inspect().find(ViewType.Slider.self)
             try slider.setValue(Double(difficulty.seRange.upperBound))
             XCTAssertEqual(selection.targetSE, difficulty.seRange.upperBound, accuracy: 0.0001)
             let play = try view.inspect().find(ViewType.Button.self, where: { (try? $0.labelView().find(ViewType.Text.self).string().hasPrefix("Play (SE")) == true })
             try play.tap()
-            XCTAssertEqual(try XCTUnwrap(played.last), difficulty.seRange.upperBound, accuracy: 0.0001)
+            XCTAssertEqual(try XCTUnwrap(played.last?.1), difficulty.seRange.upperBound, accuracy: 0.0001)
             try row.tap()
-            XCTAssertEqual(try XCTUnwrap(played.last), difficulty.seRange.upperBound, accuracy: 0.0001)
+            XCTAssertEqual(try XCTUnwrap(played.last?.1), difficulty.seRange.upperBound, accuracy: 0.0001)
         }
-        XCTAssertEqual(played.count, Difficulty.allCases.count * 2)
+        XCTAssertEqual(played.count, Difficulty.allCases.count * 3)
         try view.inspect().find(button: "Cancel").tap()
         try ViewTestFixture.render(view)
     }

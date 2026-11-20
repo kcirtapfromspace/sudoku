@@ -20,12 +20,22 @@ final class ConsolidatedMenuTests: XCTestCase {
         let medium = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Medium'")).firstMatch
         XCTAssertTrue(medium.waitForExistence(timeout: 5))
         medium.tap()
-        XCTAssertTrue(app.sliders.firstMatch.exists)
-        let play = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Play (SE'")).firstMatch
+        XCTAssertFalse(app.sliders.firstMatch.exists)
+        let play = app.buttons["Play Medium"]
         XCTAssertTrue(play.exists)
         play.tap()
         XCTAssertTrue(app.buttons["Digit1"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Cell_0_2"].exists)
+    }
+
+    func testCustomRatingStartsAPuzzle() {
+        app.buttons["New Game"].tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Hard'")).firstMatch.tap()
+        let toggle = app.switches["Custom rating"]
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.90, dy: 0.5)).tap()
+        XCTAssertTrue(app.sliders.firstMatch.exists)
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Play (SE'")).firstMatch.tap()
+        XCTAssertTrue(app.buttons["Digit1"].waitForExistence(timeout: 10))
     }
 
     func testProgressHub() {

@@ -46,6 +46,7 @@ final class GameManagerTests: XCTestCase {
         manager.settings.mistakeLimitEnabled = false
         manager.settings.mistakeLimit = 7
         manager.settings.autoClearNotes = false
+        manager.preparePuzzle(difficulty: .beginner)
         let task = manager.newGame(difficulty: .beginner)
         XCTAssertEqual(manager.gameState, .loading)
         await task.value
@@ -59,17 +60,17 @@ final class GameManagerTests: XCTestCase {
         XCTAssertFalse(game.cells[0][2].candidates.isEmpty)
         XCTAssertFalse(game.canUndo)
         XCTAssertEqual(started.last?.1, .beginner)
-        XCTAssertEqual(prefetched, [.beginner, .easy])
+        XCTAssertEqual(prefetched, [.beginner])
         XCTAssertTrue(manager.hasSavedGame)
         XCTAssertNotNil(storage.string(forKey: "sudoku_saved_game"))
         prefetched.removeAll()
         manager.settings.autoFillCandidates = false
         await manager.newGame(difficulty: .extreme).value
-        XCTAssertEqual(prefetched, [.master, .extreme])
+        XCTAssertTrue(prefetched.isEmpty)
         XCTAssertTrue(manager.currentGame!.cells[0][2].candidates.isEmpty)
         prefetched.removeAll()
         await manager.newGame(difficulty: .medium).value
-        XCTAssertEqual(prefetched, [.easy, .medium, .intermediate])
+        XCTAssertTrue(prefetched.isEmpty)
         await manager.newGameWithSE(targetSE: 2).value
         XCTAssertEqual(manager.gameState, .playing)
         XCTAssertEqual(started.count, 4)
