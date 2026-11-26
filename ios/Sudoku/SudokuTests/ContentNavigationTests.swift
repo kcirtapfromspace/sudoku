@@ -6,35 +6,35 @@ import ViewInspector
 
 @MainActor
 final class ContentNavigationTests: XCTestCase {
-    func testDifficultySelectionOffersItsRatingRangeAndStartsChosenRating() throws {
+    func testOneSliderStartsTheExactDisplayedRatingAtEveryUnlockedStop() throws {
         let manager = ViewTestFixture.manager()
         manager.statistics.easterEggUnlocked = true
-        let selection = NewGameSelection()
-        var played: [(Difficulty, Float?)] = []
-        let view = NewGamePickerView(selection: selection, onPlay: { played.append(($0, $1)) }).environmentObject(manager)
-        XCTAssertEqual(try view.inspect().findAll(ViewType.Slider.self).count, 0)
-        for difficulty in Difficulty.allCases {
-            let row = try view.inspect().find(ViewType.Button.self, where: { (try? $0.labelView().find(text: difficulty.displayName)) != nil })
-            try row.tap()
-            XCTAssertEqual(selection.expanded, difficulty)
-            XCTAssertEqual(selection.targetSE, difficulty.defaultSE)
-            try view.inspect().find(button: "Play \(difficulty.displayName)").tap()
-            XCTAssertEqual(played.last?.0, difficulty)
-            XCTAssertNil(played.last?.1)
-            XCTAssertTrue(try view.inspect().findAll(ViewType.Slider.self).isEmpty)
-            try view.inspect().find(ViewType.Toggle.self).tap()
+        let choices = manager.statistics.availableDifficultyChoices
+        var played: [Float] = []
+        let view = NewGameSelection(choices: choices, preferredRating: Binding(
+            get: { manager.preferredNewGameRating }, set: { manager.preferredNewGameRating = $0 }
+        )) { played.append($0) }
+
+        XCTAssertEqual(try view.inspect().findAll(ViewType.Slider.self).count, 1)
+        for (index, choice) in choices.enumerated() {
             let slider = try view.inspect().find(ViewType.Slider.self)
-            try slider.setValue(Double(difficulty.seRange.upperBound))
-            XCTAssertEqual(selection.targetSE, difficulty.seRange.upperBound, accuracy: 0.0001)
-            let play = try view.inspect().find(ViewType.Button.self, where: { (try? $0.labelView().find(ViewType.Text.self).string().hasPrefix("Play (SE")) == true })
-            try play.tap()
-            XCTAssertEqual(try XCTUnwrap(played.last?.1), difficulty.seRange.upperBound, accuracy: 0.0001)
-            try row.tap()
-            XCTAssertEqual(try XCTUnwrap(played.last?.1), difficulty.seRange.upperBound, accuracy: 0.0001)
+            try slider.setValue(Double(index) / Double(choices.count - 1))
+            XCTAssertEqual(manager.preferredNewGameRating, choice.rating)
+            XCTAssertNoThrow(try view.inspect().find(text: choice.ratingLabel))
+            XCTAssertEqual(played.count, index)
+            try view.inspect().find(button: "New Game").tap()
+            XCTAssertEqual(played.last, choice.rating)
         }
-        XCTAssertEqual(played.count, Difficulty.allCases.count * 3)
-        try view.inspect().find(button: "Cancel").tap()
-        try ViewTestFixture.render(view)
+        XCTAssertEqual(played.last, 11)
+    }
+
+    func testLockedRememberedScoreStartsAtHighestAvailableStop() throws {
+        let manager = ViewTestFixture.manager()
+        var played: Float?
+        let view = NewGameSelection(choices: manager.statistics.availableDifficultyChoices,
+                                    preferredRating: .constant(11)) { played = $0 }
+        try view.inspect().find(button: "New Game").tap()
+        XCTAssertEqual(played, 5.4)
     }
 
     func testResultScreensDismissAndRetryThroughTheManager() async throws {

@@ -22,7 +22,6 @@ class GameManager: ObservableObject {
     struct Dependencies {
         var generate: (Difficulty) async -> SudokuGame
         var generateSE: (Float) async -> SudokuGame
-        var prefetch: (Difficulty) -> Void
         var authenticate: () -> Void
         var recordStart: (String, Difficulty) -> Void
         var recordResult: (String, Bool, TimeInterval?) -> Void
@@ -41,10 +40,7 @@ class GameManager: ObservableObject {
                               posthog: PostHogService = .shared) -> Dependencies {
             Dependencies(
                 generate: { await cache.getPuzzle(difficulty: $0) },
-                generateSE: { target in
-                    await Task.detached(priority: .userInitiated) { SudokuGame.newWithSeRating(targetSe: target) }.value
-                },
-                prefetch: { cache.prefetch(difficulty: $0) },
+                generateSE: { await cache.getPuzzle(targetSE: $0) },
                 authenticate: { gameCenter.authenticate() },
                 recordStart: { puzzleString, difficulty in
                     _ = history.recordPuzzleStart(puzzleString: puzzleString, difficulty: difficulty)
@@ -67,12 +63,13 @@ class GameManager: ObservableObject {
             )
         }
 
-        /// A complete offline boundary for previews, UI automation and deterministic unit tests.
+        /// Offline dependencies for previews, UI automation and unit tests.
         static var isolated: Dependencies {
+            let cache = PuzzleCache()
             let puzzle = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
             return Dependencies(generate: { _ in gameFromString(puzzle: puzzle)! },
-                                generateSE: { _ in gameFromString(puzzle: puzzle)! },
-                                prefetch: { _ in }, authenticate: {}, recordStart: { _, _ in },
+                                generateSE: { await cache.getPuzzle(targetSE: $0) },
+                                authenticate: {}, recordStart: { _, _ in },
                                 recordResult: { _, _, _ in }, submitWin: { _, _ in }, submitResult: { _, _ in })
         }
     }
@@ -84,6 +81,8 @@ class GameManager: ObservableObject {
     @Published var settings: GameSettings {
         didSet { applyGameSettings() }
     }
+    @Published var preferredNewGameRating: Float
+    @Published var showRatingUnavailable = false
     @Published var gameState: GameState = .menu
 
     let historyManager: GameHistoryManager
@@ -92,6 +91,7 @@ class GameManager: ObservableObject {
     private let now: () -> Date
     private let statisticsKey = "sudoku_statistics"
     private let settingsKey = "sudoku_settings"
+    private let preferredRatingKey = "sudoku_preferred_new_game_se"
     private let savedGameKey = "sudoku_saved_game"
     private var generationTask: Task<Void, Never>?
     private var automaticallyPaused = false
@@ -107,6 +107,7 @@ class GameManager: ObservableObject {
         self.historyManager = history
         self.dependencies = dependencies ?? .connected(cache: .shared, gameCenter: .shared, history: history, telemetry: .shared, posthog: .shared)
         self.now = now
+        self.preferredNewGameRating = (defaults.object(forKey: preferredRatingKey) as? NSNumber)?.floatValue ?? 3.0
         self.statistics = defaults.data(forKey: statisticsKey)
             .flatMap { try? JSONDecoder().decode(GameStatistics.self, from: $0) } ?? GameStatistics()
         self.settings = defaults.data(forKey: settingsKey)
@@ -123,8 +124,13 @@ class GameManager: ObservableObject {
         currentGame?.configureAutoClearNotes(enabled: settings.autoClearNotes)
     }
 
-    func preparePuzzle(difficulty: Difficulty) {
-        dependencies.prefetch(difficulty)
+    @discardableResult
+    func newGame(matching game: GameViewModel) -> Task<Void, Never> {
+        if DifficultyChoice.all.contains(where: { $0.rating == game.seRating }) {
+            return newGameWithSE(targetSE: game.seRating)
+        }
+        // An imported or older board may have a score outside the slider.
+        return newGame(difficulty: game.difficulty)
     }
 
     @discardableResult
@@ -149,7 +155,14 @@ class GameManager: ObservableObject {
         let task = Task {
             let puzzle = await dependencies.generateSE(targetSE)
             guard !Task.isCancelled else { return }
-            start(puzzle, difficulty: Difficulty.from(puzzle.getRatedDifficulty()))
+            guard puzzle.getSeRating() == targetSE else {
+                gameState = .menu
+                showRatingUnavailable = true
+                return
+            }
+            preferredNewGameRating = targetSE
+            defaults.set(targetSE, forKey: preferredRatingKey)
+            start(puzzle, difficulty: DifficultyChoice(rating: targetSE).difficulty)
         }
         generationTask = task
         return task

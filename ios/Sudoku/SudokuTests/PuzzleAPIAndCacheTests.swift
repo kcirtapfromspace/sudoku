@@ -47,7 +47,10 @@ final class PuzzleAPIAndCacheTests: XCTestCase {
         var all = Set<String>()
         for difficulty in PuzzleAPIService.eligibleDifficulties {
             let choices = try XCTUnwrap(StarterPuzzles.boards[difficulty.rawValue])
-            XCTAssertEqual(choices.count, 8)
+            XCTAssertGreaterThanOrEqual(choices.count, 8)
+            if difficulty == .extreme {
+                XCTAssertTrue(choices.contains { $0.rating == 11 })
+            }
             var cycle: [String] = []
             for _ in choices {
                 let game = try XCTUnwrap(StarterPuzzles.next(for: difficulty, defaults: defaults))
@@ -66,6 +69,23 @@ final class PuzzleAPIAndCacheTests: XCTestCase {
             XCTAssertEqual(StarterPuzzles.next(for: difficulty, defaults: defaults)?.getPuzzleString(), cycle.first)
         }
         XCTAssertNil(StarterPuzzles.next(for: .easy, defaults: defaults))
+    }
+
+    func testColdExactStartsRotateMatchingBoardsDuringPendingGeneration() async {
+        let gate = AsyncStream<Void>.makeStream()
+        let cache = PuzzleCache(fetch: { _ in XCTFail("Unexpected tier fetch"); return nil },
+                                generateSE: { _ in
+                                    for await _ in gate.stream {}
+                                    return ServiceFixtures.game()
+                                })
+        let first = await cache.getPuzzle(targetSE: 11)
+        let second = await cache.getPuzzle(targetSE: 11)
+        let otherRating = await cache.getPuzzle(targetSE: 9.3)
+        gate.continuation.finish()
+        XCTAssertEqual(first.getSeRating(), 11)
+        XCTAssertEqual(second.getSeRating(), 11)
+        XCTAssertNotEqual(first.getPuzzleString(), second.getPuzzleString())
+        XCTAssertEqual(otherRating.getSeRating(), 9.3)
     }
 
     func testColdStartDoesNotWaitForCatalogAndConsumesReadyGameNext() async {

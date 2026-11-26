@@ -31,14 +31,12 @@ final class GameManagerTests: XCTestCase {
         XCTAssertEqual(manager.gameState, .menu)
     }
 
-    func testNewGamesApplySettingsPrefetchNeighborsAndRecordStart() async throws {
+    func testNewGamesApplySettingsAndRecordStart() async throws {
         let storage = defaults()
         var dependencies = GameManager.Dependencies.isolated
         var started: [(String, Difficulty)] = []
-        var prefetched: [Difficulty] = []
         var authenticated = 0
         dependencies.recordStart = { started.append(($0, $1)) }
-        dependencies.prefetch = { prefetched.append($0) }
         dependencies.authenticate = { authenticated += 1 }
         let manager = GameManager(defaults: storage, dependencies: dependencies)
         XCTAssertEqual(authenticated, 1)
@@ -46,7 +44,6 @@ final class GameManagerTests: XCTestCase {
         manager.settings.mistakeLimitEnabled = false
         manager.settings.mistakeLimit = 7
         manager.settings.autoClearNotes = false
-        manager.preparePuzzle(difficulty: .beginner)
         let task = manager.newGame(difficulty: .beginner)
         XCTAssertEqual(manager.gameState, .loading)
         await task.value
@@ -60,26 +57,88 @@ final class GameManagerTests: XCTestCase {
         XCTAssertFalse(game.cells[0][2].candidates.isEmpty)
         XCTAssertFalse(game.canUndo)
         XCTAssertEqual(started.last?.1, .beginner)
-        XCTAssertEqual(prefetched, [.beginner])
         XCTAssertTrue(manager.hasSavedGame)
         XCTAssertNotNil(storage.string(forKey: "sudoku_saved_game"))
-        prefetched.removeAll()
         manager.settings.autoFillCandidates = false
         await manager.newGame(difficulty: .extreme).value
-        XCTAssertTrue(prefetched.isEmpty)
         XCTAssertTrue(manager.currentGame!.cells[0][2].candidates.isEmpty)
-        prefetched.removeAll()
         await manager.newGame(difficulty: .medium).value
-        XCTAssertTrue(prefetched.isEmpty)
-        await manager.newGameWithSE(targetSE: 2).value
+        await manager.newGameWithSE(targetSE: 2.3).value
         XCTAssertEqual(manager.gameState, .playing)
         XCTAssertEqual(started.count, 4)
+    }
+
+    func testEverySliderDifficultyStartsAtItsDisplayedRatingAndTier() async throws {
+        let manager = GameManager(defaults: defaults(), dependencies: .isolated)
+        manager.statistics.easterEggUnlocked = true
+        for choice in manager.statistics.availableDifficultyChoices {
+            await manager.newGameWithSE(targetSE: choice.rating).value
+            let game = try XCTUnwrap(manager.currentGame)
+            XCTAssertEqual(manager.gameState, .playing)
+            XCTAssertEqual(game.seRating, choice.rating)
+            XCTAssertEqual(game.difficulty, choice.difficulty)
+            let rerated = try XCTUnwrap(gameFromString(puzzle: game.getPuzzleFingerprint()))
+            XCTAssertEqual(rerated.getSeRating(), choice.rating)
+        }
+    }
+
+    func testPickerTierMatchesGameHistoryAndRetryEvenWhenSolverTierDiffers() async throws {
+        let storage = defaults()
+        let starter = try XCTUnwrap(StarterPuzzles.next(for: .hard, rating: 2.6, defaults: storage))
+        XCTAssertEqual(starter.getRatedDifficulty(), .hard)
+        var dependencies = GameManager.Dependencies.isolated
+        var requested: [Float] = []
+        var recorded: [Difficulty] = []
+        dependencies.generateSE = { requested.append($0); return starter }
+        dependencies.recordStart = { _, difficulty in recorded.append(difficulty) }
+        let manager = GameManager(defaults: storage, dependencies: dependencies)
+        await manager.newGameWithSE(targetSE: 2.6).value
+        let game = try XCTUnwrap(manager.currentGame)
+        XCTAssertEqual(game.seRating, 2.6)
+        XCTAssertEqual(game.difficulty, .medium)
+        await manager.newGame(matching: game).value
+        XCTAssertEqual(requested, [2.6, 2.6])
+        XCTAssertEqual(recorded, [.medium, .medium])
+        let restored = GameManager(defaults: storage, dependencies: dependencies)
+        XCTAssertEqual(restored.preferredNewGameRating, 2.6)
+        XCTAssertEqual(restored.currentGame?.difficulty, .medium)
+    }
+
+    func testRetryOfOlderScoreUsesItsNamedDifficulty() async throws {
+        let legacy = try XCTUnwrap(gameFromPregenerated(puzzleString: ViewTestFixture.puzzle,
+                                  solutionString: ViewTestFixture.solution, difficulty: "Expert", seRating: 4.2))
+        let previous = GameViewModel(cachedGame: legacy, difficulty: .expert)
+        var tiers: [Difficulty] = []
+        var dependencies = GameManager.Dependencies.isolated
+        dependencies.generate = { tiers.append($0); return ServiceFixtures.game() }
+        dependencies.generateSE = { _ in XCTFail("Expected a tier-based retry"); return ServiceFixtures.game() }
+        let manager = GameManager(defaults: defaults(), dependencies: dependencies)
+        await manager.newGame(matching: previous).value
+        XCTAssertEqual(tiers, [.expert])
+        XCTAssertEqual(manager.currentGame?.difficulty, .expert)
+        XCTAssertEqual(manager.gameState, .playing)
+    }
+
+    func testCustomRatingMissPreservesPreviousGameAndHistory() async throws {
+        var dependencies = GameManager.Dependencies.isolated
+        let easierPuzzle = try XCTUnwrap(StarterPuzzles.boards["Extreme"]?.first { $0.rating == 7.5 })
+        dependencies.generateSE = { _ in gameFromString(puzzle: easierPuzzle.puzzle)! }
+        var starts = 0
+        dependencies.recordStart = { _, _ in starts += 1 }
+        let manager = GameManager(defaults: defaults(), dependencies: dependencies)
+        await manager.newGame(difficulty: .easy).value
+        let previous = manager.currentGame
+        await manager.newGameWithSE(targetSE: 11).value
+        XCTAssertEqual(manager.gameState, .menu)
+        XCTAssertTrue(manager.showRatingUnavailable)
+        XCTAssertTrue(manager.currentGame === previous)
+        XCTAssertEqual(starts, 1)
     }
 
     func testQuitCancelsPendingGenerationWithoutResurrectingGame() async {
         let manager = GameManager(defaults: defaults(), dependencies: .isolated)
         let first = manager.newGame(difficulty: .easy)
-        let second = manager.newGameWithSE(targetSE: 2)
+        let second = manager.newGameWithSE(targetSE: 2.3)
         manager.quitGame()
         await first.value
         await second.value
@@ -249,7 +308,6 @@ final class GameManagerTests: XCTestCase {
         let posthog = PostHogService(apiKey: "test_key", session: posthogSession, defaults: defaults(), isEnabled: true)
         let dependencies = GameManager.Dependencies.connected(cache: cache, gameCenter: center, history: history, telemetry: telemetry, posthog: posthog)
         let manager = GameManager(defaults: defaults(), dependencies: dependencies)
-        manager.preparePuzzle(difficulty: .beginner)
         await manager.newGame(difficulty: .beginner).value
         XCTAssertEqual(history.stats.totalPlays, 1)
         let game = try XCTUnwrap(manager.currentGame)

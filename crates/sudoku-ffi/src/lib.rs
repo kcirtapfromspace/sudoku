@@ -1,10 +1,28 @@
 use std::sync::{Arc, Mutex};
 use sudoku_core::{
-    canonical_puzzle_hash_str, BitSet, Difficulty, Generator, Grid, Hint, HintType, Polarity,
-    Position, ProofCertificate, PuzzleId, Solver,
+    canonical_puzzle_hash_str, BitSet, Difficulty, Generator, GeneratorConfig, Grid, Hint,
+    HintType, Polarity, Position, ProofCertificate, PuzzleId, Solver,
 };
 
+mod rated_puzzles;
+mod rated_templates;
+
 uniffi::setup_scaffolding!();
+
+/// Numerical ratings for which the engine has a verified reserve.
+#[uniffi::export]
+pub fn supported_se_ratings() -> Vec<f32> {
+    rated_templates::TEMPLATES
+        .iter()
+        .map(|(rating, _)| *rating)
+        .collect()
+}
+
+/// The generator's named difficulty band for a numerical SE target.
+#[uniffi::export]
+pub fn target_difficulty_for_se(rating: f32) -> GameDifficulty {
+    GeneratorConfig::for_se_rating(rating).difficulty.into()
+}
 
 /// A move result returned from making a move
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -192,7 +210,7 @@ pub struct SudokuGame {
     mistakes: Mutex<usize>,
     seed: Mutex<Option<u64>>,
     last_hint: Mutex<Option<Hint>>,
-    se_rating_cache: Mutex<Option<f32>>,
+    se_rating: f32,
 }
 
 #[uniffi::export]
@@ -221,35 +239,21 @@ impl SudokuGame {
             mistakes: Mutex::new(0),
             seed: Mutex::new(Some(puzzle_id.seed)),
             last_hint: Mutex::new(None),
-            se_rating_cache: Mutex::new(Some(se_rating)),
+            se_rating,
         })
     }
 
     /// Create a new Sudoku game targeting a specific SE (Sudoku Explainer) rating
     #[uniffi::constructor]
     pub fn new_with_se_rating(target_se: f32) -> Arc<Self> {
+        if let Some(game) = rated_puzzles::exact(target_se) {
+            return game;
+        }
+        // Other FFI clients may request arbitrary targets between supported scores.
         let mut generator = Generator::new();
         let grid = generator.generate_for_se(target_se);
 
-        let solver = Solver::new();
-        let (rated, se_rating) = solver.analyze(&grid);
-        let solution = solver
-            .solve(&grid)
-            .expect("Generated puzzle should be solvable");
-
-        Arc::new(Self {
-            grid: Mutex::new(grid),
-            solution: Mutex::new(solution),
-            difficulty: Mutex::new(rated),
-            rated_difficulty: Mutex::new(rated),
-            undo_stack: Mutex::new(Vec::new()),
-            redo_stack: Mutex::new(Vec::new()),
-            hints_used: Mutex::new(0),
-            mistakes: Mutex::new(0),
-            seed: Mutex::new(None),
-            last_hint: Mutex::new(None),
-            se_rating_cache: Mutex::new(Some(se_rating)),
-        })
+        game_from_grid(grid).expect("Generated puzzle should be solvable")
     }
 
     /// Make a move: place a value at a position
@@ -524,14 +528,7 @@ impl SudokuGame {
 
     /// Get the Sudoku Explainer (SE) numerical rating for this puzzle
     pub fn get_se_rating(&self) -> f32 {
-        if let Some(cached) = *self.se_rating_cache.lock().unwrap() {
-            return cached;
-        }
-        let grid = self.grid.lock().unwrap();
-        let solver = Solver::new();
-        let rating = solver.rate_se(&grid);
-        *self.se_rating_cache.lock().unwrap() = Some(rating);
-        rating
+        self.se_rating
     }
 
     /// Get the number of hints used
@@ -562,6 +559,7 @@ impl SudokuGame {
             "solution": solution.to_string_compact(),
             "difficulty": format!("{:?}", *difficulty),
             "rated_difficulty": format!("{:?}", *rated_difficulty),
+            "se_rating": self.se_rating,
             "hints_used": *self.hints_used.lock().unwrap(),
             "mistakes": *self.mistakes.lock().unwrap(),
         })
@@ -988,7 +986,10 @@ pub fn validate_puzzle_string(puzzle: String) -> PuzzleValidation {
 /// Create a game from a puzzle string (81 characters, 0 or . for empty)
 #[uniffi::export]
 pub fn game_from_string(puzzle: String) -> Option<Arc<SudokuGame>> {
-    let grid = Grid::from_string(&puzzle)?;
+    game_from_grid(Grid::from_string(&puzzle)?)
+}
+
+fn game_from_grid(grid: Grid) -> Option<Arc<SudokuGame>> {
     let solver = Solver::new();
     let solution = solver.solve(&grid)?;
     let (difficulty, se_rating) = solver.analyze(&grid);
@@ -1004,7 +1005,7 @@ pub fn game_from_string(puzzle: String) -> Option<Arc<SudokuGame>> {
         mistakes: Mutex::new(0),
         seed: Mutex::new(None),
         last_hint: Mutex::new(None),
-        se_rating_cache: Mutex::new(Some(se_rating)),
+        se_rating,
     }))
 }
 
@@ -1015,7 +1016,7 @@ pub fn game_from_short_code(code: String) -> Option<Arc<SudokuGame>> {
     let grid = puzzle_id.generate();
     let solver = Solver::new();
     let solution = solver.solve(&grid)?;
-    let rated = solver.rate_difficulty(&grid);
+    let (rated, se_rating) = solver.analyze(&grid);
 
     Some(Arc::new(SudokuGame {
         grid: Mutex::new(grid),
@@ -1028,7 +1029,7 @@ pub fn game_from_short_code(code: String) -> Option<Arc<SudokuGame>> {
         mistakes: Mutex::new(0),
         seed: Mutex::new(Some(puzzle_id.seed)),
         last_hint: Mutex::new(None),
-        se_rating_cache: Mutex::new(None),
+        se_rating,
     }))
 }
 
@@ -1071,7 +1072,7 @@ pub fn game_from_pregenerated(
         mistakes: Mutex::new(0),
         seed: Mutex::new(None),
         last_hint: Mutex::new(None),
-        se_rating_cache: Mutex::new(Some(se_rating)),
+        se_rating,
     }))
 }
 
@@ -1095,14 +1096,19 @@ pub fn game_deserialize(json: String) -> Option<Arc<SudokuGame>> {
 
     let difficulty = parse_difficulty(data["difficulty"].as_str()?);
 
-    // Deserialize rated_difficulty if present, otherwise re-rate the puzzle
-    let rated_difficulty = data["rated_difficulty"]
-        .as_str()
-        .map(parse_difficulty)
-        .unwrap_or_else(|| {
-            let solver = Solver::new();
-            solver.rate_difficulty(&grid)
-        });
+    // Older iOS saves contain the original givens and replay player moves after
+    // deserialization. Rate those givens before any moves can change the score.
+    let saved_tier = data["rated_difficulty"].as_str().map(parse_difficulty);
+    let saved_rating = data["se_rating"]
+        .as_f64()
+        .filter(|r| (1.5..=11.0).contains(r));
+    let (rated_difficulty, se_rating) = match (saved_tier, saved_rating) {
+        (Some(tier), Some(rating)) => (tier, rating as f32),
+        _ => {
+            let (tier, rating) = Solver::new().analyze(&grid);
+            (saved_tier.unwrap_or(tier), rating)
+        }
+    };
 
     let hints_used = data["hints_used"].as_u64().unwrap_or(0) as usize;
     let mistakes = data["mistakes"].as_u64().unwrap_or(0) as usize;
@@ -1118,6 +1124,6 @@ pub fn game_deserialize(json: String) -> Option<Arc<SudokuGame>> {
         mistakes: Mutex::new(mistakes),
         seed: Mutex::new(None),
         last_hint: Mutex::new(None),
-        se_rating_cache: Mutex::new(None),
+        se_rating,
     }))
 }

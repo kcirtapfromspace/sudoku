@@ -63,6 +63,22 @@ final class GameplayTests: XCTestCase {
         XCTAssertNil(game.selectedCell)
     }
 
+    func testSavedCustomRatingSurvivesReplayingMovesIncludingLegacySaves() throws {
+        let template = try XCTUnwrap(StarterPuzzles.boards["Extreme"]?.first)
+        let engine = try XCTUnwrap(gameFromString(puzzle: template.puzzle))
+        let game = GameViewModel(cachedGame: engine, difficulty: .extreme)
+        let originalRating = game.seRating
+        var saved = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(game.serialize().utf8)) as? [String: Any])
+        saved["playerValues"] = template.solution.compactMap(\.wholeNumberValue)
+        for legacy in [false, true] {
+            if legacy { saved.removeValue(forKey: "se_rating") }
+            let data = try JSONSerialization.data(withJSONObject: saved)
+            let restored = try XCTUnwrap(GameViewModel.deserialize(String(decoding: data, as: UTF8.self)))
+            XCTAssertTrue(restored.isComplete)
+            XCTAssertEqual(restored.seRating, originalRating)
+        }
+    }
+
     func testNotesEraseUndoRedoAndValueReplacementRestoreVisibleState() async throws {
         let game = try fixture()
         game.selectCell(row: 0, col: 2)

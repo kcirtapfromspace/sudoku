@@ -15,11 +15,20 @@ enum StarterPuzzles {
         return tiers
     }()
 
+    static func next(rating: Float, defaults: UserDefaults = .standard) -> SudokuGame? {
+        for difficulty in Difficulty.allCases {
+            if let game = next(for: difficulty, rating: rating, defaults: defaults) { return game }
+        }
+        return nil
+    }
+
     // PuzzleCache serializes draws. Saving the cursor avoids replaying the first
     // board every time the app opens without connectivity.
-    static func next(for difficulty: Difficulty, defaults: UserDefaults = .standard) -> SudokuGame? {
-        guard let choices = boards[difficulty.rawValue], !choices.isEmpty else { return nil }
-        let key = "starter_puzzle_cursor_" + difficulty.rawValue
+    static func next(for difficulty: Difficulty, rating: Float? = nil, defaults: UserDefaults = .standard) -> SudokuGame? {
+        guard let tier = boards[difficulty.rawValue] else { return nil }
+        let choices = rating.map { target in tier.filter { $0.rating == target } } ?? tier
+        guard !choices.isEmpty else { return nil }
+        let key = "starter_puzzle_cursor_" + difficulty.rawValue + (rating.map { "_\($0)" } ?? "")
         let index = defaults.object(forKey: key) == nil
             ? Int.random(in: choices.indices)
             : max(0, defaults.integer(forKey: key)) % choices.count

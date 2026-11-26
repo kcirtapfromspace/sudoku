@@ -48,7 +48,7 @@ struct ContentView: View {
                             gameManager.quitGame()
                         },
                         onRetry: {
-                            gameManager.newGame(difficulty: game.difficulty)
+                            gameManager.newGame(matching: game)
                         }
                     )
                     .transition(.opacity)
@@ -56,6 +56,11 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(colorScheme)
+        .alert("Rating unavailable", isPresented: $gameManager.showRatingUnavailable) {
+            Button("OK") {}
+        } message: {
+            Text("Couldn't start a puzzle with the selected SE rating. Please choose a rating again.")
+        }
     }
 
     private var colorScheme: ColorScheme? {
@@ -72,107 +77,45 @@ struct ContentView: View {
 
 struct MenuView: View {
     @EnvironmentObject var gameManager: GameManager
-    @State private var showingNewGame = false
     @State private var showingSettings = false
     @State private var showingProgress = false
     @State private var showingImport = false
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 30) {
-                Spacer()
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Spacer(minLength: 0)
+                        Text("SUDOKU")
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer(minLength: 0)
 
-                // Title
-                VStack(spacing: 8) {
-                    Text("SUDOKU")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-
-                    Text("Challenge your mind")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                // Main buttons
-                VStack(spacing: 16) {
-                    if gameManager.hasSavedGame {
-                        Button {
-                            gameManager.resumeGame()
-                        } label: {
-                            Label("Continue", systemImage: "play.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                    }
-
-                    Button {
-                        showingNewGame = true
-                    } label: {
-                        Label("New Game", systemImage: "plus")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .accessibilityIdentifier("New Game")
-                }
-                .padding(.horizontal, 40)
-
-                Spacer()
-
-                // Bottom buttons
-                HStack(spacing: 40) {
-                    Button {
-                        showingProgress = true
-                    } label: {
-                        VStack {
-                            Image(systemName: "chart.bar.fill")
-                                .font(.title2)
-                            Text("Progress")
-                                .font(.caption)
-                        }
-                    }
-                    .accessibilityIdentifier("Progress")
-
-                    if gameManager.settings.cameraImportEnabled {
-                        Button {
-                            showingImport = true
-                        } label: {
-                            VStack {
-                                Image(systemName: "camera.fill")
-                                    .font(.title2)
-                                Text("Import")
-                                    .font(.caption)
+                        VStack(spacing: 24) {
+                            if gameManager.hasSavedGame {
+                                Button {
+                                    gameManager.resumeGame()
+                                } label: {
+                                    Label("Continue", systemImage: "play.fill")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.large)
+                            }
+                            NewGameSelection(choices: gameManager.statistics.availableDifficultyChoices,
+                                             preferredRating: $gameManager.preferredNewGameRating) { rating in
+                                gameManager.newGameWithSE(targetSE: rating)
                             }
                         }
-                        .accessibilityIdentifier("Import")
-                    }
+                        .frame(maxWidth: 400)
+                        .padding(.horizontal, 32)
 
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        VStack {
-                            Image(systemName: "gearshape.fill")
-                                .font(.title2)
-                            Text("Settings")
-                                .font(.caption)
-                        }
+                        Spacer(minLength: 0)
+                        menuLinks
                     }
-                    .accessibilityIdentifier("Settings")
-                }
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 40)
-            }
-            .sheet(isPresented: $showingNewGame) {
-                NewGamePickerView { difficulty, targetSE in
-                    showingNewGame = false
-                    if let targetSE {
-                        gameManager.newGameWithSE(targetSE: targetSE)
-                    } else {
-                        gameManager.newGame(difficulty: difficulty)
-                    }
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
             }
             .sheet(isPresented: $showingSettings) {
@@ -195,125 +138,48 @@ struct MenuView: View {
             }
         }
     }
-}
 
-// MARK: - New Game Picker (unified difficulty + SE slider)
+    private var menuLinks: some View {
+        HStack(spacing: 40) {
+            Button {
+                showingProgress = true
+            } label: {
+                VStack {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.title2)
+                    Text("Progress")
+                        .font(.caption)
+                }
+            }
+            .accessibilityIdentifier("Progress")
 
-struct NewGamePickerView: View {
-    let onPlay: (Difficulty, Float?) -> Void
-    @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var gameManager: GameManager
-    @StateObject private var selection: NewGameSelection
-
-    init(selection: NewGameSelection? = nil, onPlay: @escaping (Difficulty, Float?) -> Void) {
-        _selection = StateObject(wrappedValue: selection ?? NewGameSelection())
-        self.onPlay = onPlay
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(gameManager.statistics.availableDifficulties) { difficulty in
-                    difficultyRow(difficulty)
-
-                    if selection.expanded == difficulty {
-                        seSlider(for: difficulty)
+            if gameManager.settings.cameraImportEnabled {
+                Button {
+                    showingImport = true
+                } label: {
+                    VStack {
+                        Image(systemName: "camera.fill")
+                            .font(.title2)
+                        Text("Import")
+                            .font(.caption)
                     }
                 }
+                .accessibilityIdentifier("Import")
             }
-            .navigationTitle("New Game")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
 
-    @ViewBuilder
-    private func difficultyRow(_ diff: Difficulty) -> some View {
-        Button {
-            if selection.expanded == diff {
-                // Already expanded — play with current SE
-                onPlay(diff, selection.customRating ? selection.targetSE : nil)
-            } else {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    selection.customRating = false
-                    selection.expanded = diff
-                    selection.targetSE = diff.defaultSE
-                }
-                gameManager.preparePuzzle(difficulty: diff)
-            }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(diff.displayName)
-                        .font(.body.weight(selection.expanded == diff ? .semibold : .regular))
-                        .foregroundStyle(.primary)
-                    Text(diff.seDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                difficultyIndicator(diff)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func seSlider(for diff: Difficulty) -> some View {
-        let range = diff.seRange
-        VStack(spacing: 10) {
-            Toggle("Custom rating", isOn: $selection.customRating)
-            if selection.customRating {
-                HStack {
-                    Text(String(format: "%.1f", range.lowerBound))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Slider(value: $selection.targetSE, in: range, step: 0.1)
-                    Text(String(format: "%.1f", range.upperBound))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
             Button {
-                onPlay(diff, selection.customRating ? selection.targetSE : nil)
+                showingSettings = true
             } label: {
-                Text(selection.customRating ? "Play (SE \(String(format: "%.1f", selection.targetSE)))" : "Play \(diff.displayName)")
-                    .frame(maxWidth: .infinity)
+                VStack {
+                    Image(systemName: "gearshape.fill")
+                        .font(.title2)
+                    Text("Settings")
+                        .font(.caption)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
+            .accessibilityIdentifier("Settings")
         }
-        .padding(.vertical, 4)
-        .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-
-    private func difficultyIndicator(_ diff: Difficulty) -> some View {
-        let maxDots = gameManager.statistics.availableDifficulties.count
-        let filled: Int = {
-            switch diff {
-            case .beginner: return 1
-            case .easy: return 2
-            case .medium: return 3
-            case .intermediate: return 4
-            case .hard: return 5
-            case .expert: return 6
-            case .master: return 7
-            case .extreme: return 8
-            }
-        }()
-
-        return HStack(spacing: 2) {
-            ForEach(0..<maxDots, id: \.self) { i in
-                Circle()
-                    .fill(i < filled ? Color.accentColor : Color.secondary.opacity(0.3))
-                    .frame(width: 6, height: 6)
-            }
-        }
+        .foregroundStyle(.secondary)
     }
 }
 
@@ -476,7 +342,7 @@ struct WinOverlay: View {
 
             VStack(spacing: 12) {
                 Button {
-                    gameManager.newGame(difficulty: game.difficulty)
+                    gameManager.newGame(matching: game)
                 } label: {
                     Label("New Game", systemImage: "plus")
                         .frame(width: 200)
@@ -531,7 +397,7 @@ struct LoseOverlay: View {
 
             VStack(spacing: 12) {
                 Button {
-                    gameManager.newGame(difficulty: game.difficulty)
+                    gameManager.newGame(matching: game)
                 } label: {
                     Label("Try Again", systemImage: "arrow.counterclockwise")
                         .frame(width: 200)

@@ -3,15 +3,22 @@ import XCTest
 
 final class ModelTests: XCTestCase {
     func testDifficultyMetadataMatchesProgressionAndEngine() {
-        let ranges: [ClosedRange<Float>] = [1.5...2, 2...2.5, 2.5...3.4, 3.4...3.8, 3.8...4.5, 4.5...5.5, 5.5...7, 7...11]
+        let choices = DifficultyChoice.all
+        XCTAssertEqual(choices.map(\.rating), Array(Set(supportedSeRatings())).sorted())
+        XCTAssertEqual(Set(choices.map(\.difficulty)), Set(Difficulty.allCases))
         for (index, difficulty) in Difficulty.allCases.enumerated() {
             XCTAssertEqual(difficulty.id, difficulty.displayName)
-            XCTAssertEqual(difficulty.seRange, ranges[index])
-            XCTAssertEqual(difficulty.defaultSE, (ranges[index].lowerBound + ranges[index].upperBound) / 2)
-            XCTAssertFalse(difficulty.seDescription.isEmpty)
             XCTAssertEqual(Difficulty.from(difficulty.toGameDifficulty()), difficulty)
             XCTAssertEqual(difficulty.requiresUnlock, index >= 6)
         }
+        var stats = GameStatistics()
+        XCTAssertEqual(stats.availableDifficultyChoices.last?.rating, 5.4)
+        stats.winsPerDifficulty[.expert] = 50
+        XCTAssertEqual(stats.availableDifficultyChoices.first { $0.difficulty == .master }?.rating, 5.5)
+        XCTAssertEqual(stats.availableDifficultyChoices.last?.rating, 6.5)
+        stats.winsPerDifficulty[.master] = 50
+        XCTAssertEqual(stats.availableDifficultyChoices.first { $0.difficulty == .extreme }?.rating, 7.0)
+        XCTAssertEqual(stats.availableDifficultyChoices.last?.rating, 11)
         XCTAssertEqual(Difficulty.alwaysUnlocked.count, 6)
         XCTAssertNil(Difficulty.easy.unlockRequirement)
         XCTAssertEqual(Difficulty.master.unlockRequirement?.difficulty, .expert)

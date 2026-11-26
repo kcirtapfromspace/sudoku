@@ -15,27 +15,29 @@ final class ConsolidatedMenuTests: XCTestCase {
 
     override func tearDownWithError() throws { app.terminate() }
 
-    func testNewGamePicker() {
+    func testNewGameStartsDefaultDirectlyFromHome() {
+        XCTAssertEqual(app.sliders.count, 1)
+        XCTAssertEqual(app.sliders["Difficulty"].value as? String, "Medium, SE 3.0")
         app.buttons["New Game"].tap()
-        let medium = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Medium'")).firstMatch
-        XCTAssertTrue(medium.waitForExistence(timeout: 5))
-        medium.tap()
-        XCTAssertFalse(app.sliders.firstMatch.exists)
-        let play = app.buttons["Play Medium"]
-        XCTAssertTrue(play.exists)
-        play.tap()
         XCTAssertTrue(app.buttons["Digit1"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Cell_0_2"].exists)
+        XCTAssertTrue(app.staticTexts["Medium"].exists)
+        XCTAssertTrue(app.staticTexts["SE 3.0"].exists)
     }
 
-    func testCustomRatingStartsAPuzzle() {
+    func testSliderStartsDisplayedDifficultyAndRemembersItAfterRelaunch() {
+        let slider = app.sliders["Difficulty"]
+        slider.adjust(toNormalizedSliderPosition: 1)
+        XCTAssertEqual(slider.value as? String, "Expert, SE 5.4")
         app.buttons["New Game"].tap()
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Hard'")).firstMatch.tap()
-        let toggle = app.switches["Custom rating"]
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.90, dy: 0.5)).tap()
-        XCTAssertTrue(app.sliders.firstMatch.exists)
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Play (SE'")).firstMatch.tap()
-        XCTAssertTrue(app.buttons["Digit1"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["SE 5.4"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Expert"].exists)
+
+        app.terminate()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        XCTAssertTrue(slider.waitForExistence(timeout: 10))
+        XCTAssertEqual(slider.value as? String, "Expert, SE 5.4")
+        XCTAssertTrue(app.buttons["Continue"].exists)
     }
 
     func testProgressHub() {
